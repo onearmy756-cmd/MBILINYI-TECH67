@@ -1,0 +1,3 @@
+# Session files live here. They must never be downloadable over HTTP,
+# even if the root .htaccess is missing or the host ignores it.
+Require all denied

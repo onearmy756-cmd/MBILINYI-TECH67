@@ -1,0 +1,11 @@
+{
+  "name": "mbilinyi-tech-solutions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mbilinyi Tech Solutions — PHP 8 + MySQL multi-page system (landing pages, auth, client portal, admin control center).",
+  "scripts": {
+    "start": "php -S 0.0.0.0:$PORT -t .",
+    "typecheck": "node --check assets/app.js",
+    "smoke": "bash scripts/smoke.sh"
+  }
+}

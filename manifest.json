@@ -1,0 +1,48 @@
+{
+  "name": "Mbilinyi Tech Solutions",
+  "short_name": "Mbilinyi Tech",
+  "description": "World-Class Software, AI & Security by CEO Jackson Mbilinyi — BRELA Registered. Custom systems, maintenance, cybersecurity & government services.",
+  "start_url": "/index.php",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050914",
+  "theme_color": "#050914",
+  "categories": ["business", "productivity", "finance"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2306b6d4'/><stop offset='0.5' stop-color='%233b82f6'/><stop offset='1' stop-color='%238b5cf6'/></linearGradient></defs><rect width='192' height='192' rx='42' fill='url(%23g)'/><text x='96' y='128' font-family='Space Grotesk, Arial, sans-serif' font-size='96' font-weight='700' text-anchor='middle' fill='white'>M</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2306b6d4'/><stop offset='0.5' stop-color='%233b82f6'/><stop offset='1' stop-color='%238b5cf6'/></linearGradient></defs><rect width='512' height='512' rx='112' fill='url(%23g)'/><text x='256' y='342' font-family='Space Grotesk, Arial, sans-serif' font-size='256' font-weight='700' text-anchor='middle' fill='white'>M</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Request Service",
+      "short_name": "New Request",
+      "description": "Open the service quote wizard",
+      "url": "/index.php",
+      "icons": [
+        { "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='22' fill='%2306b6d4'/><text x='48' y='64' font-family='Arial' font-size='52' font-weight='700' text-anchor='middle' fill='white'>+</text></svg>", "sizes": "96x96" }
+      ]
+    },
+    {
+      "name": "Track Order",
+      "short_name": "Track",
+      "description": "Track your existing service request",
+      "url": "/track.php",
+      "icons": [
+        { "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='22' fill='%23f59e0b'/><text x='48' y='64' font-family='Arial' font-size='52' font-weight='700' text-anchor='middle' fill='white'>🔍</text></svg>", "sizes": "96x96" }
+      ]
+    }
+  ]
+}

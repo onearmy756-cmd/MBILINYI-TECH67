@@ -1,0 +1,76 @@
+# ================================================================
+#  MBILINYI TECH SOLUTIONS — root .htaccess
+#
+#  1) Clean URLs   mbilinyitech.co.tz/pricing  instead of  /pricing.php
+#  2) Never serve source, config, sessions or secrets.
+#
+#  Requires mod_rewrite (on by default on cPanel / DirectAdmin / Plesk
+#  / Apache).  Nginx ignores .htaccess — use the block at the bottom.
+# ================================================================
+
+Options -Indexes
+DirectoryIndex index.php
+RewriteEngine On
+
+# ---------------------------------------------------------------
+# 1. DENY anything that must never be downloadable.
+#    (checked first so a .php inside these folders is refused, not
+#     redirected into the open)
+# ---------------------------------------------------------------
+RewriteRule ^(storage|config|scripts)(/|$) - [F,L]
+RewriteRule (^|/)\. - [F,L]
+
+# ---------------------------------------------------------------
+# 2. Canonicalise a trailing slash:  /pricing/  ->  /pricing
+#    Without this a page loaded from /pricing/ would resolve its
+#    relative links against /pricing/ and break them (/pricing/services).
+# ---------------------------------------------------------------
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteCond %{THE_REQUEST} \s/+([^\s?]+)/[\s?]
+RewriteRule ^ /%1 [R=301,L]
+
+# ---------------------------------------------------------------
+# 3. Permanent redirect:  /pricing.php  ->  /pricing
+#    GET/HEAD only — a 301 applied to POST would silently turn the
+#    request into a GET and drop the body, breaking every API call.
+#    The query string is preserved automatically.
+# ---------------------------------------------------------------
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteCond %{THE_REQUEST} \s/+index\.php[\s?]
+RewriteRule ^ / [R=301,L]
+
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteCond %{THE_REQUEST} \s/+([^\s?]+)\.php[\s?]
+RewriteRule ^ /%1 [R=301,L]
+
+# ---------------------------------------------------------------
+# 4. Real files and directories are served untouched
+#    (assets, images, sw.js, manifest.json, robots.txt ...)
+# ---------------------------------------------------------------
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ---------------------------------------------------------------
+# 5. /pricing  ->  pricing.php      /api/settings -> api/settings.php
+#    Only when that .php file really exists, so a typo becomes a
+#    normal 404 instead of an endless rewrite loop.
+# ---------------------------------------------------------------
+RewriteCond %{DOCUMENT_ROOT}/$1.php -f
+RewriteRule ^(.+)$ $1.php [L]
+
+# ================================================================
+#  NGINX equivalent (put this in your server block — .htaccess is
+#  not read by Nginx):
+#
+#   location / {
+#       try_files $uri $uri/ @php;
+#   }
+#   location @php {
+#       rewrite ^/(.+)$ /$1.php last;
+#       rewrite ^/$ /index.php last;
+#   }
+#   location ~ ^/(storage|config|scripts)/ { deny all; }
+#   location ~ /\. { deny all; }
+#   location ~ \.php$ { ...fastcgi... }
+# ================================================================
