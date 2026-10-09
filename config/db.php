@@ -60,9 +60,8 @@ function db(): PDO {
 
     $cfg = db_config();
     
-    /* ---- AUTO-CREATE DATABASE IF MISSING ----
-     * Connect WITHOUT dbname first, create the database, then reconnect.
-     * This makes the project truly zero-config on any MySQL/MariaDB server. */
+    /* ---- SILENT AUTO-CREATE DATABASE IF MISSING ----
+     * No errors, no logs, just works. */
     try {
         $pdo = new PDO($cfg['dsn'], $cfg['user'], $cfg['pass'], [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -70,29 +69,24 @@ function db(): PDO {
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
     } catch (PDOException $e) {
-        // If database doesn't exist (SQLSTATE 3D000 / 1049), create it
-        if (in_array($e->getCode(), ['3D000', '42000'], true) || 
+        // If database doesn't exist (SQLSTATE 3D000 / 1049), create it silently
+        $isMissingDb = in_array($e->getCode(), ['3D000', '42000'], true) ||
             stripos($e->getMessage(), 'Unknown database') !== false ||
-            stripos($e->getMessage(), '1049') !== false) {
-            
-            // Extract dbname from DSN
-            if (preg_match('/dbname=([^;]+)/', $cfg['dsn'], $m)) {
-                $dbname = $m[1];
-                // Connect without dbname
-                $dsnNoDb = preg_replace('/;dbname=[^;]+/', '', $cfg['dsn']);
-                $tmp = new PDO($dsnNoDb, $cfg['user'], $cfg['pass'], [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                ]);
-                $tmp->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                // Now reconnect with dbname
-                $pdo = new PDO($cfg['dsn'], $cfg['user'], $cfg['pass'], [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                ]);
-            } else {
-                throw $e;
-            }
+            stripos($e->getMessage(), '1049') !== false;
+        
+        if ($isMissingDb && preg_match('/dbname=([^;]+)/', $cfg['dsn'], $m)) {
+            $dbname = $m[1];
+            $dsnNoDb = preg_replace('/;dbname=[^;]+/', '', $cfg['dsn']);
+            $tmp = new PDO($dsnNoDb, $cfg['user'], $cfg['pass'], [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]);
+            $tmp->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            // Reconnect with dbname - no error logging, no exceptions
+            $pdo = new PDO($cfg['dsn'], $cfg['user'], $cfg['pass'], [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]);
         } else {
             throw $e;
         }
