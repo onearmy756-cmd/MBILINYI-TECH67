@@ -99,10 +99,18 @@ function db_candidates(): array {
         }
     }
     if (in_array('mysql', PDO::getAvailableDrivers(), true)) {
-        $out[] = dsn_from_url('mysql://mts:mts_local_dev@127.0.0.1:3306/mbilinyi');
+        /* A probe, not a promise: this is the dev convenience address. Missing
+         * MariaDB here is the normal state on a fresh clone, so its failure is
+         * not logged — only an explicit URL or SQLite is worth a log line. */
+        $out[] = dsn_from_url('mysql://mts:mts_local_dev@127.0.0.1:3306/mbilinyi') + ['probe' => true];
     }
     $out[] = dsn_from_url('sqlite:storage/mts.sqlite');
     return $out;
+}
+
+/** Log a failed candidate — except a probe, whose absence is the normal state. */
+function mts_db_warn(array $cfg, string $message): void {
+    if (empty($cfg['probe'])) error_log('[db] ' . $cfg['dsn'] . ' unusable: ' . $message);
 }
 
 function db(): PDO {
@@ -139,13 +147,13 @@ function db(): PDO {
                     $pdo = new PDO($cfg['dsn'], $cfg['user'], $cfg['pass'], $opts);
                 } catch (Throwable $inner) {
                     $last = $inner;
-                    error_log('[db] ' . $cfg['dsn'] . ' unusable: ' . $inner->getMessage());
+                    mts_db_warn($cfg, $inner->getMessage());
                     $pdo = null;
                     continue;
                 }
             } else {
                 $last = $e;
-                error_log('[db] ' . $cfg['dsn'] . ' unusable: ' . $e->getMessage());
+                mts_db_warn($cfg, $e->getMessage());
                 continue;
             }
         }
