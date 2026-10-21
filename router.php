@@ -2,7 +2,7 @@
 /**
  * router.php — clean URLs for the PHP built-in development server.
  *
- *   php -c config\php.ini -S 127.0.0.1:8090 -t . router.php
+ *   php -S 127.0.0.1:8090 -t . router.php
  *
  * Mirrors .htaccess exactly:
  *     /pricing          ->  pricing.php        (address bar stays clean)

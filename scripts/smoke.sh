@@ -6,14 +6,16 @@ B="${BASE:-http://127.0.0.1:8080}"
 JA=/tmp/mts_jar_admin.txt; JC=/tmp/mts_jar_client.txt; JG=/tmp/mts_jar_guest.txt
 rm -f $JA $JC $JG
 
-csrf(){ curl -s -b "$1" -c "$1" "$B/index.php" | grep -o 'window.__CSRF__ = "[a-f0-9]*"' | grep -o '[a-f0-9]\{64\}'; }
-# usage: post <jar> <path> <json> <csrf>
-post(){ curl -s -b "$1" -c "$1" -X POST "$B/$2" -H 'Content-Type: application/json' -H "X-CSRF-Token: $4" -d "$3"; }
-get(){ curl -s -b "$1" -c "$1" "$B/$2"; }
+csrf(){ curl -sL -b "$1" -c "$1" "$B/index.php" | grep -o 'window.__CSRF__ = "[a-f0-9]*"' | grep -o '[a-f0-9]\{64\}'; }
+# -L everywhere: with router.php a .php path answers 301 to its clean URL, and
+# without it the request is already final. Following redirects keeps this script
+# valid against both the plain server and the routed public preview.
+post(){ curl -sL -b "$1" -c "$1" -X POST "$B/$2" -H 'Content-Type: application/json' -H "X-CSRF-Token: $4" -d "$3"; }
+get(){ curl -sL -b "$1" -c "$1" "$B/$2"; }
 SIG="data:image/png;base64,$(head -c 400 /dev/zero | tr '\0' 'A')"
 
 echo "== 1. public track lookup =="
-curl -s "$B/api/track.php?action=get&id=MTS-2026-4810" | jq -c '{ok, status:.data.request.status, total:.data.quote.total, contract:.data.contract.status}'
+curl -sL "$B/api/track.php?action=get&id=MTS-2026-4810" | jq -c '{ok, status:.data.request.status, total:.data.quote.total, contract:.data.contract.status}'
 
 echo "== 2. admin login (password, then PIN verification) =="
 C=$(csrf $JA); post $JA api/auth.php '{"action":"login","email":"admin@mbilinyitech.co.tz","password":"Admin@2026"}' "$C" | jq -c '{ok, otp_required:.data.otp_required, pin_kind:.data.pin_kind}'
@@ -96,7 +98,7 @@ post $JG api/requests.php '{"action":"create","name":"Test Mteja","phone":"07110
 
 echo "== 17. that request is publicly trackable =="
 NEWID=$(get $JG "api/requests.php?action=mine" | jq -r '.data.requests[0].trackingId')
-curl -s "$B/api/track.php?action=get&id=$NEWID" | jq -c "{ok, status:.data.request.status}"
+curl -sL "$B/api/track.php?action=get&id=$NEWID" | jq -c "{ok, status:.data.request.status}"
 
 echo "== 18. guest opens a support ticket =="
 C0=$(csrf $JG)
@@ -118,7 +120,8 @@ post $JG api/auth.php "{\"action\":\"register\",\"name\":\"Mteja Mpya\",\"phone\
 
 echo "== 21. pages render (kila sehemu ni page yake) =="
 for p in index.php services.php stack.php ai.php pricing.php process.php work.php track.php contact.php auth.php client.php admin.php; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' "$B/$p")
+  # -L so a routed host's 301 (.php -> clean URL) still reports the final status.
+  code=$(curl -sL -o /dev/null -w '%{http_code}' "$B/$p")
   echo "$p -> $code"
 done
 
