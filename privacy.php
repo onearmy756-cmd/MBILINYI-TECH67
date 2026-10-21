@@ -9,13 +9,15 @@ require __DIR__ . '/partials/legal-render.php';
 <?php require __DIR__ . '/partials/header.php'; ?>
 
 <?php mts_legal_page([
-    'badge'      => 'PRIVACY & DATA PROTECTION',
+    'badgeEn'    => 'PRIVACY & DATA PROTECTION',
+    'badgeSw'    => 'FARAGHA NA ULINZI WA DATA',
     'badgeColor' => 'emerald',
     'titleEn'    => 'Privacy Policy',
     'titleSw'    => 'Sera ya Faragha',
     'introEn'    => 'Mbilinyi Tech Solutions collects only what is needed to run our website, deliver your project and communicate with you. We follow the Tanzania Personal Data Protection Act, 2022 and common-sense security. We never sell your data.',
     'introSw'    => 'Mbilinyi Tech Solutions inakusanya tu kinachohitajika kuendesha tovuti yetu, kutekeleza mradi wako na kuwasiliana nawe. Tunafuata Sheria ya Ulinzi wa Data ya Kibinafsi ya Tanzania, 2022 na usalama wa kawaida. Hatuuzi data yako.',
-    'updated'    => date('d F Y'),
+    'updatedEn'  => mts_date_pair()[0],
+    'updatedSw'  => mts_date_pair()[1],
     'sections'   => [
         ['hEn' => 'What we collect', 'hSw' => 'Tunachokusanya', 'p' => [
             ['en' => 'Account data: your name, email address, phone number, company or role, and a securely hashed password.',
@@ -38,8 +40,8 @@ require __DIR__ . '/partials/legal-render.php';
              'sw' => 'Kufuata wajibu wa kisheria chini ya sheria za Tanzania, ikiwemo kuhifadhi rekodi za BRELA na kodi.'],
         ]],
         ['hEn' => 'Who can see it', 'hSw' => 'Nani anaona', 'p' => [
-            ['en' => 'Inside the company: only staff who need your data to do their job. Our admin portal is protected by password plus an emailed verification code.',
-             'sw' => 'Ndani ya kampuni: ni wafanyakazi wanaohitaji data yako kufanya kazi yao. Portal yetu ya admin inalindwa na neno la siri pamoja na code ya uthibitisho ya barua pepe.'],
+            ['en' => 'Inside the company: only staff who need your data to do their job. Our internal systems are protected by password plus an emailed verification code.',
+             'sw' => 'Ndani ya kampuni: ni wafanyakazi wanaohitaji data yako kufanya kazi yao. Mifumo yetu ya ndani inalindwa na neno la siri pamoja na code ya uthibitisho ya barua pepe.'],
             ['en' => 'Outside the company: hosting and email providers that process data on our instructions (for example our database host and mail relay), each bound by their own confidentiality and security obligations. We do not sell, rent or trade personal data with anyone.',
              'sw' => 'Nje ya kampuni: watoa hosting na barua pepe wanaochakata data kwa maelekezo yetu (k.m. mwenyeji wetu wa database na relay ya barua pepe), kila mmoja akiwa na wajibu wake wa siri na usalama. Hatuuzi, kukodisha au kubadilisha data ya kibinafsi na mtu yeyote.'],
             ['en' => 'Legal disclosure: only when a competent Tanzanian authority requires it by law.',
@@ -54,8 +56,8 @@ require __DIR__ . '/partials/legal-render.php';
              'sw' => 'Maneno ya siri huhifadhiwa kama hash zenye chumvi tu — hatuwezi kusoma.'],
             ['en' => 'Login requires a second step: a 6-digit code sent to your email and valid for 10 minutes.',
              'sw' => 'Kuingia kunahitaji hatua ya pili: code ya 6 tarakimu inayotumwa kwenye email yako na inadumu dakika 10.'],
-            ['en' => 'All traffic runs over HTTPS/TLS. Contracts and invoices are stored server-side and visible only to you and the admin.',
-             'sw' => 'Msimbo wote unaenda kupitia HTTPS/TLS. Mikataba na invoice huhifadishwa kwenye seva na huonekana na wewe na admin pekee.'],
+            ['en' => 'All traffic runs over HTTPS/TLS. Contracts and invoices are stored server-side and visible only to you and to authorised company staff.',
+             'sw' => 'Msimbo wote unaenda kupitia HTTPS/TLS. Mikataba na invoice huhifadishwa kwenye seva na huonekana na wewe na wafanyakazi walioidhinishwa wa kampuni pekee.'],
             ['en' => 'Sensitive operations require a CSRF token; failed logins are rate-limited and logged.',
              'sw' => 'Kazi nyeti zinahitaji CSRF token; majaribio yaliyoshindwa yanapunguzwa na kurekodiwa.'],
         ]],

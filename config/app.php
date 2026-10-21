@@ -258,7 +258,11 @@ function payment_details(): array {
         ],
         'contact'    => setting('pay_contact_person', 'Jackson Mbilinyi (CEO)'),
         'currency'   => setting('pay_currency', 'TZS'),
-        'instructions' => setting('pay_instructions', ''),
+        /* `instructions` keeps the legacy single-language key; the client picks
+         * the pair when both are present so the portal stays pure per language. */
+        'instructions'   => setting('pay_instructions', ''),
+        'instructionsSw' => setting('pay_instructions_sw', '') ?: setting('pay_instructions', ''),
+        'instructionsEn' => setting('pay_instructions_en', '') ?: setting('pay_instructions', ''),
     ];
 }
 

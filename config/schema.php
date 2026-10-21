@@ -208,7 +208,9 @@ CREATE TABLE IF NOT EXISTS team_members (
   id         VARCHAR(64)   NOT NULL,
   name       VARCHAR(160)  NOT NULL,
   role       VARCHAR(200)  NOT NULL DEFAULT '',
+  role_sw    VARCHAR(200)  NOT NULL DEFAULT '',
   bio        VARCHAR(500)  NOT NULL DEFAULT '',
+  bio_sw     VARCHAR(500)  NOT NULL DEFAULT '',
   image_url  VARCHAR(500)  NOT NULL DEFAULT '',
   email      VARCHAR(190)  NOT NULL DEFAULT '',
   phone      VARCHAR(60)   NOT NULL DEFAULT '',
@@ -382,5 +384,38 @@ function mts_migrate_users_pin(PDO $pdo): void {
         if (isset($have[$col])) continue;
         try { $pdo->exec($sql); }
         catch (\Throwable $e) { error_log('[schema] add users.' . $col . ': ' . $e->getMessage()); }
+    }
+}
+
+/**
+ * Idempotent migration for bilingual team profiles.
+ *
+ * A profile's role and bio are shown on both the English and the Kiswahili
+ * page, so each needs its own column; the English column is the fallback when
+ * no translation was supplied.
+ */
+function mts_migrate_team_i18n(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $have = [];
+        foreach ($pdo->query('SHOW COLUMNS FROM team_members')->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $have[strtolower((string)$r['Field'])] = true;
+        }
+    } catch (\Throwable $e) {
+        error_log('[schema] team_members unreadable: ' . $e->getMessage());
+        return;
+    }
+
+    $want = [
+        'role_sw' => "ALTER TABLE team_members ADD COLUMN role_sw VARCHAR(200) NOT NULL DEFAULT '' AFTER role",
+        'bio_sw'  => "ALTER TABLE team_members ADD COLUMN bio_sw VARCHAR(500) NOT NULL DEFAULT '' AFTER bio",
+    ];
+    foreach ($want as $col => $sql) {
+        if (isset($have[$col])) continue;
+        try { $pdo->exec($sql); }
+        catch (\Throwable $e) { error_log('[schema] add team_members.' . $col . ': ' . $e->getMessage()); }
     }
 }

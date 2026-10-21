@@ -1,14 +1,64 @@
-<?php /** @var string $pageTitle */ ?>
+<?php
+/** @var string $pageTitle */
+/** @var string|null $pageDescription */
+/** @var string|null $canonicalUrl */
+$pageDescription = $pageDescription ?? 'Mbilinyi Tech Solutions — BRELA registered (No. 706668), TIN 192-147-522. Custom software, system analysis, IT consultancy, maintenance, cybersecurity & AI fine-tuning. CEO Jackson Mbilinyi, Dodoma, Tanzania.';
+$siteBase = rtrim((string)(getenv('SITE_URL') ?: 'https://mbilinyitech.co.tz'), '/');
+$canonicalUrl = $canonicalUrl ?? ($siteBase . (($_SERVER['REQUEST_URI'] ?? '/') === '/' ? '/' : strtok((string)$_SERVER['REQUEST_URI'], '?')));
+$ogImage = $siteBase . '/assets/icons/og-image.png';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle) ?></title>
-<meta name="description" content="Mbilinyi Tech Solutions — BRELA Registered, TIN 192-147-522. Custom Software, System Analysis, IT Consultancy, Maintenance, Cybersecurity & AI Fine-Tuning. CEO Jackson Mbilinyi.">
+<meta name="description" content="<?= htmlspecialchars($pageDescription) ?>">
+<link rel="canonical" href="<?= htmlspecialchars($canonicalUrl) ?>">
 <meta name="theme-color" content="#050914">
+<!-- Brand mark as real files so search engines and social cards can fetch it. -->
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+<link rel="shortcut icon" href="assets/icons/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2306b6d4'/><stop offset='0.5' stop-color='%233b82f6'/><stop offset='1' stop-color='%238b5cf6'/></linearGradient></defs><rect width='180' height='180' rx='40' fill='url(%23g)'/><text x='90' y='120' font-family='Space Grotesk, Arial, sans-serif' font-size='90' font-weight='700' text-anchor='middle' fill='white'>M</text></svg>">
+
+<!-- Open Graph / social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mbilinyi Tech Solutions">
+<meta property="og:title" content="<?= htmlspecialchars($pageTitle) ?>">
+<meta property="og:description" content="<?= htmlspecialchars($pageDescription) ?>">
+<meta property="og:url" content="<?= htmlspecialchars($canonicalUrl) ?>">
+<meta property="og:image" content="<?= htmlspecialchars($ogImage) ?>">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Mbilinyi Tech Solutions logo — CEO Jackson Mbilinyi">
+<meta property="og:locale" content="en_TZ">
+<meta property="og:locale:alternate" content="sw_TZ">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<?= htmlspecialchars($pageTitle) ?>">
+<meta name="twitter:description" content="<?= htmlspecialchars($pageDescription) ?>">
+<meta name="twitter:image" content="<?= htmlspecialchars($ogImage) ?>">
+<script type="application/ld+json">
+<?= json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'ProfessionalService',
+    'name' => 'Mbilinyi Tech Solutions',
+    'legalName' => 'Mbilinyi Tech Solutions',
+    'identifier' => 'BRELA Reg. No. 706668',
+    'taxID' => '192-147-522',
+    'url' => $siteBase . '/',
+    'logo' => $siteBase . '/assets/icons/icon-512.png',
+    'image' => $ogImage,
+    'description' => 'BRELA-registered software house in Dodoma, Tanzania — custom software, system analysis, IT consultancy, maintenance, cybersecurity and AI fine-tuning.',
+    'founder' => ['@type' => 'Person', 'name' => 'Jackson Mbilinyi', 'jobTitle' => 'CEO'],
+    'email' => 'mbilinyitech@gmail.com',
+    'telephone' => '+255796752645',
+    'address' => ['@type' => 'PostalAddress', 'addressLocality' => 'Dodoma', 'addressCountry' => 'TZ'],
+    'areaServed' => ['@type' => 'Country', 'name' => 'Tanzania'],
+    'sameAs' => ['https://instagram.com/mbilinyitech'],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mbilinyi Tech">
@@ -72,6 +122,13 @@ tailwind.config = {
   .input:focus{border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.15);background:rgba(255,255,255,.07)}
   .input::placeholder{color:#7C8AA5}
   select.input option{background:#0E1933}
+  /* Inputs that carry a leading icon leave room for it on the left. */
+  .input-i{padding-left:44px}
+  .ifield{position:relative}
+  .ifield>i{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:#7C8AA5;font-size:13px;pointer-events:none}
+  .ifield:focus-within>i{color:#22d3ee}
+  .pw-meter{height:4px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+  .pw-meter>span{display:block;height:100%;width:0;transition:.3s;border-radius:99px}
   .badge{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:5px 10px;border-radius:99px}
   .status-Pending{background:rgba(245,179,1,.15);color:#F5B301;border:1px solid rgba(245,179,1,.3)}
   .status-UnderReview{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}

@@ -1,0 +1,16 @@
+# Mbilinyi Tech Solutions — BRELA Reg. No. 706668
+User-agent: *
+Allow: /
+
+# Private areas and tooling — never indexed.
+Disallow: /admin
+Disallow: /client
+Disallow: /auth
+Disallow: /setup
+Disallow: /deploy
+Disallow: /api/
+Disallow: /config/
+Disallow: /storage/
+Disallow: /scripts/
+
+Sitemap: https://mbilinyitech.co.tz/sitemap.xml

@@ -22,8 +22,9 @@ try {
             $name = trim(str_param('name'));
             if ($name === '') j_err('Name is required.', 400);
             $id = new_id('TM-');
-            db_run('INSERT INTO team_members (id,name,role,bio,image_url,email,phone,linkedin,sort_order,is_active) VALUES (?,?,?,?,?,?,?,?,?,1)',
-                [$id, $name, trim(str_param('role')), trim(str_param('bio')), trim(str_param('image_url', str_param('img', ''))),
+            db_run('INSERT INTO team_members (id,name,role,role_sw,bio,bio_sw,image_url,email,phone,linkedin,sort_order,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,1)',
+                [$id, $name, trim(str_param('role')), trim(str_param('role_sw')), trim(str_param('bio')), trim(str_param('bio_sw')),
+                    trim(str_param('image_url', str_param('img', ''))),
                     trim(str_param('email')), trim(str_param('phone')), trim(str_param('linkedin')), (int)param('sort_order', 0)]);
             $row = db_one('SELECT * FROM team_members WHERE id = ?', [$id]);
             j_ok(['member' => $row ? map_team_member($row) : null]);
@@ -38,8 +39,9 @@ try {
             if (!$row) j_err('Team member not found.', 404);
             $name = trim(str_param('name', $row['name']));
             if ($name === '') j_err('Name is required.', 400);
-            db_run('UPDATE team_members SET name=?, role=?, bio=?, image_url=?, email=?, phone=?, linkedin=?, sort_order=? WHERE id=?',
-                [$name, trim(str_param('role', $row['role'])), trim(str_param('bio', $row['bio'])),
+            db_run('UPDATE team_members SET name=?, role=?, role_sw=?, bio=?, bio_sw=?, image_url=?, email=?, phone=?, linkedin=?, sort_order=? WHERE id=?',
+                [$name, trim(str_param('role', $row['role'])), trim(str_param('role_sw', $row['role_sw'])),
+                    trim(str_param('bio', $row['bio'])), trim(str_param('bio_sw', $row['bio_sw'])),
                     trim(str_param('image_url', str_param('img', $row['image_url']))), trim(str_param('email', $row['email'])),
                     trim(str_param('phone', $row['phone'])), trim(str_param('linkedin', $row['linkedin'])),
                     (int)param('sort_order', (int)$row['sort_order']), $id]);

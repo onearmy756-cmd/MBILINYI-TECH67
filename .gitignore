@@ -1,9 +1,17 @@
 # PHP sessions contain sensitive runtime data (CSRF tokens, session IDs)
 storage/sessions/
+# SQLite database created automatically by the zero-config fallback.
+# Contains real user/request data — never publish it.
+storage/*.sqlite
+storage/*.sqlite-wal
+storage/*.sqlite-shm
 # Environment secrets
 .env
 .env.local
 .env.*.local
+# Local scratch
+tmp/
+scripts/__pycache__/
 # Diagnostic probes that hold a live credential (Supabase PAT / SMTP password).
 # They are one-off troubleshooting tools — never publish them.
 scripts/.smtp-backup.json

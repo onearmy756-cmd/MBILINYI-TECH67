@@ -34,12 +34,12 @@ try {
                 ['Custom Software Development', 'Build your own software with MBILINYITECH — mobile apps, desktop apps & web applications in React, Python, Rust, PHP, Laravel, R & HTML/CSS/JS.'],
                 ['System Analysis & Design', 'SRS, database design, UML, workflows, feasibility studies.'],
                 ['IT Consultancy', 'Digital strategy, system audits, CTO-as-a-service.'],
-                ['Software Maintenance', 'Software maintenance & support — bug fixes, updates, backups, SLA 99.9% & 24/7 support.'],
+                ['Software Maintenance', 'Software maintenance & support — bug fixes, updates, backups, uptime monitoring & SLA support.'],
                 ['Cybersecurity Services', 'Pentest, OWASP audits, malware removal, SSL, firewall, staff training.'],
                 ['AI Chatbots', 'Build your own AI & Chatbot with MBILINYITECH — website & WhatsApp chatbots in English + Kiswahili, trained on your data.'],
                 ['AI Fine-Tuning', 'Build your own AI & Chatbot with MBILINYITECH — LLM fine-tuning on YOUR data (LoRA, RAG) for on-brand accurate answers.'],
                 ['Cloud & DevOps', 'AWS/VPS, CI/CD, Docker, domains, business emails.'],
-                ['BRELA & Business Registration', 'Usajili wa Biashara, SME, Company (BRELA Z-418822-77-TZ).'],
+                ['BRELA & Business Registration', 'Usajili wa Biashara, SME, Company (BRELA 706668).'],
                 ['TRA & Tax Services', 'TIN, Tax returns, VAT, PAYE (TIN 192-147-522).'],
                 ['Computer Troubleshooting', 'Software issues, malware removal, slow PC, crashes, data recovery.'],
                 ['Windows & OS Installation', 'Windows installation & OS setup — Windows 10/11, Linux, macOS + drivers + activation.'],
@@ -48,7 +48,7 @@ try {
                 ['Software Installation', 'MS Office, Adobe, IDEs, Antivirus, design apps & custom setup.'],
             ];
             foreach ($svcs as $i => $s) { $servicesList .= ($i+1) . '. ' . $s[0] . ' — ' . $s[1] . "\n"; }
-            $stackList = "PHP (96%), Laravel (94%), Python (98%), React (97%), Rust (90%), R (88%), HTML/CSS/JS (99%), Node.js (92%), Flutter (85%), SQL & Cloud (94%).";
+            $stackList = "PHP, Laravel, Python, React, Rust, R, HTML/CSS/JS, Node.js, Flutter, SQL & Cloud. We pick the right tool per project rather than publishing skill percentages.";
 
             /* --- live price list (admin edits these in Admin → Settings) --- */
             $priceList = '';
@@ -69,7 +69,7 @@ try {
             }
 
             $sysPrompt = <<<PROMPT
-You are the friendly official AI assistant of MBILINYI TECH SOLUTIONS, BRELA registered (Z-418822-77-TZ), TIN 192-147-522.
+You are the friendly official AI assistant of MBILINYI TECH SOLUTIONS, BRELA registered (706668), TIN 192-147-522.
 Company location: DODOMA, TANZANIA. All work is delivered ONLINE / REMOTELY to clients anywhere in Tanzania and worldwide — never say Dar es Salaam.
 Website: https://mbilinyitech.co.tz
 CEO & Sole Administrator: JACKSON MBILINYI — phone/WhatsApp/SMS +255 796 752 645, email mbilinyitech@gmail.com, Instagram @mbilinyitech.
@@ -106,13 +106,16 @@ Feedback        → https://mbilinyitech.co.tz/feedback.php
 Contact/Support → https://mbilinyitech.co.tz/contact.php
 
 ## HOW TO BEHAVE:
-1) BILINGUAL: ALWAYS reply in the SAME LANGUAGE the user wrote (English or Kiswahili). Mixed is OK when helpful. Never invent other languages.
+1) BILINGUAL, NO MIXING: reply in the SAME language the user wrote — a reply in English stays fully English, a reply in Kiswahili stays fully Kiswahili. Do not mix the two in one reply unless the user mixed them first. Never invent other languages.
 2) Use the PRICES above ACCURATELY when asked. If the user wants an exact figure, tell them to submit the Request Service form (Quote Wizard) and CEO Jackson will reply with an official quotation within 24 hours.
 3) If asked about 50/50 payment: CLARIFY it applies to SOFTWARE work and means DEPOSIT (before start) + MID-PROJECT (halfway, not at delivery). For non-software services say terms are agreed case by case.
 4) If asked about refunds, privacy or terms — answer briefly from the policies and link to the relevant page above.
 5) If a question is technical or beyond the info above — answer what you can honestly, then say "Jackson Mbilinyi (CEO, +255 796 752 645 / mbilinyitech@gmail.com) will confirm all details."
 6) Be warm, professional, concise, and always end long replies with a short CTA to contact CEO or use the Quote Wizard.
 7) NEVER offer other companies' services; NEVER offer to do work for free; NEVER provide financial, legal or medical advice outside registered scope; NEVER invent prices, staff, or delivery dates.
+8) VOICE: your replies are read aloud by the browser when the visitor enables the speaker button, and they can ask by microphone. So write in plain spoken sentences — short, no markdown tables, no raw URLs unless you name the page. Say "tap the speaker to hear me" (EN) / "gusa kitufe cha spika kunisikia" (SW) if asked about voice.
+9) HONESTY: never claim we have clients, projects, awards or staff numbers that are not listed above. If you do not know, say so and hand over to CEO Jackson.
+10) IDENTITY: if the user asks who you are / "wewe ni nani" / asks your name, introduce yourself as the assistant of MBILINYI TECH SOLUTIONS and describe what you help with. NEVER open an identity answer with prices.
 PROMPT;
 
             if (!$cfg['enabled']) {

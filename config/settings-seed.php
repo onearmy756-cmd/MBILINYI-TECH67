@@ -30,6 +30,8 @@ function mts_seed_settings(PDO $pdo): void {
         'pay_contact_person' => 'Jackson Mbilinyi (CEO)',
         'pay_currency'       => 'TZS',
         'pay_instructions'   => 'Lipa kwa NMB Bank (51710099563) au Vodacom M-Pesa (0796752645) — jina: JACKSON MBILINYI. Tuma risiti kwa WhatsApp 0796 752 645 mara baada ya malipo.',
+        'pay_instructions_en' => 'Pay to NMB Bank (51710099563) or Vodacom M-Pesa (0796752645) — name: JACKSON MBILINYI. Send the receipt on WhatsApp 0796 752 645 right after paying.',
+        'pay_instructions_sw' => 'Lipa kwa NMB Bank (51710099563) au Vodacom M-Pesa (0796752645) — jina: JACKSON MBILINYI. Tuma risiti kwa WhatsApp 0796 752 645 mara baada ya malipo.',
 
         /* --- Company --- */
         'company_location' => 'Dodoma, Tanzania',
@@ -73,11 +75,13 @@ function mts_seed_settings(PDO $pdo): void {
     $team = [
         ['TM-01', 'Jackson Mbilinyi', 'CEO, Software Developer, System Analyst & IT Consultant',
          'Founded Mbilinyi Tech Solutions (BRELA, TIN 192-147-522). Designs, builds, secures and maintains mission-critical systems in Python, Rust, R, React and modern cloud stacks.',
+         'Mkurugenzi Mtendaji, Mtengenezaji wa Software, Mchambuzi wa Mifumo na Mshauri wa IT',
+         'Mwanzilishi wa Mbilinyi Tech Solutions (BRELA, TIN 192-147-522). Nabiuni, najaenga, nalinda na natengeneza mifumo muhimu kwa Python, Rust, R, React na teknolojia za kisasa za cloud.',
          '', 'mbilinyitech@gmail.com', '0796752645', '', 0],
     ];
     $insTeam = $pdo->prepare(
-        'INSERT IGNORE INTO team_members (id, name, role, bio, image_url, email, phone, linkedin, sort_order, is_active, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)'
+        'INSERT IGNORE INTO team_members (id, name, role, bio, role_sw, bio_sw, image_url, email, phone, linkedin, sort_order, is_active, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)'
     );
     foreach ($team as $m) {
         $insTeam->execute([...$m, $now]);
@@ -86,7 +90,7 @@ function mts_seed_settings(PDO $pdo): void {
     /* ---------------- news (a welcome post so the page is never empty) --------- */
     $news = [
         ['N-01', 'Welcome to Mbilinyi Tech Solutions', 'Announcement',
-         'World-class software, AI, maintenance and security — delivered online from Dodoma, Tanzania.',
+         'Custom software, AI, maintenance and security — delivered online from Dodoma, Tanzania.',
          "Mbilinyi Tech Solutions ni kampuni iliyosajiliwa BRELA (TIN 192-147-522) inayotoa huduma za software, AI, maintenance na usalama wa mtandao.\n\nTunajivunia: Custom Software (mobile, desktop, web), System Analysis, IT Consultancy, Software Maintenance, Cybersecurity, AI & Chatbots, Email setup, Windows installation na huduma za maombi ya serikali.\n\nWasiliana nasi kupitia fomu ya 'Request Service' au WhatsApp 0796 752 645 — unapata nukuu rasmi ndani ya saa 24.",
          ''],
     ];
@@ -109,7 +113,7 @@ function mts_seed_settings(PDO $pdo): void {
         ['P-BIZSLA',  'maint', 'Business SLA',        450000,  '/month',    1, 2,
          '["Everything in Starter","Priority fixes (20 hrs) + 24hr response","Security patches & SSL","Monthly performance report","WhatsApp priority line","Small feature tweaks"]'],
         ['P-ENT247',  'maint', 'Enterprise 24/7',     1200000, '/month',    1, 3,
-         '["Dedicated engineer","Unlimited critical fixes","99.9% uptime guarantee","Daily backups + DR","On-call 24/7","Quarterly security audit"]'],
+         '["Dedicated engineer","Unlimited critical fixes","Uptime monitoring & incident response","Daily backups + DR","On-call 24/7","Quarterly security audit"]'],
         ['P-SECAUD',  'sec',   'Security Audit',      800000,  'one-time',  1, 1,
          '["Full OWASP Top-10 scan","Vulnerability report + fixes plan","SSL & headers hardening","1 staff training session"]'],
         ['P-PENTEST', 'sec',   'Penetration Test',    2500000, 'per system',1, 2,

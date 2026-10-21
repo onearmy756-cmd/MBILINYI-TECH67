@@ -5,7 +5,7 @@
 <div class="bg-gradient-to-r from-cyan-950 via-blue-950 to-violet-950 border-b border-white/10 text-[12px]">
   <div class="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2">
     <div class="flex items-center gap-4 flex-wrap">
-      <span class="flex items-center gap-1.5 text-emerald-300"><i class="fa-solid fa-shield-halved"></i> BRELA Registered <span class="text-white/50">•</span> <span class="font-mono">TIN 192-147-522</span></span>
+      <span class="flex items-center gap-1.5 text-emerald-300"><i class="fa-solid fa-shield-halved"></i> <span data-en="BRELA Registered" data-sw="Imesajiliwa BRELA">BRELA Registered</span> <span class="text-white/50">•</span> <span class="font-mono">TIN 192-147-522</span></span>
       <span class="hidden md:inline text-white/40">|</span>
       <span class="hidden md:flex items-center gap-1.5 text-white/70"><i class="fa-solid fa-location-dot text-cyan-300"></i> <span data-en="Dodoma, Tanzania • Serving Worldwide Online" data-sw="Dodoma, Tanzania • Tunahudumia Dunia Mtandaoni">Dodoma, Tanzania • Serving Worldwide Online</span></span>
     </div>
@@ -26,7 +26,7 @@
       <div class="w-11 h-11 rounded-2xl grad-btn flex items-center justify-center font-display font-bold text-xl relative overflow-hidden">M<span class="absolute inset-0 shimmer"></span></div>
       <div>
         <div class="font-display font-bold leading-none text-[16px]">MBILINYI <span class="grad-text">TECH</span> SOLUTIONS</div>
-        <div class="text-[10.5px] tracking-[.22em] text-cyan-300/80 font-semibold">INNOVATE • SECURE • SCALE</div>
+        <div class="text-[10.5px] tracking-[.22em] text-cyan-300/80 font-semibold" data-en="INNOVATE • SECURE • SCALE" data-sw="VUMBUA • LINDA • KUA">INNOVATE • SECURE • SCALE</div>
         <div class="text-[9.5px] tracking-[.18em] text-white/60 font-semibold mt-0.5" data-en="YOUR PROBLEM, OUR SOLUTION" data-sw="SHIDA YAKO, TATUZO LETU">YOUR PROBLEM, OUR SOLUTION</div>
       </div>
     </a>
@@ -43,6 +43,7 @@
       <a href="contact" class="hover:text-white" data-en="Contact" data-sw="Mawasiliano">Contact</a>
     </nav>
     <div class="flex items-center gap-2">
+      <a href="auth?tab=register" class="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white/75 hover:text-white"><i class="fa-solid fa-user-plus text-gold"></i> <span data-en="Sign Up" data-sw="Jisajili">Sign Up</span></a>
       <button id="navAuthBtn" onclick="location.href='auth'" class="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/15 hover:border-cyan-400/50 hover:bg-white/5 text-sm font-semibold"><i class="fa-solid fa-right-to-bracket text-cyan-300"></i> <span data-en="Sign In" data-sw="Ingia">Sign In</span></button>
       <button onclick="openQuoteWizard()" class="grad-btn px-4 sm:px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-file-pen"></i> <span data-en="Request Service" data-sw="Omba Huduma">Request Service</span></button>
       <button onclick="toggleMobileMenu()" class="lg:hidden w-10 h-10 rounded-xl border border-white/15 flex items-center justify-center"><i class="fa-solid fa-bars"></i></button>
@@ -60,7 +61,8 @@
     <a href="process" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="How It Works" data-sw="Inavyofanya Kazi">How It Works</a>
     <a href="track" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Track Order" data-sw="Fuatilia Oda">Track Order</a>
     <a href="contact" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Contact" data-sw="Mawasiliano">Contact</a>
-    <button onclick="location.href='auth'" class="p-3 rounded-xl bg-white/5 text-left"><i class="fa-solid fa-right-to-bracket mr-2 text-cyan-300"></i> <span data-en="Sign In / Client &amp; Admin Portal" data-sw="Ingia / Portal ya Mteja na Msimamizi">Sign In / Client &amp; Admin Portal</span></button>
+    <a href="auth?tab=register" onclick="toggleMobileMenu()" class="p-3 rounded-xl bg-white/5"><i class="fa-solid fa-user-plus mr-2 text-gold"></i> <span data-en="Sign Up / Create Account" data-sw="Jisajili / Fungua Akaunti">Sign Up / Create Account</span></a>
+    <button onclick="location.href='auth'" class="p-3 rounded-xl bg-white/5 text-left"><i class="fa-solid fa-right-to-bracket mr-2 text-cyan-300"></i> <span data-en="Sign In / Client Portal" data-sw="Ingia / Portal ya Mteja">Sign In / Client Portal</span></button>
   </div>
 </header>
 

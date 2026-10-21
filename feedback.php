@@ -12,7 +12,7 @@ require __DIR__ . '/partials/head.php';
 
     <div class="glass rounded-3xl p-6 md:p-9 relative overflow-hidden">
       <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-20" style="background:radial-gradient(circle,#a78bfa,transparent 70%)"></div>
-      <div class="badge bg-violet-500/10 text-violet-300 border border-violet-400/30"><i class="fa-solid fa-comment-dots mr-1.5"></i>FEEDBACK • MAONI</div>
+      <div class="badge bg-violet-500/10 text-violet-300 border border-violet-400/30"><i class="fa-solid fa-comment-dots mr-1.5"></i><span data-en="FEEDBACK" data-sw="MAONI">FEEDBACK</span></div>
       <h1 class="font-display font-bold text-3xl md:text-4xl mt-4 leading-tight">
         <span data-en="Tell Us What You Think" data-sw="Tusiambie Unaonaje">Tell Us What You Think</span>
       </h1>
@@ -22,15 +22,15 @@ require __DIR__ . '/partials/head.php';
 
       <div class="grid sm:grid-cols-3 gap-3 mt-6 text-[13px]">
         <div class="rounded-xl bg-white/[.03] border border-white/10 p-4">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-violet-300 mb-1"><i class="fa-solid fa-bolt mr-1.5"></i>Response time</div>
+          <div class="text-[10px] font-bold uppercase tracking-widest text-violet-300 mb-1"><i class="fa-solid fa-bolt mr-1.5"></i><span data-en="RESPONSE TIME" data-sw="MUDA WA KUJIBU">Response time</span></div>
           <div data-en="Within 1 business day" data-sw="Ndani ya siku 1 ya kazi">Within 1 business day</div>
         </div>
         <div class="rounded-xl bg-white/[.03] border border-white/10 p-4">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-violet-300 mb-1"><i class="fa-solid fa-lock mr-1.5"></i>Privacy</div>
+          <div class="text-[10px] font-bold uppercase tracking-widest text-violet-300 mb-1"><i class="fa-solid fa-lock mr-1.5"></i><span data-en="PRIVACY" data-sw="FARAGHA">Privacy</span></div>
           <div data-en="Used only internally" data-sw="Inatumika ndani tu">Used only internally</div>
         </div>
         <div class="rounded-xl bg-white/[.03] border border-white/10 p-4">
-          <div class="text-[10px] font-bold uppercase tracking-widest text-violet-300 mb-1"><i class="fa-solid fa-language mr-1.5"></i>Language</div>
+          <div class="text-[10px] font-bold uppercase tracking-widest text-violet-300 mb-1"><i class="fa-solid fa-language mr-1.5"></i><span data-en="LANGUAGE" data-sw="LUGHA">Language</span></div>
           <div data-en="Kiswahili or English" data-sw="Kiswahili au Kiingereza">Kiswahili or English</div>
         </div>
       </div>
@@ -86,15 +86,15 @@ require __DIR__ . '/partials/head.php';
           <div class="grid gap-2.5 text-[13.5px]">
             <a href="tel:+255796752645" class="flex items-center gap-3 p-3.5 rounded-xl bg-white/[.03] border border-white/10 hover:border-green-400/40">
               <div class="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0"><i class="fa-solid fa-phone text-green-300"></i></div>
-              <div><div class="font-bold">0796 752 645</div><div class="text-white/50 text-[12px]">Call • WhatsApp • SMS</div></div>
+              <div><div class="font-bold">0796 752 645</div><div class="text-white/50 text-[12px]" data-en="Call • WhatsApp • SMS" data-sw="Simu • WhatsApp • SMS">Call • WhatsApp • SMS</div></div>
             </a>
             <a href="mailto:<?php echo htmlspecialchars(setting('company_email', 'info@mbilinyitech.co.tz'), ENT_QUOTES); ?>" class="flex items-center gap-3 p-3.5 rounded-xl bg-white/[.03] border border-white/10 hover:border-blue-400/40">
               <div class="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0"><i class="fa-solid fa-envelope text-blue-300"></i></div>
-              <div><div class="font-bold break-all"><?php echo htmlspecialchars(setting('company_email', 'info@mbilinyitech.co.tz'), ENT_QUOTES); ?></div><div class="text-white/50 text-[12px]">Replies within 4 business hours</div></div>
+              <div><div class="font-bold break-all"><?php echo htmlspecialchars(setting('company_email', 'info@mbilinyitech.co.tz'), ENT_QUOTES); ?></div><div class="text-white/50 text-[12px]" data-en="Replies within 4 business hours" data-sw="Hujibu ndani ya saa 4 za kazi">Replies within 4 business hours</div></div>
             </a>
             <a href="contact" class="flex items-center gap-3 p-3.5 rounded-xl bg-white/[.03] border border-white/10 hover:border-violet-400/40">
               <div class="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0"><i class="fa-solid fa-ticket text-violet-300"></i></div>
-              <div><div class="font-bold"><span data-en="Open a support ticket" data-sw="Fungua tiketi ya msaada">Open a support ticket</span></div><div class="text-white/50 text-[12px]">Tracked in your portal</div></div>
+              <div><div class="font-bold"><span data-en="Open a support ticket" data-sw="Fungua tiketi ya msaada">Open a support ticket</span></div><div class="text-white/50 text-[12px]" data-en="Tracked in your portal" data-sw="Inafuatiliwa kwenye portal yako">Tracked in your portal</div></div>
             </a>
           </div>
         </div>
@@ -112,8 +112,8 @@ require __DIR__ . '/partials/head.php';
         <div class="glass rounded-3xl p-6">
           <div class="text-[11px] font-bold tracking-[.2em] text-gold mb-3"><i class="fa-solid fa-award mr-2"></i><span data-en="REGISTERED BUSINESS" data-sw="BIASHARA IMESAJILIWA">REGISTERED BUSINESS</span></div>
           <div class="grid gap-1.5 text-[13px] text-white/65">
-            <div class="flex justify-between gap-3"><span>BRELA Reg</span><strong class="font-mono text-emerald-300">Z-418822-77-TZ</strong></div>
-            <div class="flex justify-between gap-3"><span>TIN</span><strong class="font-mono text-emerald-300">192-147-522</strong></div>
+            <div class="flex justify-between gap-3"><span data-en="BRELA Reg" data-sw="Usajili wa BRELA">BRELA Reg</span><strong class="font-mono text-emerald-300">706668</strong></div>
+            <div class="flex justify-between gap-3"><span data-en="TIN" data-sw="TIN">TIN</span><strong class="font-mono text-emerald-300">192-147-522</strong></div>
             <div class="flex justify-between gap-3"><span data-en="Based in" data-sw="Makao makuu">Based in</span><strong><?php echo htmlspecialchars(setting('company_location', 'Dodoma, Tanzania'), ENT_QUOTES); ?></strong></div>
           </div>
         </div>

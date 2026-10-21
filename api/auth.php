@@ -15,6 +15,13 @@ function mts_pin_digits(string $raw): string {
     return preg_replace('/\D+/', '', $raw) ?? '';
 }
 
+/** Tanzanian mobile numbers: 0712345678, 255712345678 or +255712345678. */
+function mts_phone_valid(string $phone): bool {
+    $d = mts_pin_digits($phone);
+    if (str_starts_with($d, '255')) $d = '0' . substr($d, 3);
+    return (bool)preg_match('/^0[67]\d{8}$/', $d);
+}
+
 function mts_phone_tail(string $phone): string {
     $d = mts_pin_digits($phone);
     return strlen($d) >= 4 ? substr($d, -4) : '';
@@ -243,6 +250,7 @@ try {
 
             if ($name === '' || $phone === '' || $email === '') j_err('Fill all required fields.');
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) j_err('Invalid email address.');
+            if (!mts_phone_valid($phone)) j_err('Enter a valid Tanzanian phone number, e.g. 0712 345 678.', 400);
             if (strlen($pass) < 6) j_err('Password must be 6+ characters.');
             if ($pass !== $pass2) j_err('Passwords do not match.');
             if ($pin !== '' && (strlen($pin) < 4 || strlen($pin) > 6)) j_err('PIN must be 4–6 digits.', 400);

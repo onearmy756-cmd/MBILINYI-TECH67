@@ -1,9 +1,12 @@
 # Mbilinyi Tech Solutions — PHP + MySQL
 
 The original single-file HTML site, now a real multi-page PHP system backed by a
-real MySQL database. The markup, design, copy and EN/SW toggle are unchanged —
+real database. The markup, design, copy and EN/SW toggle are unchanged —
 only the JavaScript data layer was rewired to the PHP API (and the checkbox/BD
 details moved with their sections).
+
+**Deploying?** Clone it and open it — see [DEPLOY.md](DEPLOY.md). There is nothing
+to configure first, and `/deploy` shows whether the host is ready.
 
 ## Pages — kila sehemu ina page yake
 
@@ -23,13 +26,14 @@ Clicking a nav item **goes to a real new page** (no anchored scrolling):
 | `auth.php`   | Sign in / create account |
 | `client.php` | Client portal (overview, requests, quotes, contracts, invoices, support) |
 | `admin.php`  | Admin/CEO control center (dashboard, requests, quotes, contracts, accounts, invoices, tickets) |
+| `deploy.php` | Deployment health check (PHP, database engine, extensions, permissions) |
 
 Shared: `partials/head.php`, `partials/header.php` (real `<a href>` nav +
 mobile menu), `partials/footer.php`, `assets/app.js` (frontend data layer),
 `api/*.php` (JSON endpoints), `config/*.php` (session, CSRF, DB, schema, seed),
 `lib/email.php` (Resend).
 
-## Database — MySQL
+## Database
 
 Connection is read from `DATABASE_URL` (or `MYSQL_URL`) in the classic form:
 
@@ -37,10 +41,18 @@ Connection is read from `DATABASE_URL` (or `MYSQL_URL`) in the classic form:
 mysql://user:password@host:3306/dbname
 ```
 
-If no usable URL is present in the environment, the app falls back to the local
-MariaDB instance created for development (`127.0.0.1`, database `mbilinyi`,
-user `mts`). Schema (`config/schema.php`) and demo data (`config/seed.php`) are
-applied automatically and idempotently on the first request.
+The four-value shorthand cPanel displays (`host|database|user|password`) is also
+accepted.
+
+When no URL is set the app chooses by itself: a local MySQL/MariaDB if the driver
+is present and one answers, otherwise **SQLite** at `storage/mts.sqlite`. The
+first request creates the database, the tables and the demo data, so a fresh
+clone runs with no setup. A host that has only `pdo_sqlite` works too — the MySQL
+queries the app writes are translated to SQLite on the fly (`config/sql-map.php`).
+On a MySQL connection that layer is bypassed entirely, so MySQL behaviour is
+unchanged.
+
+`/deploy` reports which engine is in use.
 
 ## Demo data
 

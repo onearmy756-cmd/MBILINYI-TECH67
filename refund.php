@@ -9,13 +9,15 @@ require __DIR__ . '/partials/legal-render.php';
 <?php require __DIR__ . '/partials/header.php'; ?>
 
 <?php mts_legal_page([
-    'badge'      => 'REFUND & PAYMENT TERMS',
+    'badgeEn'    => 'REFUND & PAYMENT TERMS',
+    'badgeSw'    => 'SERA YA KURUDISHA PESA NA MALIPO',
     'badgeColor' => 'rose',
     'titleEn'    => 'Refund Policy',
     'titleSw'    => 'Sera ya Kurudisha Pesa',
     'introEn'    => 'We keep our refund rules simple and honest. Software projects run on a 50% deposit before start and 50% mid-project, and the deposit becomes non-refundable as soon as work begins because we reserve engineering time for you. Services that are not software are handled on whatever terms both parties agree in writing first.',
     'introSw'    => 'Tunahifadhi sheria zetu za kurudisha pesa kuwa rahisi na za kweli. Miradi ya software inaenda kwa 50% amana kabla ya kuanza na 50% katikati ya mradi, na amana inakuwa isiyorudishwa mara tu kazi imeanza kwa sababu tunaweka muda wa wahandisi kwa ajili yako. Huduma ambazo si software zinashughulikiwa kwa masharti yaliyokubaliwa kimaandishi kwanza.',
-    'updated'    => date('d F Y'),
+    'updatedEn'  => mts_date_pair()[0],
+    'updatedSw'  => mts_date_pair()[1],
     'sections'   => [
         ['hEn' => 'The short version', 'hSw' => 'Toleo fupi', 'ul' => [
             ['en' => 'Deposit paid but we have not started work yet → full refund.',

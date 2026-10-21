@@ -17,8 +17,8 @@
       <?php endif; ?>
       <span data-en="Build Your Own AI & Chatbot" data-sw="Jenga AI na Chatbot Yako">Build Your Own AI & Chatbot</span>
     </div></div>
-    <div><div class="font-bold mb-3" data-en="Company" data-sw="Kampuni">Company</div><div class="grid gap-2 text-white/55"><span>CEO: Jackson Mbilinyi</span><span>BRELA Reg: Z-418822-77-TZ</span><span class="font-mono">TIN: 192-147-522</span><span data-en="Dodoma, Tanzania • Work delivered online" data-sw="Dodoma, Tanzania • Kazi zote mtandaoni">Dodoma, Tanzania • Work delivered online</span><a href="auth" class="text-left text-cyan-300 font-bold" data-en="Client / Admin Login →" data-sw="Kuingia kwa Mteja / Msimamizi →">Client / Admin Login →</a></div></div>
-    <div><div class="font-bold mb-3" data-en="Contact" data-sw="Mawasiliano">Contact</div><div class="grid gap-2 text-white/55"><a href="tel:+255796752645" class="hover:text-white"><i class="fa-solid fa-phone mr-2 text-green-300"></i>0796 752 645</a><a href="mailto:mbilinyitech@gmail.com" class="hover:text-white"><i class="fa-solid fa-envelope mr-2 text-blue-300"></i>mbilinyitech@gmail.com</a><span><i class="fa-brands fa-instagram mr-2 text-pink-300"></i>@mbilinyitech</span><span><i class="fa-solid fa-clock mr-2 text-gold"></i>Mon–Sat • 8:00–20:00 EAT</span></div></div>
+    <div><div class="font-bold mb-3" data-en="Company" data-sw="Kampuni">Company</div><div class="grid gap-2 text-white/55"><span>CEO: Jackson Mbilinyi</span><span>BRELA Reg: 706668</span><span class="font-mono">TIN: 192-147-522</span><span data-en="Dodoma, Tanzania • Work delivered online" data-sw="Dodoma, Tanzania • Kazi zote mtandaoni">Dodoma, Tanzania • Work delivered online</span><a href="auth" class="text-left text-cyan-300 font-bold" data-en="Client Login →" data-sw="Kuingia kwa Mteja →">Client Login →</a></div></div>
+    <div><div class="font-bold mb-3" data-en="Contact" data-sw="Mawasiliano">Contact</div><div class="grid gap-2 text-white/55"><a href="tel:+255796752645" class="hover:text-white"><i class="fa-solid fa-phone mr-2 text-green-300"></i>0796 752 645</a><a href="mailto:mbilinyitech@gmail.com" class="hover:text-white"><i class="fa-solid fa-envelope mr-2 text-blue-300"></i>mbilinyitech@gmail.com</a><span><i class="fa-brands fa-instagram mr-2 text-pink-300"></i>@mbilinyitech</span><span data-en="Mon–Sat • 8:00–20:00 EAT" data-sw="Jumatatu–Jumamosi • 8:00–20:00 EAT">Mon–Sat • 8:00–20:00 EAT</span></div></div>
   </div>
   <div class="border-t border-white/10 py-4 text-center">
     <div class="text-[12px] font-semibold tracking-[.14em] text-cyan-300/70 mb-1.5" data-en="★ YOUR PROBLEM, OUR SOLUTION ★" data-sw="★ SHIDA YAKO, TATUZO LETU ★">★ YOUR PROBLEM, OUR SOLUTION ★</div>
@@ -36,7 +36,7 @@
       $founded = 2026;
       $now     = (int)date('Y');
       echo ($now > $founded) ? $founded . '–' . $now : $now;
-    ?> Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • All systems production-grade • BRELA & TIN Verified</div>
+    ?> <span data-en="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified" data-sw="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Imejengwa kwa viwango vya uzalishaji • Imethibitishwa BRELA na TIN">Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified</span></div>
   </div>
 </footer>
 
@@ -48,13 +48,14 @@
 <div id="chatWindow" class="hidden-chat fixed bottom-[86px] right-4 z-[300] w-[380px] max-w-[94vw] glass-strong rounded-3xl overflow-hidden shadow-2xl flex flex-col" style="height:560px;max-height:72vh">
   <div class="p-4 bg-gradient-to-r from-cyan-600 via-blue-600 to-violet-600 flex items-center gap-3">
     <div class="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center text-xl backdrop-blur"><i class="fa-solid fa-robot"></i></div>
-    <div class="flex-1"><div class="font-bold text-[15px]">Mbilinyi AI Assistant</div><div class="text-[11.5px] text-white/80 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span> Online • understands English & Kiswahili</div></div>
+    <div class="flex-1"><div class="font-bold text-[15px]"><span data-en="Mbilinyi AI Assistant" data-sw="Msaidizi wa AI wa Mbilinyi">Mbilinyi AI Assistant</span></div><div class="text-[11.5px] text-white/80 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span> <span data-en="Online • speaks & listens" data-sw="Ipo hewani • husema na husikiliza">Online • speaks &amp; listens</span></div></div>
+    <button id="voiceBtn" onclick="toggleVoice()" class="w-8 h-8 rounded-full bg-white/15" title="Speak replies / Sema majibu"><i class="fa-solid fa-volume-high text-sm"></i></button>
     <button onclick="toggleChat()" class="w-8 h-8 rounded-full bg-white/15"><i class="fa-solid fa-xmark text-sm"></i></button>
   </div>
   <div id="chatBody" class="flex-1 overflow-y-auto p-4 space-y-3 text-[13.5px]"></div>
   <div class="p-3 border-t border-white/10">
     <div class="flex flex-wrap gap-1.5 mb-2.5" id="chatQuick"></div>
-    <div class="flex gap-2"><input id="chatInput" onkeydown="if(event.key==='Enter')sendChat()" class="input !py-2.5 text-[13px]" data-ph-en="Ask about services, prices, tracking..." data-ph-sw="Uliza kuhusu huduma, bei, ufuatiliaji..." placeholder="Ask about services, prices, tracking..."><button onclick="sendChat()" class="grad-btn w-11 h-11 rounded-xl shrink-0"><i class="fa-solid fa-paper-plane text-sm"></i></button></div>
+    <div class="flex gap-2"><input id="chatInput" onkeydown="if(event.key==='Enter')sendChat()" class="input !py-2.5 text-[13px]" data-ph-en="Ask about services, prices, tracking..." data-ph-sw="Uliza kuhusu huduma, bei, ufuatiliaji..." placeholder="Ask about services, prices, tracking..."><button id="micBtn" onclick="toggleMic()" class="w-11 h-11 rounded-xl shrink-0 bg-white/5 border border-white/15" title="Speak your question / Ongea swali lako"><i class="fa-solid fa-microphone text-sm"></i></button><button onclick="sendChat()" class="grad-btn w-11 h-11 rounded-xl shrink-0"><i class="fa-solid fa-paper-plane text-sm"></i></button></div>
   </div>
 </div>
 
@@ -86,19 +87,19 @@
         <div class="grid sm:grid-cols-2 gap-2 mt-2" id="qServiceGrid"></div>
         <!-- Service-specific fields (each service has its own form) -->
         <div id="qServiceFields" class="mt-4"></div>
-        <label class="text-[12px] font-bold text-white/60 mt-4 block" data-en="PROJECT TITLE *" data-sw="KICHWA CHA MRADI *">PROJECT TITLE *</label><input id="qTitle" class="input mt-1" data-ph-en="e.g. Pharmacy stock + sales system with M-Pesa" data-ph-sw="mf. Mfumo wa pharmacy wa stock na mauzo na M-Pesa" placeholder="e.g. Pharmacy stock + sales system with M-Pesa">
-        <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="DETAILED REQUIREMENTS *" data-sw="MAHITAJI KWA UNDANI *">DETAILED REQUIREMENTS *</label><textarea id="qDesc" rows="4" class="input mt-1" data-ph-en="Describe features, users, integrations (M-Pesa, SMS), reports you need..." data-ph-sw="Eleza vipengele, watumiaji, miunganisho (M-Pesa, SMS), ripoti unazohitaji..." placeholder="Describe features, users, integrations (M-Pesa, SMS), reports you need..."></textarea>
+        <label class="text-[12px] font-bold text-white/60 mt-4 block" id="qTitleLabel" data-en="PROJECT TITLE *" data-sw="KICHWA CHA MRADI *">PROJECT TITLE *</label><input id="qTitle" class="input mt-1" data-ph-en="e.g. Pharmacy stock + sales system with M-Pesa" data-ph-sw="mf. Mfumo wa pharmacy wa stock na mauzo na M-Pesa" placeholder="e.g. Pharmacy stock + sales system with M-Pesa">
+        <label class="text-[12px] font-bold text-white/60 mt-3 block" id="qDescLabel" data-en="DETAILED REQUIREMENTS *" data-sw="MAHITAJI KWA UNDANI *">DETAILED REQUIREMENTS *</label><textarea id="qDesc" rows="4" class="input mt-1" data-ph-en="Describe features, users, integrations (M-Pesa, SMS), reports you need..." data-ph-sw="Eleza vipengele, watumiaji, miunganisho (M-Pesa, SMS), ripoti unazohitaji..." placeholder="Describe features, users, integrations (M-Pesa, SMS), reports you need..."></textarea>
       </div>
       <!-- STEP 3 (rendered per service -- no two services show the same fields) -->
       <div class="wizard-step" data-step="3">
-        <h3 class="font-bold text-lg" id="wizStep3Title"><i class="fa-solid fa-code text-emerald-300 mr-2"></i>Step 3: Technology Preference</h3>
-        <p class="text-[13px] text-white/50" id="wizStep3Hint">Our System Analyst will advise the best stack if you are unsure.</p>
+        <h3 class="font-bold text-lg" id="wizStep3Title"><i class="fa-solid fa-code text-emerald-300 mr-2"></i><span data-en="Step 3: Technology Preference" data-sw="Hatua 3: Mapendeleo ya Teknolojia">Step 3: Technology Preference</span></h3>
+        <p class="text-[13px] text-white/50" id="wizStep3Hint" data-en="Our System Analyst will advise the best stack if you are unsure." data-sw="Mtaalamu wetu wa Mifumo atashauri teknolojia bora ikiwa hujui.">Our System Analyst will advise the best stack if you are unsure.</p>
         <div id="qTechWrap">
-          <label class="text-[12px] font-bold text-white/60 mt-4 block" id="qTechLabel">PREFERRED LANGUAGES (optional)</label>
+          <label class="text-[12px] font-bold text-white/60 mt-4 block" id="qTechLabel" data-en="PREFERRED LANGUAGES (optional)" data-sw="LUGHA UNAZOPENDA (si lazima)">PREFERRED LANGUAGES (optional)</label>
           <div class="flex flex-wrap gap-2 mt-2" id="qTechGrid"></div>
         </div>
         <div class="grid sm:grid-cols-2 gap-3 mt-4">
-          <div><label class="text-[12px] font-bold text-white/60" id="qPlatformLabel">PLATFORM</label><select id="qPlatform" class="input mt-1"></select></div>
+          <div><label class="text-[12px] font-bold text-white/60" id="qPlatformLabel" data-en="PLATFORM" data-sw="JUKWAA">PLATFORM</label><select id="qPlatform" class="input mt-1"></select></div>
           <div><label class="text-[12px] font-bold text-white/60" data-en="PRIORITY" data-sw="KIPAUMBELE">PRIORITY</label><select id="qPriority" class="input mt-1"><option value="Normal" data-en="Normal" data-sw="Kawaida">Normal</option><option value="Urgent" data-en="Urgent" data-sw="Haraka">Urgent</option><option value="Critical / ASAP" data-en="Critical / ASAP" data-sw="Muhimu Sana / Haraka iwezekanavyo">Critical / ASAP</option></select></div>
         </div>
       </div>
@@ -109,7 +110,7 @@
         <select id="qBudget" class="input mt-1"><option data-en="Under TZS 500,000 (< $200)" data-sw="Chini ya TZS 500,000 (< $200)">Under TZS 500,000 (< $200)</option><option data-en="TZS 500K – 1.5M ($200 – $600)" data-sw="TZS 500K – 1.5M">TZS 500K – 1.5M ($200 – $600)</option><option data-en="TZS 1.5M – 5M ($600 – $2,000)" data-sw="TZS 1.5M – 5M">TZS 1.5M – 5M ($600 – $2,000)</option><option data-en="TZS 5M – 15M ($2,000 – $6,000)" data-sw="TZS 5M – 15M">TZS 5M – 15M ($2,000 – $6,000)</option><option data-en="TZS 15M+ (> $6,000)" data-sw="Zaidi ya TZS 15M">TZS 15M+ (> $6,000)</option><option data-en="Need professional advice" data-sw="Nahitaji ushauri wa kitaalamu">Need professional advice</option></select>
         <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="EXPECTED DEADLINE" data-sw="MUDA UNAOTARAJIWA">EXPECTED DEADLINE</label><input id="qDeadline" type="date" class="input mt-1">
         <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="HOW DID YOU HEAR ABOUT US?" data-sw="ULISIKIA KUHUSU SISI VIPI?">HOW DID YOU HEAR ABOUT US?</label><select id="qSource" class="input mt-1"><option data-en="Instagram @mbilinyitech" data-sw="Instagram @mbilinyitech">Instagram @mbilinyitech</option><option data-en="WhatsApp / Referral" data-sw="WhatsApp / Rafiki">WhatsApp / Referral</option><option data-en="Google Search" data-sw="Utafutaji wa Google">Google Search</option><option data-en="Previous Client" data-sw="Mteja wa Awali">Previous Client</option><option data-en="Other" data-sw="Nyingine">Other</option></select>
-        <div class="mt-4 rounded-2xl bg-cyan-500/[.06] border border-cyan-400/25 p-4 text-[13px] text-white/70"><i class="fa-solid fa-circle-info text-cyan-300 mr-1"></i> <span data-en="After submitting, Admin (CEO Jackson Mbilinyi) will review and send an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval." data-sw="Baada ya kutuma, Msimamizi (CEO Jackson Mbilinyi) atapitia na kutuma nukuu rasmi yenye bei kwenye portal yako, email na WhatsApp ndani ya saa 24. Mkataba rasmi wa BRELA unafuata baada ya kukubali.">After submitting, Admin (CEO Jackson Mbilinyi) will review and send an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval.</span></div>
+        <div class="mt-4 rounded-2xl bg-cyan-500/[.06] border border-cyan-400/25 p-4 text-[13px] text-white/70"><i class="fa-solid fa-circle-info text-cyan-300 mr-1"></i> <span data-en="After submitting, CEO Jackson Mbilinyi reviews your request and sends an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval." data-sw="Baada ya kutuma, CEO Jackson Mbilinyi hupitia ombi lako na kutuma nukuu rasmi yenye bei kwenye portal yako, email na WhatsApp ndani ya saa 24. Mkataba rasmi wa BRELA unafuata baada ya kukubali.">After submitting, CEO Jackson Mbilinyi reviews your request and sends an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval.</span></div>
       </div>
       <!-- STEP 5 review -->
       <div class="wizard-step" data-step="5">
@@ -143,7 +144,8 @@ window.__ME__   = <?= json_encode(current_user()) ?>;
 window.__PAGE__ = <?= json_encode($page ?? '') ?>;
 window.__SERVICES_ON__ = <?= json_encode(service_visibility()) ?>;
 </script>
-<script src="assets/app.js"></script>
+<?php /* Versioned so a returning visitor never runs a stale script. */ ?>
+<script src="assets/app.js?v=<?= (int)@filemtime(__DIR__ . '/../assets/app.js') ?>"></script>
 <script>
 /* PWA: Register service worker safely (no errors if unsupported) */
 (function () {

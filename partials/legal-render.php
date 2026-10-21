@@ -27,16 +27,30 @@ function mts_e(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/** Same date rendered in both languages, e.g. "21 October 2026" / "21 Oktoba 2026". */
+function mts_date_pair(?int $ts = null): array {
+    $ts ??= time();
+    $swMonths = ['Januari','Februari','Machi','Aprili','Mei','Juni','Julai',
+                 'Agosti','Septemba','Oktoba','Novemba','Desemba'];
+    return [
+        date('d F Y', $ts),
+        date('d', $ts) . ' ' . $swMonths[(int)date('n', $ts) - 1] . ' ' . date('Y', $ts),
+    ];
+}
+
 function mts_legal_page(array $doc): void {
-    $badge      = $doc['badge'] ?? 'LEGAL';
+    $badgeEn    = $doc['badgeEn'] ?? ($doc['badge'] ?? 'LEGAL');
+    $badgeSw    = $doc['badgeSw'] ?? $badgeEn;
     $badgeColor = $doc['badgeColor'] ?? 'cyan';
     $titleEn    = $doc['titleEn'] ?? '';
     $titleSw    = $doc['titleSw'] ?? '';
     $introEn    = $doc['introEn'] ?? '';
     $introSw    = $doc['introSw'] ?? '';
     $sections   = $doc['sections'] ?? [];
-    $effective  = $doc['effective'] ?? ('1 January ' . date('Y'));
-    $updated    = $doc['updated'] ?? date('d F Y');
+    $effectiveEn = $doc['effectiveEn'] ?? ($doc['effective'] ?? ('1 January ' . date('Y')));
+    $effectiveSw = $doc['effectiveSw'] ?? $effectiveEn;
+    $updatedEn   = $doc['updatedEn'] ?? ($doc['updated'] ?? date('d F Y'));
+    $updatedSw   = $doc['updatedSw'] ?? $updatedEn;
     $tone       = match ($badgeColor) {
         'rose'   => ['bg-rose-500/10', 'text-rose-300', 'border-rose-400/30', 'text-rose-200'],
         'emerald'=> ['bg-emerald-500/10', 'text-emerald-300', 'border-emerald-400/30', 'text-emerald-200'],
@@ -51,7 +65,7 @@ function mts_legal_page(array $doc): void {
         <div class="glass rounded-3xl p-6 md:p-9 relative overflow-hidden">
           <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-20" style="background:radial-gradient(circle,#22d3ee,transparent 70%)"></div>
           <div class="badge <?php echo $tone[0]; ?> <?php echo $tone[1]; ?> border <?php echo $tone[2]; ?>">
-            <i class="fa-solid fa-file-shield mr-1.5"></i><?php echo mts_e($badge); ?>
+            <i class="fa-solid fa-file-shield mr-1.5"></i><span data-en="<?php echo mts_e($badgeEn); ?>" data-sw="<?php echo mts_e($badgeSw); ?>"><?php echo mts_e($badgeEn); ?></span>
           </div>
           <h1 class="font-display font-bold text-3xl md:text-4xl mt-4 leading-tight">
             <span data-en="<?php echo mts_e($titleEn); ?>" data-sw="<?php echo mts_e($titleSw); ?>"><?php echo mts_e($titleEn); ?></span>
@@ -62,11 +76,11 @@ function mts_legal_page(array $doc): void {
           <div class="grid sm:grid-cols-3 gap-3 mt-6 text-[12.5px]">
             <div class="rounded-xl bg-white/[.03] border border-white/10 p-3.5">
               <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1" data-en="EFFECTIVE" data-sw="KUANZIA">Effective</div>
-              <div class="font-semibold"><?php echo mts_e($effective); ?></div>
+              <div class="font-semibold" data-en="<?php echo mts_e($effectiveEn); ?>" data-sw="<?php echo mts_e($effectiveSw); ?>"><?php echo mts_e($effectiveEn); ?></div>
             </div>
             <div class="rounded-xl bg-white/[.03] border border-white/10 p-3.5">
               <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1" data-en="LAST UPDATED" data-sw="IMESASISHWA">Last updated</div>
-              <div class="font-semibold"><?php echo mts_e($updated); ?></div>
+              <div class="font-semibold" data-en="<?php echo mts_e($updatedEn); ?>" data-sw="<?php echo mts_e($updatedSw); ?>"><?php echo mts_e($updatedEn); ?></div>
             </div>
             <div class="rounded-xl bg-white/[.03] border border-white/10 p-3.5">
               <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1" data-en="JURISDICTION" data-sw="SHERIA">Jurisdiction</div>

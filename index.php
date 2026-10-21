@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/config/app.php';
-$pageTitle = 'Mbilinyi Tech Solutions — World-Class Software, AI & Security | Jackson Mbilinyi, CEO';
+$pageTitle = 'Mbilinyi Tech Solutions — Custom Software, AI & Security | Jackson Mbilinyi, CEO';
 $page = 'landing';
 $me = current_user();
 require __DIR__ . '/partials/head.php';
@@ -22,16 +22,16 @@ require __DIR__ . '/partials/head.php';
         <div class="flex flex-wrap gap-2 mb-5">
           <span class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-400/30"><i class="fa-solid fa-circle-check mr-1"></i><span data-en="BRELA CERTIFIED" data-sw="IMESAJILIWA BRELA">BRELA CERTIFIED</span></span>
           <span class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30"><span data-en="TIN 192-147-522 VERIFIED" data-sw="TIN 192-147-522 IMETHIBITISHWA">TIN 192-147-522 VERIFIED</span></span>
-          <span class="badge bg-violet-500/15 text-violet-300 border border-violet-400/30"><span data-en="ISO-GRADE SECURITY" data-sw="USALAMA WA KIWANGO CHA JUU">ISO-GRADE SECURITY</span></span>
+          <span class="badge bg-violet-500/15 text-violet-300 border border-violet-400/30"><span data-en="SECURITY-FIRST ENGINEERING" data-sw="Uhandisi UNAOTANGULIZA USALAMA">SECURITY-FIRST ENGINEERING</span></span>
         </div>
         <h1 class="font-display font-bold text-[38px] sm:text-[54px] lg:text-[62px] leading-[1.02]">
-          <span data-en="We Engineer" data-sw="Tunaunda">We Engineer</span> <span class="grad-text" data-en="World-Class" data-sw="Bora">World-Class</span><br>
-          <span data-en="Software That Scales." data-sw="Software ya Kisasa.">Software That Scales.</span>
+          <span data-en="We Engineer" data-sw="Tunaunda">We Engineer</span> <span class="grad-text" data-en="Software" data-sw="Software">Software</span><br>
+          <span data-en="That Scales." data-sw="Inayokua.">That Scales.</span>
         </h1>
         <div class="mt-4 inline-block px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-violet-500/15 border border-cyan-400/30 font-mono text-[13px] tracking-[.15em] text-cyan-200/90">
           <span data-en="★ YOUR PROBLEM, OUR SOLUTION ★" data-sw="★ SHIDA YAKO, TATUZO LETU ★">★ YOUR PROBLEM, OUR SOLUTION ★</span>
         </div>
-        <p class="mt-5 text-white/65 text-[15.5px] leading-relaxed max-w-xl" data-en="From custom systems, AI fine-tuning & chatbots to maintenance and military-grade security — Mbilinyi Tech Solutions, led by CEO Jackson Mbilinyi, delivers production-ready technology for startups, enterprises & government." data-sw="Kuanzia mifumo maalum, AI fine-tuning na chatbots hadi maintenance na usalama wa hali ya juu — Mbilinyi Tech Solutions, inayoongozwa na CEO Jackson Mbilinyi, inatoa teknolojia bora kwa startups, makampuni na serikali.">From custom systems, AI fine-tuning & chatbots to maintenance and military-grade security — Mbilinyi Tech Solutions, led by CEO Jackson Mbilinyi, delivers production-ready technology for startups, enterprises & government.</p>
+        <p class="mt-5 text-white/65 text-[15.5px] leading-relaxed max-w-xl" data-en="From custom systems, AI fine-tuning & chatbots to maintenance and security hardening — Mbilinyi Tech Solutions, led by CEO Jackson Mbilinyi, builds secure, well-tested technology for startups, enterprises & government." data-sw="Kuanzia mifumo maalum, AI fine-tuning na chatbots hadi matengenezo na kuimarisha usalama — Mbilinyi Tech Solutions, inayoongozwa na CEO Jackson Mbilinyi, hujenga teknolojia salama na iliyopimwa vizuri kwa startups, makampuni na serikali.">From custom systems, AI fine-tuning & chatbots to maintenance and security hardening — Mbilinyi Tech Solutions, led by CEO Jackson Mbilinyi, builds secure, well-tested technology for startups, enterprises & government.</p>
         <div class="mt-7 flex flex-wrap gap-3">
           <button onclick="openQuoteWizard()" class="grad-btn px-7 py-4 rounded-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-rocket"></i> <span data-en="Start Your Project — Free Quote" data-sw="Anza Mradi — Nukuu Bure">Start Your Project — Free Quote</span></button>
           <button onclick="location.href='track'" class="px-7 py-4 rounded-2xl font-bold border border-white/15 hover:bg-white/5 flex items-center gap-2"><i class="fa-solid fa-box-open text-gold"></i> <span data-en="Track Existing Request" data-sw="Fuatilia Ombi Lako">Track Existing Request</span></button>
@@ -43,8 +43,8 @@ require __DIR__ . '/partials/head.php';
           <div><div class="text-gold text-xs font-bold" data-en="Founder-led • You work directly with the CEO" data-sw="Inaongozwa na mwanzilishi • Unafanya kazi moja kwa moja na CEO">Founder-led • You work directly with the CEO</div><div class="text-white/45" data-en="Registered under BRELA • TIN 192-147-522" data-sw="Imesajiliwa BRELA • TIN 192-147-522">Registered under BRELA • TIN 192-147-522</div></div>
         </div>
         <div class="mt-8 grid grid-cols-3 gap-3 max-w-lg">
-          <div class="glass rounded-2xl p-4 text-center"><div class="font-display font-bold text-2xl grad-text"><span class="counter" data-target="99">0</span>%</div><div class="text-[11px] text-white/55 uppercase tracking-wider font-bold" data-en="Uptime SLA" data-sw="Uptime SLA">Uptime SLA</div></div>
-          <div class="glass rounded-2xl p-4 text-center"><div class="font-display font-bold text-2xl grad-text"><span class="counter" data-target="24">0</span>/7</div><div class="text-[11px] text-white/55 uppercase tracking-wider font-bold" data-en="Support" data-sw="Msaada">Support</div></div>
+          <div class="glass rounded-2xl p-4 text-center"><div class="font-display font-bold text-2xl grad-text"><span class="counter" data-target="100">0</span>%</div><div class="text-[11px] text-white/55 uppercase tracking-wider font-bold" data-en="Source code handed over" data-sw="Source code unakabidhiwa">Source code handed over</div></div>
+          <div class="glass rounded-2xl p-4 text-center"><div class="font-display font-bold text-2xl grad-text"><span class="counter" data-target="24">0</span>h</div><div class="text-[11px] text-white/55 uppercase tracking-wider font-bold" data-en="Quote reply target" data-sw="Lengo la kujibu nukuu">Quote reply target</div></div>
           <div class="glass rounded-2xl p-4 text-center"><div class="font-display font-bold text-2xl grad-text"><span class="counter" id="svcCount" data-target="0">0</span></div><div class="text-[11px] text-white/55 uppercase tracking-wider font-bold" data-en="Services" data-sw="Huduma">Services</div></div>
         </div>
       </div>
@@ -54,7 +54,7 @@ require __DIR__ . '/partials/head.php';
         <div class="glass rounded-3xl overflow-hidden shadow-2xl relative z-10">
           <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[.02]">
             <div class="code-dots flex gap-1.5"><span class="bg-red-400"></span><span class="bg-yellow-400"></span><span class="bg-green-400"></span></div>
-            <div class="font-mono text-[11px] text-white/50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> mbilinyi_core — production.ts • LIVE</div>
+            <div class="font-mono text-[11px] text-white/50 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> mbilinyi_core — sample.ts • DEMO</div>
             <i class="fa-solid fa-lock text-emerald-300 text-xs"></i>
           </div>
           <div class="p-5 font-mono text-[12.5px] leading-[1.8] bg-[#070D1F]">
@@ -63,14 +63,14 @@ require __DIR__ . '/partials/head.php';
             <div class="mt-2"><span class="text-slate-500">// CEO: Jackson Mbilinyi | BRELA ✓ | TIN 192-147-522</span></div>
             <div><span class="text-cyan-300">const</span> <span class="text-yellow-200">project</span> <span class="text-white">= await</span> <span class="text-cyan-300">MbilinyiCloud</span><span class="text-white">.deploy({</span></div>
             <div class="pl-5"><span class="text-white">stack:</span> <span class="text-emerald-300">[<span id="heroStackText">"react", "rust", "python"</span>]</span>,</div>
-            <div class="pl-5"><span class="text-white">security:</span> <span class="text-emerald-300">"military-grade"</span>,</div>
+            <div class="pl-5"><span class="text-white">security:</span> <span class="text-emerald-300">"hardened + audited"</span>,</div>
             <div class="pl-5"><span class="text-white">ai:</span> <span class="text-emerald-300">"fine-tuned + chatbot"</span>,</div>
-            <div class="pl-5"><span class="text-white">sla:</span> <span class="text-orange-300">99.99</span><span class="text-white">,</span></div>
+            <div class="pl-5"><span class="text-white">sla:</span> <span class="text-orange-300">"as agreed"</span><span class="text-white">,</span></div>
             <div><span class="text-white">});</span> <span class="text-emerald-300 font-bold">→ status: "DEPLOYED ✓"</span><span class="animate-pulse text-cyan-300">▌</span></div>
           </div>
           <div class="px-4 py-3 border-t border-white/10 flex items-center justify-between text-[12px]">
-            <span class="text-white/50 font-mono">build passed in 1.2s • 0 vulnerabilities</span>
-            <span class="flex gap-2"><span class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">SECURE</span><span class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">SCALABLE</span></span>
+            <span class="text-white/50 font-mono" data-en="typed • reviewed • tested before handover" data-sw="imeandikwa • imepitiwa • imepimwa kabla ya kukabidhi">typed • reviewed • tested before handover</span>
+            <span class="flex gap-2"><span class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-400/30" data-en="SECURE" data-sw="SALAMA">SECURE</span><span class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30" data-en="SCALABLE" data-sw="INAKUA">SCALABLE</span></span>
           </div>
         </div>
         <div class="absolute -left-3 top-8 z-20 glass rounded-2xl px-4 py-3 float hidden sm:flex items-center gap-3"><div class="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center"><i class="fa-solid fa-code text-emerald-300"></i></div><div><div class="text-xs font-bold" data-en="Code You Own" data-sw="Code Unamiliki">Code You Own</div><div class="text-[11px] text-white/50" data-en="Full source + docs" data-sw="Source kamili + nyaraka">Full source + docs</div></div></div>

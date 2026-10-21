@@ -15,8 +15,11 @@ SIG="data:image/png;base64,$(head -c 400 /dev/zero | tr '\0' 'A')"
 echo "== 1. public track lookup =="
 curl -s "$B/api/track.php?action=get&id=MTS-2026-4810" | jq -c '{ok, status:.data.request.status, total:.data.quote.total, contract:.data.contract.status}'
 
-echo "== 2. admin login =="
-C=$(csrf $JA); post $JA api/auth.php '{"action":"login","email":"admin@mbilinyitech.co.tz","password":"Admin@2026"}' "$C" | jq -c '{ok, role:.data.user.role}'
+echo "== 2. admin login (password, then PIN verification) =="
+C=$(csrf $JA); post $JA api/auth.php '{"action":"login","email":"admin@mbilinyitech.co.tz","password":"Admin@2026"}' "$C" | jq -c '{ok, otp_required:.data.otp_required, pin_kind:.data.pin_kind}'
+# Login is a two-step flow: the password step only asks for the PIN, the PIN step
+# establishes the session. Admin's PIN is the tail of the registered phone.
+post $JA api/auth.php '{"action":"verify-login-pin","email":"admin@mbilinyitech.co.tz","pin":"2645"}' "$C" | jq -c '{ok, role:.data.user.role}'
 C=$(csrf $JA)
 
 echo "== 3. admin dashboard =="
@@ -38,8 +41,10 @@ echo "== 8. admin must NOT be able to sign before the client =="
 CID=$(get $JA "api/contracts.php?action=admin_list" | jq -r '[.data.contracts[] | select(.status=="Sent")][0].id')
 post $JA api/contracts.php "{\"action\":\"sign_admin\",\"id\":\"$CID\",\"sig\":\"$SIG\"}" "$C" | jq -c '{ok, error}'
 
-echo "== 9. client login =="
-CC=$(csrf $JC); post $JC api/auth.php '{"action":"login","email":"demo@client.com","password":"demo123"}' "$CC" | jq -c '{ok, role:.data.user.role}'
+echo "== 9. client login (password, then PIN verification) =="
+# R-2 belongs to baraka@kilimo.co.tz, so that is the client who signs its contract.
+CC=$(csrf $JC); post $JC api/auth.php '{"action":"login","email":"baraka@kilimo.co.tz","password":"demo123"}' "$CC" | jq -c '{ok, otp_required:.data.otp_required, pin_kind:.data.pin_kind}'
+post $JC api/auth.php '{"action":"verify-login-pin","email":"baraka@kilimo.co.tz","pin":"3456"}' "$CC" | jq -c '{ok, role:.data.user.role}'
 CC=$(csrf $JC)
 CID=$(get $JC "api/contracts.php?action=mine" | jq -r '[.data.contracts[] | select(.status=="Sent")][0].id')
 TRK=$(get $JA "api/contracts.php?action=admin_list" | jq -r --arg id "$CID" '[.data.contracts[] | select(.id==$id)][0].trackingId')
@@ -99,12 +104,17 @@ post $JG api/tickets.php '{"action":"create","name":"Test Mteja","email":"test.m
 
 echo "== 19. client pays the 50% balance invoice with an M-Pesa reference =="
 post $JA api/invoices.php '{"action":"admin_save","id":"new","title":"Pharmacy System — 50% Balance (Delivery)","amount":2100000,"trackingId":"MTS-2026-4810","dueDate":"2026-12-15","status":"Unpaid","method":"M-Pesa / Bank"}' "$C" | jq -c '{ok}'
+# MTS-2026-4810 is demo@client.com's request, so that client pays it.
+CD=$(csrf $JC); post $JC api/auth.php '{"action":"login","email":"demo@client.com","password":"demo123"}' "$CD" >/dev/null
+post $JC api/auth.php '{"action":"verify-login-pin","email":"demo@client.com","pin":"5678"}' "$CD" >/dev/null
+CD=$(csrf $JC)
 BAL=$(get $JC "api/invoices.php?action=mine" | jq -r '[.data.invoices[] | select((.title|contains("Balance")) and .status=="Unpaid")][0].id')
-post $JC api/invoices.php "{\"action\":\"pay\",\"id\":\"$BAL\",\"ref\":\"TX984120\"}" "$CC" | jq -c '{ok, status:.data.invoice.status}'
+post $JC api/invoices.php "{\"action\":\"pay\",\"id\":\"$BAL\",\"ref\":\"TX984120\"}" "$CD" | jq -c '{ok, status:.data.invoice.status}'
 
-echo "== 20. register a new account =="
+echo "== 20. register a new account (unique email so reruns stay green) =="
 C0=$(csrf $JG)
-post $JG api/auth.php '{"action":"register","name":"Mteja Mpya","phone":"0788000111","email":"mteja.mpya@example.com","company":"Mpya Ltd","password":"secret123","password2":"secret123"}' "$C0" | jq -c '{ok, role:.data.user.role}'
+NEWMAIL="mteja.$(date +%s)@example.com"
+post $JG api/auth.php "{\"action\":\"register\",\"name\":\"Mteja Mpya\",\"phone\":\"0788000111\",\"email\":\"$NEWMAIL\",\"company\":\"Mpya Ltd\",\"password\":\"secret123\",\"password2\":\"secret123\"}" "$C0" | jq -c '{ok, role:.data.user.role}'
 
 echo "== 21. pages render (kila sehemu ni page yake) =="
 for p in index.php services.php stack.php ai.php pricing.php process.php work.php track.php contact.php auth.php client.php admin.php; do
