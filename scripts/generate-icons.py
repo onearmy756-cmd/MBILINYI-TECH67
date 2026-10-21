@@ -72,6 +72,21 @@ def in_rounded(x, y, size, r):
 
 def render_mark(size: int, radius_ratio=0.22):
     """Return (w, h, rgba_bytes) of the brand mark at `size` px."""
+    return _render(size, radius_ratio, 1.0, False)
+
+
+def render_maskable(size: int):
+    """Full-bleed variant for Android's maskable icon slot.
+
+    A launcher crops maskable icons to whatever shape the device uses and
+    keeps only the centre ~80% circle, so rounded corners get clipped into
+    transparent wedges and a full-size mark loses its edges. Paint the
+    gradient to the square edges and shrink the mark into the safe circle.
+    """
+    return _render(size, 0.22, 0.72, True)
+
+
+def _render(size: int, radius_ratio: float, scale: float, full_bleed: bool):
     big = size * SS
     r = big * radius_ratio
 
@@ -81,6 +96,12 @@ def render_mark(size: int, radius_ratio=0.22):
     top = big * 0.30
     bottom = big * 0.74
     w = big * 0.088
+
+    if scale != 1.0:
+        c = big / 2.0
+        m, right = c + (m - c) * scale, c + (right - c) * scale
+        top, bottom = c + (top - c) * scale, c + (bottom - c) * scale
+        w *= scale
 
     left_leg = (m, top, m + w, bottom)
     right_leg = (right - w, top, right, bottom)
@@ -95,7 +116,7 @@ def render_mark(size: int, radius_ratio=0.22):
     for y in range(big):
         row = bytearray()
         for x in range(big):
-            if not in_rounded(x, y, big, r):
+            if not full_bleed and not in_rounded(x, y, big, r):
                 row += b"\x00\x00\x00\x00"
                 continue
             col = gradient((x + y) / (2.0 * big))
@@ -169,7 +190,6 @@ LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="113" fill="url(#g)"/>
-  <path d="M97 154h45v226H97zm45 0h45l70 104-70 104h-45l70-104z" fill="#fff" opacity="0"/>
   <path d="M99 154h44v227H99zM369 154h44v227h-44zM104 154l33-3 96 141-31 21zm304 0-33-3-96 141 31 21z" fill="#fff"/>
 </svg>
 """
@@ -185,6 +205,9 @@ def main():
 
     (OUT / "icon-512.png").write_bytes(blobs[512])
     (OUT / "icon-192.png").write_bytes(blobs[192])
+    # Maskable slot: full-bleed square, mark shrunk into the launcher's safe circle.
+    (OUT / "icon-maskable-512.png").write_bytes(png(*render_maskable(512)))
+    (OUT / "icon-maskable-192.png").write_bytes(png(*render_maskable(192)))
     (OUT / "apple-touch-icon.png").write_bytes(blobs[180])
     (OUT / "favicon-32.png").write_bytes(blobs[32])
     (OUT / "favicon-16.png").write_bytes(blobs[16])
