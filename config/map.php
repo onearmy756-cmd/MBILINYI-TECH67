@@ -23,6 +23,7 @@ function map_user(array $r): array {
 
 function map_request(array $r): array {
     $tech = json_decode($r['tech'] ?? '[]', true);
+    $serviceDetails = json_decode($r['service_details'] ?? '[]', true);
     return [
         'id' => $r['id'],
         'trackingId' => $r['tracking_id'],
@@ -35,6 +36,7 @@ function map_request(array $r): array {
         'title' => $r['title'],
         'description' => $r['description'],
         'tech' => is_array($tech) ? $tech : [],
+        'serviceDetails' => is_array($serviceDetails) ? $serviceDetails : [],
         'platform' => $r['platform'],
         'budget' => $r['budget'],
         'deadline' => $r['deadline'],
@@ -148,5 +150,38 @@ function map_testimonial(array $t): array {
         'isActive' => (bool)($t['is_active'] ?? 1),
         'createdAt' => iso($t['created_at'] ?? null),
         'updatedAt' => iso($t['updated_at'] ?? null),
+    ];
+}
+
+function map_news(array $n): array {
+    return [
+        'id' => $n['id'],
+        'title' => $n['title'] ?? '',
+        'category' => $n['category'] ?? 'Announcement',
+        'excerpt' => $n['excerpt'] ?? '',
+        'body' => $n['body'] ?? '',
+        'imageUrl' => $n['image_url'] ?? '',
+        'img' => $n['image_url'] ?? '',
+        'isActive' => (bool)($n['is_active'] ?? 1),
+        'createdAt' => iso($n['created_at'] ?? null),
+        'updatedAt' => iso($n['updated_at'] ?? null),
+    ];
+}
+
+function map_team_member(array $m): array {
+    return [
+        'id' => $m['id'],
+        'name' => $m['name'] ?? '',
+        'role' => $m['role'] ?? '',
+        'bio' => $m['bio'] ?? '',
+        'imageUrl' => $m['image_url'] ?? '',
+        'img' => $m['image_url'] ?? '',
+        'email' => $m['email'] ?? '',
+        'phone' => $m['phone'] ?? '',
+        'linkedin' => $m['linkedin'] ?? '',
+        'sortOrder' => (int)($m['sort_order'] ?? 0),
+        'isActive' => (bool)($m['is_active'] ?? 1),
+        'createdAt' => iso($m['created_at'] ?? null),
+        'updatedAt' => iso($m['updated_at'] ?? null),
     ];
 }

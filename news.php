@@ -1,0 +1,20 @@
+<?php
+require_once __DIR__ . '/config/app.php';
+$pageTitle = 'News & Updates — Mbilinyi Tech Solutions';
+$page = 'landing';
+require __DIR__ . '/partials/head.php';
+?>
+<body class="antialiased">
+<?php require __DIR__ . '/partials/header.php'; ?>
+
+<!-- ============ NEWS PAGE ============ -->
+<div id="view-landing" class="view-section active">
+  <section class="max-w-7xl mx-auto px-4 pt-8 pb-16">
+    <div class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30"><span data-en="NEWS &amp; UPDATES" data-sw="HABARI NA TAARIFA">NEWS &amp; UPDATES</span></div>
+    <h2 class="font-display font-bold text-3xl md:text-4xl mt-3"><span data-en="News &amp;" data-sw="Habari na">News &amp;</span> <span class="grad-text" data-en="Updates" data-sw="Taarifa">Updates</span></h2>
+    <p class="text-white/55 text-[14px] mt-3 max-w-2xl" data-en="Announcements, new services and product updates from Mbilinyi Tech Solutions — published here by our team." data-sw="Matangazo, huduma mpya na taarifa za bidhaa kutoka Mbilinyi Tech Solutions — huchapishwa hapa na timu yetu.">Announcements, new services and product updates from Mbilinyi Tech Solutions — published here by our team.</p>
+    <div id="newsGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8"></div>
+  </section>
+</div>
+
+<?php require __DIR__ . '/partials/footer.php'; ?>

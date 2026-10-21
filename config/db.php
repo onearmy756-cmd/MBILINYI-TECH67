@@ -125,6 +125,8 @@ function ensure_schema(PDO $pdo): void {
     require __DIR__ . '/schema.php';   // defines mts_schema_sql()
     $pdo->exec(mts_schema_sql());
     mts_migrate_visitor_logs($pdo);   // top up visitor_logs on pre-existing installs
+    mts_migrate_requests_service_details($pdo); // per-service request form answers
+    mts_migrate_users_pin($pdo);      // account-verification PIN on pre-existing installs
 
     $count = (int)$pdo->query('SELECT count(*) FROM users')->fetchColumn();
     if ($count === 0) {

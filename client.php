@@ -23,6 +23,7 @@ require __DIR__ . '/partials/head.php';
         <button data-ctab="contracts" onclick="clientTab('contracts')" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-file-contract mr-2 text-emerald-300"></i>Contracts</button>
         <button data-ctab="invoices" onclick="clientTab('invoices')" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-receipt mr-2 text-blue-300"></i>Invoices & Pay</button>
         <button data-ctab="support" onclick="clientTab('support')" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-headset mr-2 text-pink-300"></i>Support</button>
+        <button data-ctab="news" onclick="clientTab('news')" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-newspaper mr-2 text-cyan-300"></i>News &amp; Updates</button>
       </nav>
       <button onclick="openQuoteWizard()" class="grad-btn w-full mt-4 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-plus mr-1"></i> New Request</button>
       <button onclick="logout()" class="w-full mt-2 py-3 rounded-xl font-bold text-sm border border-red-400/30 text-red-300 hover:bg-red-500/10"><i class="fa-solid fa-right-from-bracket mr-1"></i> Logout</button>

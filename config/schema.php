@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
   phone         VARCHAR(60)  NOT NULL DEFAULT '',
   company       VARCHAR(160) NOT NULL DEFAULT '',
   password_hash VARCHAR(255) NOT NULL,
+  pin_hash      VARCHAR(255) NULL,
+  pin_fails     INT          NOT NULL DEFAULT 0,
+  pin_locked_until DATETIME NULL,
   role          VARCHAR(20)  NOT NULL DEFAULT 'client',
   status        VARCHAR(20)  NOT NULL DEFAULT 'Active',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -30,6 +33,7 @@ CREATE TABLE IF NOT EXISTS requests (
   title       VARCHAR(255)  NOT NULL DEFAULT '',
   description TEXT          NOT NULL,
   tech        JSON          NULL,
+  service_details JSON       NULL,
   platform    VARCHAR(120)  NOT NULL DEFAULT '',
   budget      VARCHAR(120)  NOT NULL DEFAULT '',
   deadline    VARCHAR(40)   NOT NULL DEFAULT '',
@@ -186,6 +190,37 @@ CREATE TABLE IF NOT EXISTS settings (
   PRIMARY KEY (skey)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS news_posts (
+  id         VARCHAR(64)   NOT NULL,
+  title      VARCHAR(255)  NOT NULL,
+  category   VARCHAR(80)   NOT NULL DEFAULT 'Announcement',
+  excerpt    VARCHAR(500)  NOT NULL DEFAULT '',
+  body       TEXT          NOT NULL,
+  image_url  VARCHAR(500)  NOT NULL DEFAULT '',
+  is_active  TINYINT(1)    NOT NULL DEFAULT 1,
+  created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_news_active (is_active, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS team_members (
+  id         VARCHAR(64)   NOT NULL,
+  name       VARCHAR(160)  NOT NULL,
+  role       VARCHAR(200)  NOT NULL DEFAULT '',
+  bio        VARCHAR(500)  NOT NULL DEFAULT '',
+  image_url  VARCHAR(500)  NOT NULL DEFAULT '',
+  email      VARCHAR(190)  NOT NULL DEFAULT '',
+  phone      VARCHAR(60)   NOT NULL DEFAULT '',
+  linkedin   VARCHAR(500)  NOT NULL DEFAULT '',
+  sort_order INT           NOT NULL DEFAULT 0,
+  is_active  TINYINT(1)    NOT NULL DEFAULT 1,
+  created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_team_active (is_active, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS pricing_plans (
   id         VARCHAR(64)   NOT NULL,
   code       VARCHAR(64)   NOT NULL,
@@ -285,5 +320,67 @@ function mts_migrate_visitor_logs(PDO $pdo): void {
         if ($n === 0) $pdo->exec('ALTER TABLE visitor_logs ADD KEY idx_vl_visit_date (visit_date)');
     } catch (\Throwable $e) {
         error_log('[schema] visitor_logs index: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Idempotent migration for `requests.service_details`.
+ *
+ * Per-service request forms submit their own key/value answers; we store them
+ * as JSON on the existing row so pre-migration installs keep working (the
+ * column is simply absent until this runs).
+ */
+function mts_migrate_requests_service_details(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $have = [];
+        foreach ($pdo->query('SHOW COLUMNS FROM requests')->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $have[strtolower((string)$r['Field'])] = true;
+        }
+    } catch (\Throwable $e) {
+        error_log('[schema] requests unreadable: ' . $e->getMessage());
+        return;
+    }
+
+    if (!isset($have['service_details'])) {
+        try { $pdo->exec('ALTER TABLE requests ADD COLUMN service_details JSON NULL AFTER tech'); }
+        catch (\Throwable $e) { error_log('[schema] add service_details: ' . $e->getMessage()); }
+    }
+}
+
+/**
+ * Idempotent migration for `users.pin_hash`.
+ *
+ * Account verification uses a short PIN (or the phone-derived pattern) as a
+ * second factor. Pre-existing installs created before the column existed must
+ * gain it, otherwise verification would fail on an unknown column.
+ */
+function mts_migrate_users_pin(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $have = [];
+        foreach ($pdo->query('SHOW COLUMNS FROM users')->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $have[strtolower((string)$r['Field'])] = true;
+        }
+    } catch (\Throwable $e) {
+        error_log('[schema] users unreadable: ' . $e->getMessage());
+        return;
+    }
+
+    $want = [
+        'pin_hash'         => 'ALTER TABLE users ADD COLUMN pin_hash VARCHAR(255) NULL AFTER password_hash',
+        'pin_fails'        => 'ALTER TABLE users ADD COLUMN pin_fails INT NOT NULL DEFAULT 0 AFTER pin_hash',
+        'pin_locked_until' => 'ALTER TABLE users ADD COLUMN pin_locked_until DATETIME NULL AFTER pin_fails',
+    ];
+    foreach ($want as $col => $sql) {
+        if (isset($have[$col])) continue;
+        try { $pdo->exec($sql); }
+        catch (\Throwable $e) { error_log('[schema] add users.' . $col . ': ' . $e->getMessage()); }
     }
 }

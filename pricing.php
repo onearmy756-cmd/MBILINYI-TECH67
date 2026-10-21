@@ -32,8 +32,8 @@ require __DIR__ . '/partials/head.php';
       <?php endforeach; ?>
     </div>
 
-    <div class="text-center mt-12"><div class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 inline-block">MAINTENANCE • SECURITY</div>
-      <h2 class="font-display font-bold text-3xl md:text-4xl mt-3">Maintenance & Security <span class="grad-text">Plans</span></h2></div>
+    <div class="text-center mt-12"><div class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 inline-block"><?php echo service_visible('cybersecurity') ? 'MAINTENANCE • SECURITY' : 'MAINTENANCE'; ?></div>
+      <h2 class="font-display font-bold text-3xl md:text-4xl mt-3"><?php echo service_visible('cybersecurity') ? 'Maintenance &amp; Security <span class="grad-text">Plans</span>' : 'Maintenance <span class="grad-text">Plans</span>'; ?></h2></div>
     <div class="grid md:grid-cols-3 gap-4 mt-8" id="maintPlans"></div>
     <div class="grid md:grid-cols-3 gap-4 mt-4" id="secPlans"></div>
     <div class="mt-8 max-w-3xl mx-auto glass rounded-3xl p-6 text-[13.5px] text-white/70">

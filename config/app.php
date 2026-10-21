@@ -207,6 +207,40 @@ function setting_set(string $key, string $value): void {
     );
 }
 
+/**
+ * Which catalogue services are switched ON. Keys map to the `k` field in
+ * assets/app.js SERVICES. Anything not listed is visible by default; the
+ * admin can hide a service from Settings → Service Visibility.
+ */
+function service_catalogue_keys(): array {
+    return [
+        'custom_software', 'system_analysis', 'it_consultancy', 'maintenance',
+        'cybersecurity', 'forensics', 'ai_chatbots', 'ai_finetune', 'cloud_devops',
+        'brela', 'tra_tax', 'troubleshooting', 'windows_os', 'email_setup',
+        'gov_eservices', 'software_install',
+    ];
+}
+
+/** Services the admin switched OFF (stored comma-separated in settings). */
+function service_hidden(): array {
+    $raw = setting('services_hidden', '');
+    if ($raw === '') return [];
+    return array_values(array_filter(array_map('trim', explode(',', $raw)), static fn($v) => $v !== ''));
+}
+
+/** Map of key => bool (true = visible) used to render the public site. */
+function service_visibility(): array {
+    $hidden = array_flip(service_hidden());
+    $out = [];
+    foreach (service_catalogue_keys() as $k) $out[$k] = !isset($hidden[$k]);
+    return $out;
+}
+
+/** True when a single service key is visible on the public site. */
+function service_visible(string $key): bool {
+    return !in_array($key, service_hidden(), true);
+}
+
 /** Payment block shown to signed-in users (bank + mobile money). */
 function payment_details(): array {
     return [
@@ -238,23 +272,27 @@ function payment_details(): array {
  * @return array<int, array{code:string, en:string, sw:string, price:float, period:string}>
  */
 function service_price_list(): array {
+    /* 5th column = service key from service_catalogue_keys(); when the admin
+     * switches that service OFF the price row disappears from the public list. */
     static $catalogue = [
-        ['website_basic',   'Basic / starter website (up to 5 pages)',            'Tovuti ya msingi (kurasa hadi 5)',              '/project'],
-        ['website_business','Business website (custom design, CMS)',              'Tovuti ya kampuni (muundo maalum, CMS)',        '/project'],
-        ['ecommerce',       'Online shop / e-commerce with payments',             'Duka la mtandaoni lenye malipo',                '/project'],
-        ['mobile_app',      'Mobile app (Android + iOS)',                         'Programu ya simu (Android + iOS)',              '/project'],
-        ['custom_system',   'Custom business system (ERP / school / pharmacy)',   'Mfumo maalum wa biashara (ERP / shule / duka)', '/project'],
-        ['whatsapp_bot',    'WhatsApp / SMS chatbot (Swahili + English)',         'Chatbot ya WhatsApp / SMS (Kiswahili + Kiingereza)', '/project'],
-        ['ai_finetune',     'AI fine-tuning on your own data (RAG / LoRA)',       'Kurekebisha AI kwa data yako (RAG / LoRA)',     '/project'],
-        ['security_audit',  'Cyber-security audit (OWASP Top-10)',                'Ukaguzi wa usalama (OWASP Top-10)',             '/one-time'],
-        ['pentest',         'Penetration test (manual + automated)',              'Mtihani wa uvamizi (manual + automated)',       '/system'],
-        ['maintenance',     'Software maintenance & SLA (Starter)',               'Matengenezo ya programu na SLA (Starter)',      '/month'],
-        ['brela',           'BRELA business / company registration',              'Usajili wa biashara / kampuni ya BRELA',        '/service'],
-        ['tra_tax',         'TRA tax services (TIN, VAT, PAYE, returns)',         'Huduma za kodi za TRA (TIN, VAT, PAYE)',        '/service'],
+        ['website_basic',   'Basic / starter website (up to 5 pages)',            'Tovuti ya msingi (kurasa hadi 5)',              '/project',    ''],
+        ['website_business','Business website (custom design, CMS)',              'Tovuti ya kampuni (muundo maalum, CMS)',        '/project',    ''],
+        ['ecommerce',       'Online shop / e-commerce with payments',             'Duka la mtandaoni lenye malipo',                '/project',    ''],
+        ['mobile_app',      'Mobile app (Android + iOS)',                         'Programu ya simu (Android + iOS)',              '/project',    ''],
+        ['custom_system',   'Custom business system (ERP / school / pharmacy)',   'Mfumo maalum wa biashara (ERP / shule / duka)', '/project',    ''],
+        ['whatsapp_bot',    'WhatsApp / SMS chatbot (Swahili + English)',         'Chatbot ya WhatsApp / SMS (Kiswahili + Kiingereza)', '/project', ''],
+        ['ai_finetune',     'AI fine-tuning on your own data (RAG / LoRA)',       'Kurekebisha AI kwa data yako (RAG / LoRA)',     '/project',    ''],
+        ['security_audit',  'Cyber-security audit (OWASP Top-10)',                'Ukaguzi wa usalama (OWASP Top-10)',             '/one-time',   'cybersecurity'],
+        ['pentest',         'Penetration test (manual + automated)',              'Mtihani wa uvamizi (manual + automated)',       '/system',     'cybersecurity'],
+        ['maintenance',     'Software maintenance & SLA (Starter)',               'Matengenezo ya programu na SLA (Starter)',      '/month',      ''],
+        ['brela',           'BRELA business / company registration',              'Usajili wa biashara / kampuni ya BRELA',        '/service',    ''],
+        ['tra_tax',         'TRA tax services (TIN, VAT, PAYE, returns)',         'Huduma za kodi za TRA (TIN, VAT, PAYE)',        '/service',    ''],
+        ['forensics',       'Digital forensics & cyber-crime investigation',       'Uchunguzi wa kidijitali na uhalifu wa mtandao', '/case',       'forensics'],
     ];
 
     $out = [];
-    foreach ($catalogue as [$code, $en, $sw, $period]) {
+    foreach ($catalogue as [$code, $en, $sw, $period, $svcKey]) {
+        if ($svcKey !== '' && !service_visible($svcKey)) continue;
         $out[] = [
             'code'   => $code,
             'en'     => $en,

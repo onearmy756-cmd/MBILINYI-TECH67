@@ -90,51 +90,8 @@ function mts_seed(PDO $pdo): void {
             '2026-09-26 10:00:00']]
     );
 
-    /* portfolio_projects (from PORTFOLIO array in app.js) ----- */
-    $ppSql = 'INSERT INTO portfolio_projects (id,title,category,description,image_url,stat_label,link_url,sort_order,is_active,created_at)
-              VALUES (?,?,?,?,?,?,?,?,?,?)' . $noop;
-    $ins($ppSql, [
-        ['P-01', 'PharmaPlus Management Suite', 'Pharmacy • React + Python + M-Pesa',
-            'Stock, expiry alerts, sales & M-Pesa receipts for 12 branches.',
-            'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80',
-            '+38% revenue tracked', '', 0, 1, '2026-04-10 09:00:00'],
-        ['P-02', 'ShulePay Fees Portal', 'Education • React + Node + SMS',
-            'Fee tracking, receipts & parent SMS for 3,000+ students.',
-            'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80',
-            'Zero fee leakage', '', 1, 1, '2026-05-12 09:00:00'],
-        ['P-03', 'KilimoFresh WhatsApp Bot', 'AI • Python • Swahili NLP',
-            'Swahili ordering bot handling 500+ orders/week.',
-            'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&q=80',
-            '4.9★ customer rating', '', 2, 1, '2026-06-08 09:00:00'],
-        ['P-04', 'RustPay Microservice', 'Fintech • Rust + PostgreSQL',
-            '12ms transaction engine processing 1M+ records daily.',
-            'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
-            '12ms avg latency', '', 3, 1, '2026-07-05 09:00:00'],
-        ['P-05', 'Hotel Booking + R Analytics', 'Hospitality • R + React',
-            'Bookings, occupancy forecasts & revenue dashboards.',
-            'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-            '+27% occupancy', '', 4, 1, '2026-08-10 09:00:00'],
-        ['P-06', 'SaccoGuard Security Hardening', 'Security • Audit + WAF',
-            'Full pentest & hardening for a 8,000-member SACCO.',
-            'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&q=80',
-            '0 breaches since', '', 5, 1, '2026-09-01 09:00:00'],
-    ]);
-
-    /* testimonials (from TESTIS array in app.js) --------------- */
-    $tmSql = 'INSERT INTO testimonials (id,name,role,text,stars,sort_order,is_active,created_at)
-              VALUES (?,?,?,?,?,?,?,?)' . $noop;
-    $ins($tmSql, [
-        ['TM-01', 'Amina Juma', 'Director, Amina Pharmacy — Dar es Salaam',
-            'Jackson built our entire pharmacy system with M-Pesa. Official quotation, BRELA contract, training — everything was professional. Stock losses dropped to almost zero.',
-            5, 0, 1, '2026-09-05 09:00:00'],
-        ['TM-02', 'Eng. Baraka Mwansa', 'CEO, Kilimo Fresh',
-            'The Swahili WhatsApp bot takes orders while we sleep. Clients think we hired 5 new staff! Best investment we made this year.',
-            5, 1, 1, '2026-09-06 09:00:00'],
-        ['TM-03', 'Sarah Nkya', 'Headmistress, Moshi Academy',
-            'Fee collection used to be chaos. Now parents get instant SMS receipts and we see every shilling. The maintenance plan is worth every cent.',
-            5, 2, 1, '2026-09-07 09:00:00'],
-        ['TM-04', 'David Mwakalinga', 'CTO, Fintech Startup — Nairobi',
-            'Their Rust microservice handles our peak load effortlessly. International quality, African pricing. The security audit alone saved us from a major breach.',
-            5, 3, 1, '2026-09-08 09:00:00'],
-    ]);
+    /* portfolio_projects + testimonials -------------------------
+     * Deliberately NOT seeded: the company is new and has no delivered projects
+     * or client reviews yet. The admin adds real ones from the Portfolio and
+     * Testimonials tabs, and they appear on the public site automatically. */
 }

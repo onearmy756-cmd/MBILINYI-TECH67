@@ -48,22 +48,28 @@ function currentUser() { return window.__ME__ || null; }
 
 /* ---------- STATIC DATA ---------- */
 const SERVICES = [
-  { icon: 'fa-code', c: 'cyan', t: 'Custom Software Development', d: 'Web, mobile & desktop systems in React, Python, Rust, R & HTML — built production-ready, tested & documented.', tags: ['React', 'Python', 'Rust'] },
-  { icon: 'fa-diagram-project', c: 'violet', t: 'System Analysis & Design', d: 'Professional SRS, database design, UML, workflows & feasibility studies before a single line of code.', tags: ['SRS', 'UML', 'ERD'] },
-  { icon: 'fa-briefcase', c: 'gold', t: 'IT Consultancy', d: 'Digital strategy, system audits, tech hiring advice & CTO-as-a-service for businesses & NGOs.', tags: ['Strategy', 'Audit'] },
-  { icon: 'fa-screwdriver-wrench', c: 'emerald', t: 'Software Maintenance', d: 'Bug fixes, updates, backups, uptime monitoring & SLA support — your system never sleeps.', tags: ['SLA 99.9%', '24/7'] },
-  { icon: 'fa-shield-halved', c: 'red', t: 'Cybersecurity Services', d: 'Penetration testing, OWASP audits, malware removal, SSL, firewall & staff security training.', tags: ['Pentest', 'OWASP'] },
-  { icon: 'fa-robot', c: 'fuchsia', t: 'AI Chatbots', d: 'Website & WhatsApp chatbots in English & Kiswahili that answer, sell & book — 24/7.', tags: ['WhatsApp', 'Web'] },
-  { icon: 'fa-brain', c: 'blue', t: 'AI Fine-Tuning', d: 'We fine-tune LLMs on YOUR data — price lists, policies, FAQs — for accurate, on-brand answers.', tags: ['LoRA', 'RAG'] },
-  { icon: 'fa-cloud', c: 'teal', t: 'Cloud & DevOps', d: 'Deployment on AWS/VPS, CI/CD, Docker, domains, business emails & blazing performance.', tags: ['AWS', 'Docker'] },
-  { icon: 'fa-building', c: 'cyan', t: 'BRELA & Business Registration', d: 'Usajili wa makampuni, Biashara, SME na vyeti vya BRELA — kila hatua kiotomatiki kwa utulivu.', tags: ['BRELA', 'SME'] },
-  { icon: 'fa-file-invoice-dollar', c: 'gold', t: 'TRA & Tax Services', d: 'TIN registration, File Tax Returns, VAT, PAYE na msaada kamili wa mifumo ya TRA kwa Biashara.', tags: ['TIN', 'TRA', 'VAT'] },
-  { icon: 'fa-screwdriver-wrench', c: 'emerald', t: 'Computer Troubleshooting', d: 'Kutatua matatizo ya software, malware removal, slow PC, crashes, data recovery, drivers na updates.', tags: ['Repair', 'Malware'] },
-  { icon: 'fa-windows', c: 'blue', t: 'Windows & OS Installation', d: 'Windows 10/11, Linux, macOS + drivers, updates, activation, backup na data transfer salama.', tags: ['Windows', 'Drivers'] },
-  { icon: 'fa-envelope-open-text', c: 'fuchsia', t: 'Email & Communication Setup', d: 'Kutengeneza email (G-Suite, Zoho, cPanel), SMTP, SPF/DKIM, na kutatua matatizo yote ya email.', tags: ['SMTP', 'G-Suite'] },
-  { icon: 'fa-landmark', c: 'violet', t: 'Government e-Services', d: 'NIDA, NHIF, NSSF, eCitizen, Huduma Number na huduma zingine za serikali — kila hatua tutakupitia.', tags: ['NIDA', 'NHIF'] },
-  { icon: 'fa-box', c: 'teal', t: 'Software Installation', d: 'Kuinstall MS Office, Adobe, IDEs, Antivirus, Design Apps, na customize settings kwa utulivu.', tags: ['Office', 'Apps'] },
+  { k: 'custom_software', icon: 'fa-code', c: 'cyan', t: 'Custom Software Development', tSw: 'Uundaji wa Software Maalum', d: 'Build your own software with MBILINYITECH — mobile apps, desktop apps & web applications in React, Python, Rust, R & HTML — production-ready, tested & documented.', dSw: 'Jenga software yako mwenyewe na MBILINYITECH — programu za simu, kompyuta na wavuti kwa React, Python, Rust, R na HTML — tayari kutumika, imepimwa na yenye nyaraka.', tags: ['Mobile App', 'Desktop App', 'Web App'] },
+  { k: 'system_analysis', icon: 'fa-diagram-project', c: 'violet', t: 'System Analysis & Design', tSw: 'Uchambuzi na Ubunifu wa Mifumo', d: 'Professional SRS, database design, UML, workflows & feasibility studies before a single line of code.', dSw: 'SRS ya kitaalamu, ubunifu wa hifadhidata, UML, mtiririko wa kazi na upembuzi yakinifu kabla ya mstari mmoja wa code kuandikwa.', tags: ['SRS', 'UML', 'ERD'] },
+  { k: 'it_consultancy', icon: 'fa-briefcase', c: 'gold', t: 'IT Consultancy', tSw: 'Ushauri wa IT', d: 'Digital strategy, system audits, tech hiring advice & CTO-as-a-service for businesses & NGOs.', dSw: 'Mkakati wa kidijitali, ukaguzi wa mifumo, ushauri wa kuajiri wataalamu na huduma ya CTO kwa makampuni na taasisi.', tags: ['Strategy', 'Audit'] },
+  { k: 'maintenance', icon: 'fa-screwdriver-wrench', c: 'emerald', t: 'Software Maintenance', tSw: 'Matengenezo ya Software', d: 'Software maintenance & support with MBILINYITECH — bug fixes, updates, backups, uptime monitoring & SLA support — your system never sleeps.', dSw: 'Matengenezo na msaada wa software na MBILINYITECH — kurekebisha hitilafu, masasisho, nakala rudufu, ufuatiliaji wa muda wa kufanya kazi na msaada wa SLA — mfumo wako haukulala.', tags: ['SLA 99.9%', '24/7', 'AMC'] },
+  { k: 'cybersecurity', icon: 'fa-shield-halved', c: 'red', t: 'Cybersecurity Services', tSw: 'Huduma za Usalama wa Mtandao', d: 'Penetration testing, OWASP audits, malware removal, SSL, firewall & staff security training.', dSw: 'Upimaji wa uvamizi, ukaguzi wa OWASP, kuondoa programu hasidi, SSL, firewall na mafunzo ya usalama kwa wafanyakazi.', tags: ['Pentest', 'OWASP'] },
+  { k: 'forensics', icon: 'fa-fingerprint', c: 'red', t: 'Digital Forensics', tSw: 'Uchunguzi wa Kidijitali (Forensics)', d: 'Digital forensics & cyber-crime investigation — forensic acquisition, disk/mobile/memory analysis, deleted-file recovery, timeline & chain-of-custody reports usable in legal proceedings.', dSw: 'Uchunguzi wa kidijitali na uhalifu wa mtandao — ukusanyaji wa ushahidi, uchambuzi wa diski/simu/kumbukumbu, kurejesha faili zilizofutwa, ripoti za muda na mnyororo wa ushahidi zinazoweza kutumika mahakamani.', tags: ['Forensics', 'Evidence', 'Incident Response'] },
+  { k: 'ai_chatbots', icon: 'fa-robot', c: 'fuchsia', t: 'AI Chatbots', tSw: 'Chatbots za AI', d: 'Build your own AI & Chatbot with MBILINYITECH — website & WhatsApp bots in English & Kiswahili that answer, sell & book — 24/7.', dSw: 'Jenga AI na Chatbot yako na MBILINYITECH — bots za wavuti na WhatsApp kwa Kiingereza na Kiswahili zinazojibu, zinazouza na zinazopanga — saa 24.', tags: ['WhatsApp', 'Web', 'Build Your Own'] },
+  { k: 'ai_finetune', icon: 'fa-brain', c: 'blue', t: 'AI Fine-Tuning', tSw: 'Urekebishaji wa AI', d: 'Build your own AI & Chatbot with MBILINYITECH — we fine-tune LLMs on YOUR data (price lists, policies, FAQs) for accurate, on-brand answers.', dSw: 'Jenga AI na Chatbot yako na MBILINYITECH — tunarekebisha LLM kwa data YAKO (orodha za bei, sera, maswali) kwa majibu sahihi na yenye utambulisho wako.', tags: ['LoRA', 'RAG', 'Your Own AI'] },
+  { k: 'cloud_devops', icon: 'fa-cloud', c: 'teal', t: 'Cloud & DevOps', tSw: 'Cloud na DevOps', d: 'Deployment on AWS/VPS, CI/CD, Docker, domains, business emails & blazing performance.', dSw: 'Usambazaji kwenye AWS/VPS, CI/CD, Docker, domain, email za biashara na utendaji wa kasi.', tags: ['AWS', 'Docker'] },
+  { k: 'brela', icon: 'fa-building', c: 'cyan', t: 'BRELA & Business Registration', tSw: 'Usajili wa BRELA na Biashara', d: 'Company, business & SME registration and BRELA certificates — every step handled for you.', dSw: 'Usajili wa kampuni, biashara na SME pamoja na vyeti vya BRELA — kila hatua tunaishughulikia kwa niaba yako.', tags: ['BRELA', 'SME'] },
+  { k: 'tra_tax', icon: 'fa-file-invoice-dollar', c: 'gold', t: 'TRA & Tax Services', tSw: 'Huduma za TRA na Kodi', d: 'TIN registration, tax returns, VAT, PAYE and full support for TRA business systems.', dSw: 'Usajili wa TIN, kuwasilisha kodi, VAT, PAYE na msaada kamili wa mifumo ya TRA kwa biashara.', tags: ['TIN', 'TRA', 'VAT'] },
+  { k: 'troubleshooting', icon: 'fa-screwdriver-wrench', c: 'emerald', t: 'Computer Troubleshooting', tSw: 'Utatuzi wa Matatizo ya Kompyuta', d: 'Fixing software problems, malware removal, slow PC, crashes, data recovery, drivers and updates.', dSw: 'Kutatua matatizo ya software, kuondoa programu hasidi, kompyuta ya polepole, kuganda, kurejesha data, drivers na masasisho.', tags: ['Repair', 'Malware'] },
+  { k: 'windows_os', icon: 'fa-windows', c: 'blue', t: 'Windows & OS Installation', tSw: 'Usakinishaji wa Windows na OS', d: 'Windows installation & OS setup with MBILINYITECH — Windows 10/11, Linux, macOS + drivers, updates, activation, backup and safe data transfer.', dSw: 'Usakinishaji wa Windows na mipangilio ya OS na MBILINYITECH — Windows 10/11, Linux, macOS + drivers, masasisho, uanzishaji, nakala rudufu na uhamishaji salama wa data.', tags: ['Windows', 'Drivers', 'Activation'] },
+  { k: 'email_setup', icon: 'fa-envelope-open-text', c: 'fuchsia', t: 'Email & Communication Setup', tSw: 'Usanidi wa Email na Mawasiliano', d: 'Business email setup with MBILINYITECH — G-Suite, Zoho, cPanel, SMTP, SPF/DKIM, and fixing every email problem.', dSw: 'Usanidi wa email za biashara na MBILINYITECH — G-Suite, Zoho, cPanel, SMTP, SPF/DKIM, na kutatua matatizo yote ya email.', tags: ['SMTP', 'G-Suite', 'SPF/DKIM'] },
+  { k: 'gov_eservices', icon: 'fa-landmark', c: 'violet', t: 'Government e-Services', tSw: 'Huduma za Serikali kwa Njia ya Kidijitali', d: 'Government application services — NIDA, NHIF, NSSF, eCitizen, Huduma Number, BRELA & TRA portals, TIN, licences and other government services — we guide you through every step.', dSw: 'Huduma za maombi ya serikali — NIDA, NHIF, NSSF, eCitizen, Huduma Number, portal za BRELA na TRA, TIN, leseni na huduma zingine za serikali — tunakupitia kila hatua.', tags: ['NIDA', 'NHIF', 'eCitizen', 'TIN'] },
+  { k: 'software_install', icon: 'fa-box', c: 'teal', t: 'Software Installation', tSw: 'Usakinishaji wa Software', d: 'Installing MS Office, Adobe, IDEs, antivirus, design apps, and customising settings properly.', dSw: 'Kusakinisha MS Office, Adobe, IDE, antivirus, programu za ubunifu, na kurekebisha mipangilio kwa usahihi.', tags: ['Office', 'Apps'] },
 ];
+
+/* Admin can switch any service OFF in Settings → Service Visibility. Disabled
+ * services disappear from the grid, the quote wizard and admin dropdowns. */
+const SERVICES_ON = window.__SERVICES_ON__ || {};
+const VISIBLE_SERVICES = SERVICES.filter(s => SERVICES_ON[s.k] !== false);
 const STACK = {
   'Python': { level: 98, desc: 'Backend APIs (Django/FastAPI), AI/ML, chatbots, automation & data pipelines. Our #1 backend.', use: 'APIs • AI • Automation' },
   'React': { level: 97, desc: 'Blazing dashboards, portals & mobile-friendly SPAs with modern UI/UX and reusable components.', use: 'Web Apps • Dashboards' },
@@ -86,20 +92,11 @@ const SEC = [
   { n: 'Penetration Test', p: 'TZS 2,500,000', per: 'per system', f: ['Manual + automated pentest', 'Exploit verification', 'Executive + technical reports', 'Free re-test after fixes'] },
   { n: 'Managed Security', p: 'TZS 900,000', per: '/month', f: ['Firewall + WAF management', 'Malware monitoring & removal', 'Monthly scans & patching', 'Incident response 24/7'] },
 ];
-const PORTFOLIO = [
-  { t: 'PharmaPlus Management Suite', c: 'Pharmacy • React + Python + M-Pesa', img: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80', d: 'Stock, expiry alerts, sales & M-Pesa receipts for 12 branches.', s: '+38% revenue tracked' },
-  { t: 'ShulePay Fees Portal', c: 'Education • React + Node + SMS', img: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80', d: 'Fee tracking, receipts & parent SMS for 3,000+ students.', s: 'Zero fee leakage' },
-  { t: 'KilimoFresh WhatsApp Bot', c: 'AI • Python • Swahili NLP', img: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&q=80', d: 'Swahili ordering bot handling 500+ orders/week.', s: '4.9★ customer rating' },
-  { t: 'RustPay Microservice', c: 'Fintech • Rust + PostgreSQL', img: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80', d: '12ms transaction engine processing 1M+ records daily.', s: '12ms avg latency' },
-  { t: 'Hotel Booking + R Analytics', c: 'Hospitality • R + React', img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80', d: 'Bookings, occupancy forecasts & revenue dashboards.', s: '+27% occupancy' },
-  { t: 'SaccoGuard Security Hardening', c: 'Security • Audit + WAF', img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&q=80', d: 'Full pentest & hardening for a 8,000-member SACCO.', s: '0 breaches since' },
-];
-const TESTIS = [
-  { n: 'Amina Juma', r: 'Director, Amina Pharmacy — Dar es Salaam', t: 'Jackson built our entire pharmacy system with M-Pesa. Official quotation, BRELA contract, training — everything was professional. Stock losses dropped to almost zero.', s: 5 },
-  { n: 'Eng. Baraka Mwansa', r: 'CEO, Kilimo Fresh', t: 'The Swahili WhatsApp bot takes orders while we sleep. Clients think we hired 5 new staff! Best investment we made this year.', s: 5 },
-  { n: 'Sarah Nkya', r: 'Headmistress, Moshi Academy', t: 'Fee collection used to be chaos. Now parents get instant SMS receipts and we see every shilling. The maintenance plan is worth every cent.', s: 5 },
-  { n: 'David Mwakalinga', r: 'CTO, Fintech Startup — Nairobi', t: 'Their Rust microservice handles our peak load effortlessly. International quality, African pricing. The security audit alone saved us from a major breach.', s: 5 },
-];
+/* Real delivered projects and client testimonials live in the database and are
+ * managed by the admin (Portfolio / Testimonials tabs). These stay empty on a
+ * fresh install so the site never claims work that has not been done yet. */
+const PORTFOLIO = [];
+const TESTIS = [];
 let testiIdx = 0;
 
 /* ---------- TOAST ---------- */
@@ -152,13 +149,25 @@ function toggleMobileMenu() { const m = $('mobileMenu'); if (m) m.classList.togg
 let LANG = 'en';
 function applyLang(l) {
   LANG = l;
+  document.documentElement.setAttribute('lang', l === 'sw' ? 'sw' : 'en');
   if ($('langEnBtn')) $('langEnBtn').className = l === 'en' ? 'px-2.5 py-1 rounded-full bg-white/10 font-bold text-white' : 'px-2.5 py-1 rounded-full text-white/60 font-bold hover:bg-white/10';
   if ($('langSwBtn')) $('langSwBtn').className = l === 'sw' ? 'px-2.5 py-1 rounded-full bg-white/10 font-bold text-white' : 'px-2.5 py-1 rounded-full text-white/60 font-bold hover:bg-white/10';
-  document.querySelectorAll('[data-en]').forEach(el => { el.textContent = l === 'sw' ? el.dataset.sw : el.dataset.en; });
+  /* Text content — never mix languages: each element carries BOTH strings and we
+   * swap the whole node, so an English page shows English only and a Kiswahili
+   * page shows Kiswahili only. */
+  document.querySelectorAll('[data-en]').forEach(el => { el.textContent = l === 'sw' ? (el.dataset.sw ?? el.dataset.en) : el.dataset.en; });
+  /* Placeholders get the same treatment via data-ph-en / data-ph-sw. */
+  document.querySelectorAll('[data-ph-en]').forEach(el => { el.setAttribute('placeholder', l === 'sw' ? (el.dataset.phSw ?? el.dataset.phEn) : el.dataset.phEn); });
 }
 function setLang(l) {
   try { localStorage.setItem('mts_lang', l); } catch (e) {}
   applyLang(l);
+  /* Dynamic sections render their own strings from LANG, so re-draw them. */
+  if (typeof renderServices === 'function') renderServices();
+  if (typeof renderPricing === 'function') renderPricing();
+  if (typeof renderNews === 'function') renderNews();
+  if (typeof renderTeam === 'function') renderTeam();
+  if (typeof paintWiz === 'function' && typeof $ === 'function' && $('wizLabel')) paintWiz();
   toast(l === 'sw' ? 'Lugha imebadilishwa: Kiswahili ✓' : 'Language switched: English ✓', 'info');
 }
 try { LANG = localStorage.getItem('mts_lang') === 'sw' ? 'sw' : 'en'; } catch (e) {}
@@ -169,14 +178,19 @@ applyLang(LANG);
 function renderServices() {
   if (!$('servicesGrid')) return;
   const cc = { cyan: 'text-cyan-300 bg-cyan-500/10 border-cyan-400/25', violet: 'text-violet-300 bg-violet-500/10 border-violet-400/25', gold: 'text-yellow-300 bg-yellow-500/10 border-yellow-400/25', emerald: 'text-emerald-300 bg-emerald-500/10 border-emerald-400/25', red: 'text-red-300 bg-red-500/10 border-red-400/25', fuchsia: 'text-fuchsia-300 bg-fuchsia-500/10 border-fuchsia-400/25', blue: 'text-blue-300 bg-blue-500/10 border-blue-400/25', teal: 'text-teal-300 bg-teal-500/10 border-teal-400/25' };
-  $('servicesGrid').innerHTML = SERVICES.map(s => `
+  $('servicesGrid').innerHTML = VISIBLE_SERVICES.map(s => {
+    const sw = LANG === 'sw';
+    const name = sw ? (s.tSw || s.t) : s.t;
+    const desc = sw ? (s.dSw || s.d) : s.d;
+    return `
     <div class="service-card glass rounded-3xl p-6 border border-white/10">
       <div class="w-12 h-12 rounded-2xl border flex items-center justify-center text-lg ${cc[s.c]}"><i class="fa-solid ${s.icon}"></i></div>
-      <div class="font-bold mt-4 text-[15px]">${s.t}</div>
-      <p class="text-white/55 text-[12.5px] mt-2 leading-relaxed">${s.d}</p>
+      <div class="font-bold mt-4 text-[15px]">${name}</div>
+      <p class="text-white/55 text-[12.5px] mt-2 leading-relaxed">${desc}</p>
       <div class="flex flex-wrap gap-1.5 mt-3">${s.tags.map(t => `<span class="text-[10.5px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60">${t}</span>`).join('')}</div>
-      <button onclick="openQuoteWizard('${s.t}')" class="mt-4 text-[13px] font-bold text-cyan-300 hover:text-white">Request this →</button>
-    </div>`).join('');
+      <button onclick="openQuoteWizard('${s.t}')" class="mt-4 text-[13px] font-bold text-cyan-300 hover:text-white">${sw ? 'Omba hii' : 'Request this'} →</button>
+    </div>`;
+  }).join('');
 }
 function renderStack() {
   if (!$('stackTabs')) return;
@@ -197,16 +211,99 @@ function renderPricing() {
       <div class="grid gap-2 mt-4 text-[13px] text-white/65">${m.f.map(f => `<div class="flex gap-2"><i class="fa-solid fa-check text-emerald-300 mt-1 text-xs"></i>${f}</div>`).join('')}</div>
       <button onclick="openQuoteWizard('Software Maintenance')" class="w-full mt-5 py-3 rounded-xl font-bold text-sm ${m.hot ? 'grad-btn' : 'border border-white/15 hover:bg-white/5'}">Subscribe →</button>
     </div>`).join('');
-  if ($('secPlans')) $('secPlans').innerHTML = `<div class="col-span-full text-[12px] font-bold tracking-[.2em] text-red-300 mt-6"><i class="fa-solid fa-shield-halved mr-2"></i>SECURITY SERVICES</div>` + SEC.map(m => `
+  /* The security block only appears when the admin has Cyber Security switched ON. */
+  if ($('secPlans')) {
+    const showSec = SERVICES_ON['cybersecurity'] !== false;
+    $('secPlans').innerHTML = showSec
+      ? `<div class="col-span-full text-[12px] font-bold tracking-[.2em] text-red-300 mt-6"><i class="fa-solid fa-shield-halved mr-2"></i>${LANG === 'sw' ? 'HUDUMA ZA USALAMA' : 'SECURITY SERVICES'}</div>` + SEC.map(m => `
     <div class="glass rounded-3xl p-6">
       <div class="font-display font-bold text-lg">${m.n}</div>
       <div class="mt-2"><span class="font-display font-bold text-3xl text-red-200">${m.p}</span><span class="text-white/40 text-sm"> ${m.per}</span></div>
       <div class="grid gap-2 mt-4 text-[13px] text-white/65">${m.f.map(f => `<div class="flex gap-2"><i class="fa-solid fa-check text-red-300 mt-1 text-xs"></i>${f}</div>`).join('')}</div>
-      <button onclick="openQuoteWizard('Cybersecurity Services')" class="w-full mt-5 py-3 rounded-xl font-bold text-sm border border-red-400/30 text-red-200 hover:bg-red-500/10">Secure My System →</button>
-    </div>`).join('');
+      <button onclick="openQuoteWizard('Cybersecurity Services')" class="w-full mt-5 py-3 rounded-xl font-bold text-sm border border-red-400/30 text-red-200 hover:bg-red-500/10">${LANG === 'sw' ? 'Linda Mfumo Wangu' : 'Secure My System'} →</button>
+    </div>`).join('')
+      : '';
+  }
 }
 let PORTFOLIO_DB = PORTFOLIO.slice();
 let TESTIS_DB = TESTIS.slice();
+let NEWS_DB = [];
+let TEAM_DB = [];
+
+async function loadNewsAndTeam(force = false) {
+  try {
+    const [n, tm] = await Promise.all([
+      apiGet('api/news.php', { action: 'list' }).catch(() => null),
+      apiGet('api/team.php', { action: 'list' }).catch(() => null),
+    ]);
+    if (n && Array.isArray(n.news)) NEWS_DB = n.news;
+    if (tm && Array.isArray(tm.team)) TEAM_DB = tm.team;
+  } catch { /* keep whatever we already have */ }
+}
+
+/* ---------- NEWS (public) ---------- */
+function renderNews() {
+  const box = $('newsGrid');
+  if (!box) return;
+  loadNewsAndTeam().then(() => {
+    if (!NEWS_DB.length) {
+      box.innerHTML = '<div class="md:col-span-2 lg:col-span-3 glass rounded-3xl p-8 text-center text-white/45"><span data-en="No news published yet. Check back soon." data-sw="Hakuna habari iliyochapishwa bado. Angalia tena hivi karibuni.">No news published yet. Check back soon.</span></div>';
+      applyLang(LANG);
+      return;
+    }
+    box.innerHTML = NEWS_DB.map(n => `
+      <article class="glass rounded-3xl overflow-hidden border border-white/10 flex flex-col">
+        ${n.imageUrl ? `<div class="h-44 overflow-hidden"><img src="${esc(n.imageUrl)}" class="w-full h-full object-cover" loading="lazy" alt="${esc(n.title)}"></div>` : ''}
+        <div class="p-5 flex-1 flex flex-col">
+          <div class="flex items-center gap-2"><span class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">${esc(n.category)}</span><span class="text-[11.5px] text-white/40">${fmtDate(n.createdAt)}</span></div>
+          <h3 class="font-bold text-[16px] mt-3 leading-snug">${esc(n.title)}</h3>
+          <p class="text-white/55 text-[13px] mt-2 leading-relaxed flex-1">${esc(n.excerpt)}</p>
+          <button onclick="viewNews('${n.id}')" class="mt-4 text-[13px] font-bold text-cyan-300 hover:text-white text-left"><span data-en="Read more →" data-sw="Soma zaidi →">Read more →</span></button>
+        </div>
+      </article>`).join('');
+    applyLang(LANG);
+  });
+}
+
+async function viewNews(id) {
+  try {
+    const d = await apiGet('api/news.php', { action: 'get', id });
+    const n = d.post;
+    openGen(esc(n.title), `
+      <div class="flex flex-wrap items-center gap-2 mb-3"><span class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">${esc(n.category)}</span><span class="text-[12px] text-white/40">${fmtDate(n.createdAt)}</span></div>
+      ${n.imageUrl ? `<img src="${esc(n.imageUrl)}" class="w-full rounded-2xl mb-4" alt="${esc(n.title)}">` : ''}
+      <div class="text-[14px] text-white/75 leading-relaxed whitespace-pre-line">${esc(n.body)}</div>`);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- OUR TEAM (public) ---------- */
+function renderTeam() {
+  const box = $('teamGrid');
+  if (!box) return;
+  loadNewsAndTeam().then(() => {
+    if (!TEAM_DB.length) {
+      box.innerHTML = '<div class="md:col-span-2 lg:col-span-3 glass rounded-3xl p-8 text-center text-white/45"><span data-en="Our team profiles will appear here." data-sw="Profaili za timu yetu zitaonekana hapa.">Our team profiles will appear here.</span></div>';
+      applyLang(LANG);
+      return;
+    }
+    box.innerHTML = TEAM_DB.map(m => {
+      const initials = (m.name || 'MTS').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      return `<div class="glass rounded-3xl p-6 border border-white/10 text-center">
+        ${m.imageUrl
+          ? `<img src="${esc(m.imageUrl)}" class="w-24 h-24 rounded-3xl object-cover mx-auto border border-white/10" alt="${esc(m.name)}">`
+          : `<div class="w-24 h-24 rounded-3xl grad-btn flex items-center justify-center font-display font-bold text-3xl mx-auto">${esc(initials)}</div>`}
+        <div class="font-bold text-[16px] mt-4">${esc(m.name)}</div>
+        <div class="text-[12.5px] text-cyan-300 font-semibold mt-1">${esc(m.role)}</div>
+        <p class="text-white/55 text-[13px] mt-3 leading-relaxed">${esc(m.bio)}</p>
+        <div class="flex justify-center gap-2 mt-4">
+          ${m.email ? `<a href="mailto:${esc(m.email)}" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:border-blue-400/50" title="Email"><i class="fa-solid fa-envelope text-blue-300 text-xs"></i></a>` : ''}
+          ${m.phone ? `<a href="tel:${esc(m.phone)}" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:border-cyan-400/50" title="Call"><i class="fa-solid fa-phone text-cyan-300 text-xs"></i></a>` : ''}
+          ${m.linkedin ? `<a href="${esc(m.linkedin)}" target="_blank" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:border-cyan-400/50" title="LinkedIn"><i class="fa-brands fa-linkedin text-cyan-300 text-xs"></i></a>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
 
 async function loadPortfolioAndTestimonials(force = false) {
   try {
@@ -242,7 +339,7 @@ function renderWork() {
           <div class="p-5"><div class="font-bold">${title}</div><p class="text-white/55 text-[12.5px] mt-1.5">${desc}</p></div>
         </div>`;
       return card;
-    }).join('') || '<div class="text-white/40 text-[13px] glass rounded-3xl p-8 col-span-full text-center">Portfolio projects will appear here after admin adds them. Coming soon!</div>';
+    }).join('') || `<div class="text-white/50 text-[13.5px] glass rounded-3xl p-8 col-span-full text-center leading-relaxed"><i class="fa-solid fa-hammer text-cyan-300 text-2xl mb-2 block"></i>${LANG === 'sw' ? 'Bado hatujamaliza mradi wa kwanza — na hatutadai uongo. Tunaunda mifumo halisi sasa; kuwa mteja wetu wa kwanza na kazi yako itaonekana hapa.' : 'We have not finished our first project yet — and we will not claim otherwise. We are building real systems now; become our first client and your work will appear here.'}</div>`;
     renderTesti();
     testiIdx = 0;
     if (window._testiInt) clearInterval(window._testiInt);
@@ -255,6 +352,8 @@ function renderHero() {
   if (!$('techMarquee')) return;
   $('techMarquee').innerHTML = Array(2).fill(['PHP','LARAVEL','R','RUST','REACT','PYTHON','HTML5','CSS3','JAVASCRIPT','TYPESCRIPT','NODE.JS','FLUTTER','POSTGRESQL','DOCKER','AWS','TENSORFLOW','TAILWIND','DJANGO'].map(t => `<span class="flex items-center gap-2 px-4"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>${t}</span>`).join('')).join('');
   const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { const el = e.target, t = +el.dataset.target; let n = 0; const iv = setInterval(() => { n += Math.max(1, Math.round(t / 40)); if (n >= t) { n = t; clearInterval(iv); } el.textContent = n; }, 30); obs.unobserve(el); } }));
+  const svcCount = $('svcCount');
+  if (svcCount) svcCount.dataset.target = VISIBLE_SERVICES.length;
   document.querySelectorAll('.counter').forEach(el => obs.observe(el));
   setInterval(() => {
     const stacks = ['"react", "rust", "php"', '"laravel", "node", "postgres"', '"r", "react", "docker"', '"python", "llama-3", "whatsapp"'];
@@ -269,7 +368,11 @@ function showStack(k, btn) {
   $('stackDetail').innerHTML = `<div class="flex items-center justify-between"><div class="font-mono font-bold text-cyan-300 text-lg">${k}</div><div class="text-[12px] text-white/50">${v.use}</div></div><div class="h-2.5 rounded-full bg-white/10 mt-3 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500" style="width:${v.level}%"></div></div><p class="text-[13.5px] text-white/65 mt-3 leading-relaxed">${v.desc}</p>`;
 }
 function renderTesti() {
-  if (!$('testiBox') || !TESTIS_DB.length) return;
+  if (!$('testiBox')) return;
+  if (!TESTIS_DB.length) {
+    $('testiBox').innerHTML = `<div class="text-white/50 text-[13.5px] leading-relaxed"><i class="fa-solid fa-quote-left text-cyan-300/60 mr-2"></i>${LANG === 'sw' ? 'Bado hakuna ushuhuda wa wateja — tutaonyesha maoni halisi mara tu mteja wa kwanza atakapokamilisha kazi nasi.' : 'No client testimonials yet — real reviews will appear here as soon as our first client completes a project with us.'}</div>`;
+    return;
+  }
   const idx = testiIdx % TESTIS_DB.length;
   const t = TESTIS_DB[idx] || TESTIS[0];
   const stars = Math.max(1, Math.min(5, Number(t.s || t.stars) || 5));
@@ -412,6 +515,8 @@ function returnTarget(role) {
 
 let __OTP_EMAIL = '';
 let __RESEND_COUNTDOWN = 0;
+let __PIN_AVAILABLE = false;
+let __PIN_KIND = '';
 let __RESEND_TIMER = null;
 
 function stopResendTimer() {
@@ -441,26 +546,63 @@ function startResendTimer(seconds = 60) {
   }, 1000);
 }
 
-function openOtpModal(email, debugCode = null) {
+function openOtpModal(email, debugCode = null, pinAvailable = false, pinKind = '') {
   __OTP_EMAIL = email;
+  __PIN_AVAILABLE = !!pinAvailable;
+  __PIN_KIND = pinKind;
   const hint = debugCode
     ? `<div class="text-[11px] font-mono text-white/35 mt-2 rounded-lg bg-white/[.03] p-2 border border-white/10"><span class="text-white/50 font-bold">DEV debug</span> — your test OTP is: <span class="text-emerald-300 font-bold text-lg">${esc(debugCode)}</span></div>`
     : `<div class="text-[11px] text-white/35 mt-2"><i class="fa-solid fa-envelope-open-text mr-1 text-cyan-300"></i><span data-en="Check your inbox (and spam/junk folder) for a 6-digit code from mbilinyitech@gmail.com. Expires in 10 minutes." data-sw="Tafuta kwenye email yako (na spam/junk folder) code ya 6 tarakimu kutoka mbilinyitech@gmail.com. Itaisha baada ya dakika 10.">Check your inbox (and spam/junk folder) for a 6-digit code from mbilinyitech@gmail.com. Expires in 10 minutes.</span></div>`;
+  const pinLabel = pinKind === 'phone'
+    ? '<span data-en="ENTER THE LAST 4 DIGITS OF YOUR PHONE (account pattern)" data-sw="INGIZA TARAKIMU 4 ZA MWISHO ZA SIMU YAKO (pattern ya account)">ENTER THE LAST 4 DIGITS OF YOUR PHONE (account pattern)</span>'
+    : '<span data-en="ENTER YOUR ACCOUNT PIN (4–6 digits)" data-sw="INGIZA PIN YA ACCOUNT YAKO (tarakimu 4–6)">ENTER YOUR ACCOUNT PIN (4–6 digits)</span>';
   openGen('<i class="fa-solid fa-shield-halved mr-1.5 text-cyan-300"></i>Verify Login', `
-    <div class="text-[13px] text-white/65"><span data-en="We sent a verification code to" data-sw="Tumetuma code ya uthibitisho kwa">We sent a verification code to</span> <span class="font-bold text-white">${esc(email)}</span></div>
-    ${hint}
-    <label class="text-[12px] font-bold text-white/60 mt-4 block"><span data-en="ENTER 6-DIGIT CODE" data-sw="INGIZA CODE YA 6 TARAKIMU">ENTER 6-DIGIT CODE</span></label>
-    <div class="grid grid-cols-6 gap-2 mt-2">
-      ${[0,1,2,3,4,5].map(i => `<input id="otp${i}" inputmode="numeric" maxlength="1" class="input !text-center !text-xl !font-mono !tracking-[0.3em]" oninput="onOtpInput(${i})" onkeydown="onOtpKey(${i},event)">`).join('')}
+    <div class="text-[13px] text-white/65"><span data-en="Verifying that this account is really yours:" data-sw="Tunathibitisha kuwa account hii ni yako kweli:">Verifying that this account is really yours:</span> <span class="font-bold text-white">${esc(email)}</span></div>
+    ${pinAvailable ? `<div class="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-white/[.04] border border-white/10 mt-4">
+      <button id="otpModeCode" onclick="switchVerifyMode('code')" class="py-2.5 rounded-xl font-bold text-[13px] grad-btn"><i class="fa-solid fa-envelope mr-1.5"></i><span data-en="Emailed Code" data-sw="Code ya Email">Emailed Code</span></button>
+      <button id="otpModePin" onclick="switchVerifyMode('pin')" class="py-2.5 rounded-xl font-bold text-[13px] text-white/60"><i class="fa-solid fa-key mr-1.5"></i>PIN</button>
+    </div>` : ''}
+    <div id="verifyCodeWrap">
+      ${hint}
+      <label class="text-[12px] font-bold text-white/60 mt-4 block"><span data-en="ENTER 6-DIGIT CODE" data-sw="INGIZA CODE YA 6 TARAKIMU">ENTER 6-DIGIT CODE</span></label>
+      <div class="grid grid-cols-6 gap-2 mt-2">
+        ${[0,1,2,3,4,5].map(i => `<input id="otp${i}" inputmode="numeric" maxlength="1" class="input !text-center !text-xl !font-mono !tracking-[0.3em]" oninput="onOtpInput(${i})" onkeydown="onOtpKey(${i},event)">`).join('')}
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2 mt-6">
+        <button onclick="doVerifyOTP()" id="verifyBtn" class="grad-btn flex-1 py-3.5 rounded-xl font-bold text-sm"><i class="fa-solid fa-shield-check mr-2"></i><span data-en="Verify & Sign In" data-sw="Thibitisha na Uingie">Verify & Sign In</span></button>
+        <button onclick="resendLoginCode()" id="resendBtn" class="px-4 py-3.5 rounded-xl border border-cyan-400/50 text-cyan-300 hover:text-white hover:bg-cyan-500/10 text-sm font-bold"><i class="fa-solid fa-rotate-right mr-1.5"></i><span data-en="Resend code" data-sw="Tuma tena">Resend code</span></button>
+      </div>
     </div>
-    <div class="flex flex-col sm:flex-row gap-2 mt-6">
-      <button onclick="doVerifyOTP()" id="verifyBtn" class="grad-btn flex-1 py-3.5 rounded-xl font-bold text-sm"><i class="fa-solid fa-shield-check mr-2"></i><span data-en="Verify & Sign In" data-sw="Thibitisha na Uingie">Verify & Sign In</span></button>
-      <button onclick="resendLoginCode()" id="resendBtn" class="px-4 py-3.5 rounded-xl border border-cyan-400/50 text-cyan-300 hover:text-white hover:bg-cyan-500/10 text-sm font-bold"><i class="fa-solid fa-rotate-right mr-1.5"></i><span data-en="Resend code" data-sw="Tuma tena">Resend code</span></button>
+    <div id="verifyPinWrap" class="hidden">
+      <div class="text-[11px] text-white/35 mt-3"><i class="fa-solid fa-lock mr-1 text-cyan-300"></i><span data-en="5 wrong attempts lock the account for 15 minutes." data-sw="Majaribio 5 mabaya yanafunga account kwa dakika 15.">5 wrong attempts lock the account for 15 minutes.</span></div>
+      <label class="text-[12px] font-bold text-white/60 mt-4 block">${pinLabel}</label>
+      <input id="loginPin" inputmode="numeric" maxlength="6" class="input mt-1.5 !text-center !text-2xl !font-mono !tracking-[0.4em]" onkeydown="if(event.key==='Enter')doVerifyPIN()">
+      <button onclick="doVerifyPIN()" class="grad-btn w-full mt-5 py-3.5 rounded-xl font-bold text-sm"><i class="fa-solid fa-key mr-2"></i><span data-en="Verify PIN & Sign In" data-sw="Thibitisha PIN na Uingie">Verify PIN & Sign In</span></button>
     </div>
     <button onclick="closeGen(); stopResendTimer();" class="w-full mt-3 text-[12px] text-white/40 hover:text-white/80"><span data-en="← Cancel — go back to Sign In" data-sw="← Ghairi — rudi kwenye Kuingia">← Cancel — go back to Sign In</span></button>
   `);
   startResendTimer(60);
-  setTimeout(() => $('otp0') && $('otp0').focus(), 50);
+  setTimeout(() => { const el = (__PIN_AVAILABLE && __PIN_KIND === 'phone') ? null : $('otp0'); if (el) el.focus(); }, 50);
+}
+function switchVerifyMode(mode) {
+  const codeOn = mode === 'code';
+  $('verifyCodeWrap')?.classList.toggle('hidden', !codeOn);
+  $('verifyPinWrap')?.classList.toggle('hidden', codeOn);
+  const bc = $('otpModeCode'), bp = $('otpModePin');
+  if (bc) bc.className = 'py-2.5 rounded-xl font-bold text-[13px] ' + (codeOn ? 'grad-btn' : 'text-white/60');
+  if (bp) bp.className = 'py-2.5 rounded-xl font-bold text-[13px] ' + (!codeOn ? 'grad-btn' : 'text-white/60');
+  if (codeOn) $('otp0')?.focus(); else $('loginPin')?.focus();
+}
+async function doVerifyPIN() {
+  const pin = ($('loginPin')?.value || '').replace(/\D/g, '');
+  if (pin.length < 4) { toast('Enter your 4–6 digit PIN.', 'err'); return; }
+  try {
+    const d = await apiPost('api/auth.php', { action: 'verify-login-pin', email: __OTP_EMAIL, pin });
+    window.__ME__ = d.user;
+    stopResendTimer(); closeGen();
+    toast(`Welcome back, ${esc(d.user.name)}! ✓`, 'ok');
+    location.href = returnTarget(d.user.role);
+  } catch (e) { toast(esc(e.message), 'err'); if ($('loginPin')) $('loginPin').value = ''; }
 }
 function onOtpInput(i) {
   const v = $('otp'+i).value.replace(/\D/g, '');
@@ -569,7 +711,7 @@ async function doLogin() {
   try {
     const d = await apiPost('api/auth.php', { action: 'login', email: e, password: p });
     if (d && d.otp_required) {
-      openOtpModal(d.email, d.otp_debug_only ?? null);
+      openOtpModal(d.email, d.otp_debug_only ?? null, !!d.pin_available, d.pin_kind || '');
       return;
     }
     if (d && d.user) {
@@ -582,11 +724,14 @@ async function doLogin() {
 
 async function doRegister() {
   const n = $('regName').value.trim(), ph = $('regPhone').value.trim(), e = $('regEmail').value.trim(), c = $('regCompany').value.trim(), p = $('regPass').value, p2 = $('regPass2').value;
+  const pin = ($('regPin')?.value || '').replace(/\D/g, ''), pin2 = ($('regPin2')?.value || '').replace(/\D/g, '');
   if (!n || !ph || !e) { toast('Fill all required fields.', 'err'); return; }
   if (p.length < 6) { toast('Password must be 6+ characters.', 'err'); return; }
   if (p !== p2) { toast('Passwords do not match.', 'err'); return; }
+  if (pin !== '' && (pin.length < 4 || pin.length > 6)) { toast('PIN must be 4–6 digits.', 'err'); return; }
+  if (pin !== '' && pin2 !== '' && pin !== pin2) { toast('PINs do not match.', 'err'); return; }
   try {
-    const d = await apiPost('api/auth.php', { action: 'register', name: n, phone: ph, email: e, company: c, password: p, password2: p2 });
+    const d = await apiPost('api/auth.php', { action: 'register', name: n, phone: ph, email: e, company: c, password: p, password2: p2, pin, pin2 });
     window.__ME__ = d.user;
     toast(`Welcome, ${esc(n)}! Account created ✓`, 'ok');
     location.href = 'client';
@@ -602,33 +747,199 @@ async function logout() {
 
 /* ---------- QUOTE WIZARD ---------- */
 let wizStep = 1, wizService = '';
-const QTECH = ['Python', 'React', 'Rust', 'R', 'HTML/CSS/JS', 'Node.js', 'Flutter', 'PostgreSQL', 'Docker', 'AWS'];
 let qTechSel = new Set();
 
 function openQuoteWizard(preset = '') {
   wizStep = 1; qTechSel = new Set(); if (preset) wizService = preset;
   const u = currentUser();
   if (u) { $('qName').value = u.name; $('qEmail').value = u.email; $('qPhone').value = u.phone || ''; $('qCompany').value = u.company || ''; }
-  $('qServiceGrid').innerHTML = SERVICES.map(s => `<button onclick="pickService('${s.t}',this)" class="qsvc text-left px-3.5 py-3 rounded-xl border text-[12.5px] font-bold ${wizService === s.t ? 'tab-active border-transparent' : 'border-white/10 text-white/70 hover:border-cyan-400/40'}"><i class="fa-solid ${s.icon} mr-1.5"></i>${s.t}</button>`).join('');
-  $('qTechGrid').innerHTML = QTECH.map(t => `<button onclick="toggleQTech('${t}',this)" class="px-3.5 py-2 rounded-full border border-white/10 text-[12.5px] font-mono hover:border-cyan-400/40 text-white/60">${t}</button>`).join('');
+  $('qServiceGrid').innerHTML = VISIBLE_SERVICES.map(s => `<button onclick="pickService('${s.t}',this)" class="qsvc text-left px-3.5 py-3 rounded-xl border text-[12.5px] font-bold ${wizService === s.t ? 'tab-active border-transparent' : 'border-white/10 text-white/70 hover:border-cyan-400/40'}"><i class="fa-solid ${s.icon} mr-1.5"></i>${LANG === 'sw' ? (s.tSw || s.t) : s.t}</button>`).join('');
+  renderStep3();
+  renderServiceFields();
   paintWiz(); $('quoteModal').classList.remove('hidden'); $('quoteModal').classList.add('flex'); document.body.style.overflow = 'hidden';
 }
-function pickService(t, btn) { wizService = t; document.querySelectorAll('.qsvc').forEach(b => { b.classList.remove('tab-active', 'border-transparent'); b.classList.add('border-white/10', 'text-white/70'); }); btn.classList.add('tab-active'); btn.classList.remove('border-white/10', 'text-white/70'); }
+/* Each service carries its own request form — fields differ per service. */
+const SERVICE_FORMS = {
+  'Custom Software Development': [
+    { id: 'sfSoftware', label: 'WHAT TYPE? *', type: 'select', options: ['Mobile App (Android/iOS)', 'Desktop App (Windows/macOS/Linux)', 'Web Application', 'Web + Mobile + Desktop', 'Full Custom System'] },
+    { id: 'sfUsers', label: 'ESTIMATED USERS / SCALE', type: 'select', options: ['1–10 (small)', '11–100 (growing)', '101–1,000 (business)', '1,000+ (enterprise)'] },
+    { id: 'sfIntegr', label: 'INTEGRATIONS NEEDED', type: 'text', ph: 'e.g. M-Pesa, SMS, Google Sheets, ERP…' },
+  ],
+  'System Analysis & Design': [
+    { id: 'sfDoc', label: 'DOCUMENTS REQUIRED *', type: 'select', options: ['SRS Document', 'Database / ERD Design', 'UML Diagrams', 'Full Feasibility Study', 'All of the above'] },
+    { id: 'sfScope', label: 'SYSTEM SCOPE', type: 'text', ph: 'What business process should the system cover?' },
+  ],
+  'IT Consultancy': [
+    { id: 'sfArea', label: 'AREA OF CONSULTANCY *', type: 'select', options: ['Digital Strategy', 'System Audit', 'Tech Hiring / Team Advice', 'CTO-as-a-Service', 'Other'] },
+    { id: 'sfWhen', label: 'WHEN DO YOU NEED THIS?', type: 'select', options: ['This week', 'This month', 'Next quarter', 'Flexible'] },
+  ],
+  'Software Maintenance': [
+    { id: 'sfPlan', label: 'MAINTENANCE PLAN *', type: 'select', options: ['Starter Care (150K/mo)', 'Business SLA (450K/mo)', 'Enterprise 24/7 (1.2M/mo)', 'One-off fix (not a plan)'] },
+    { id: 'sfSystem', label: 'SYSTEM TO MAINTAIN', type: 'text', ph: 'e.g. our pharmacy system built last year' },
+    { id: 'sfAccess', label: 'DO YOU HAVE SOURCE CODE / ACCESS?', type: 'select', options: ['Yes, full access', 'Partial', 'No — need takeover'] },
+  ],
+  'Cybersecurity Services': [
+    { id: 'sfSec', label: 'SECURITY SERVICE *', type: 'select', options: ['Security Audit (800K)', 'Penetration Test (2.5M)', 'Managed Security (900K/mo)', 'Malware Removal', 'SSL / Firewall Setup'] },
+    { id: 'sfTarget', label: 'TARGET SYSTEM / WEBSITE', type: 'text', ph: 'URL or system name' },
+    { id: 'sfUrgency', label: 'IS THIS AN ACTIVE INCIDENT?', type: 'select', options: ['No — preventive', 'Yes — suspected breach', 'Yes — active attack NOW'] },
+  ],
+  'Digital Forensics': [
+    { id: 'sfFrKind', label: 'INVESTIGATION TYPE *', type: 'select', options: ['Cyber-crime / fraud investigation', 'Data breach / incident response', 'Deleted-file & data recovery', 'Employee misconduct (company device)', 'Mobile phone forensics', 'Court-ready expert report'] },
+    { id: 'sfFrDevice', label: 'DEVICES / SOURCES *', type: 'text', ph: 'e.g. 1 laptop, 2 phones, server, USB drives' },
+    { id: 'sfFrLegal', label: 'LEGAL / DEADLINE CONTEXT', type: 'text', ph: 'e.g. police case, court date, internal HR case (optional)' },
+  ],
+  'AI Chatbots': [
+    { id: 'sfChannel', label: 'BOT CHANNEL *', type: 'select', options: ['Website Chatbot', 'WhatsApp Chatbot', 'Both Website + WhatsApp', 'Facebook / Instagram DM'] },
+    { id: 'sfLang', label: 'LANGUAGES', type: 'select', options: ['English only', 'Kiswahili only', 'English + Kiswahili', 'Other'] },
+    { id: 'sfBotGoal', label: 'WHAT SHOULD THE BOT DO?', type: 'text', ph: 'e.g. answer FAQs, sell, book appointments, track orders…' },
+  ],
+  'AI Fine-Tuning': [
+    { id: 'sfData', label: 'TRAINING DATA YOU HAVE *', type: 'select', options: ['Price lists', 'Policies / manuals', 'Chats / FAQs', 'Mixed documents', 'Not sure yet'] },
+    { id: 'sfModel', label: 'PREFERRED MODEL', type: 'select', options: ['Open-source (Llama/Mistral)', 'Commercial (GPT/Gemini)', 'Advise me'] },
+    { id: 'sfDeploy', label: 'WHERE WILL IT RUN?', type: 'select', options: ['Website chatbot', 'Internal staff tool', 'App / API', 'On-premise'] },
+  ],
+  'Cloud & DevOps': [
+    { id: 'sfCloud', label: 'PLATFORM *', type: 'select', options: ['AWS', 'VPS / DigitalOcean', 'Google Cloud', 'Azure', 'Advise me'] },
+    { id: 'sfDevops', label: 'WHAT DO YOU NEED?', type: 'select', options: ['Deployment only', 'CI/CD pipeline', 'Docker / Kubernetes', 'Domains + business email', 'Full setup'] },
+  ],
+  'BRELA & Business Registration': [
+    { id: 'sfBrela', label: 'REGISTRATION TYPE *', type: 'select', options: ['Company (Limited)', 'Business Name (Sole)', 'SME Registration', 'TIN / Tax registration', 'Certificate only'] },
+    { id: 'sfBrelaName', label: 'PROPOSED BUSINESS NAME(S)', type: 'text', ph: '1–3 name options for search' },
+  ],
+  'TRA & Tax Services': [
+    { id: 'sfTra', label: 'TRA SERVICE *', type: 'select', options: ['TIN Registration', 'File Tax Return', 'VAT Registration', 'PAYE Setup', 'TRA system support'] },
+    { id: 'sfTraPeriod', label: 'PERIOD / YEAR', type: 'text', ph: 'e.g. 2025 annual return' },
+  ],
+  'Computer Troubleshooting': [
+    { id: 'sfIssue', label: 'MAIN PROBLEM *', type: 'select', options: ['Slow PC', 'Crashes / errors', 'Malware / virus', 'Data recovery', 'Drivers / hardware', 'Other'] },
+    { id: 'sfDevice', label: 'DEVICE & OS', type: 'text', ph: 'e.g. HP laptop, Windows 11' },
+    { id: 'sfRemote', label: 'SUPPORT MODE', type: 'select', options: ['Remote (AnyDesk/TeamViewer)', 'Bring device to us', 'On-site visit'] },
+  ],
+  'Windows & OS Installation': [
+    { id: 'sfOs', label: 'OPERATING SYSTEM *', type: 'select', options: ['Windows 10/11', 'Linux (Ubuntu/Fedora)', 'macOS', 'Dual boot', 'Server OS'] },
+    { id: 'sfPc', label: 'DEVICE MODEL', type: 'text', ph: 'e.g. Dell Latitude 5520' },
+    { id: 'sfKeep', label: 'KEEP EXISTING FILES?', type: 'select', options: ['Yes — backup first', 'No — clean install', 'Not sure'] },
+  ],
+  'Email & Communication Setup': [
+    { id: 'sfEmail', label: 'EMAIL PLATFORM *', type: 'select', options: ['Google Workspace (G-Suite)', 'Zoho Mail', 'cPanel / Web host', 'Microsoft 365', 'Advise me'] },
+    { id: 'sfDomain', label: 'DOMAIN NAME', type: 'text', ph: 'e.g. yourcompany.co.tz' },
+    { id: 'sfMailJob', label: 'WHAT DO YOU NEED?', type: 'select', options: ['Create new mailboxes', 'Fix SMTP / delivery', 'SPF / DKIM / DMARC', 'Full setup'] },
+  ],
+  'Government e-Services': [
+    { id: 'sfGov', label: 'GOVERNMENT SERVICE *', type: 'select', options: ['NIDA', 'NHIF', 'NSSF', 'Huduma Number', 'eCitizen', 'BRELA / TRA portal', 'Other'] },
+    { id: 'sfGovId', label: 'YOUR ID / REFERENCE (optional)', type: 'text', ph: 'Avoid sharing passwords' },
+  ],
+  'Software Installation': [
+    { id: 'sfSoft', label: 'SOFTWARE TO INSTALL *', type: 'select', options: ['MS Office', 'Adobe (Photoshop etc.)', 'IDEs / Dev tools', 'Antivirus', 'Design apps', 'Other / list'] },
+    { id: 'sfCount', label: 'HOW MANY DEVICES?', type: 'select', options: ['1 device', '2–5 devices', '6–20 devices', '20+ devices'] },
+  ],
+};
+
+function serviceFormFields(service) {
+  return SERVICE_FORMS[service] || [];
+}
+
+/* Step 3 (technology/platform) is also per-service — no two services show the same set.
+ * Services not about code (BRELA, TRA, Windows, Email, Government, Software Install)
+ * show their own deliverable-focused options with NO programming-language picker. */
+const SERVICE_STEP3 = {
+  'Custom Software Development': { title: 'Technology & Platform', hint: 'Pick preferred languages (optional — our System Analyst will advise the best stack).', techs: ['Python', 'React', 'Rust', 'R', 'HTML/CSS/JS', 'Node.js', 'Flutter', 'PostgreSQL', 'Docker', 'AWS'], plabel: 'PLATFORM', platforms: ['Web Application', 'Mobile App (Android/iOS)', 'Desktop System', 'Web + Mobile', 'Web + Mobile + Desktop', 'Full System (All)'] },
+  'System Analysis & Design': { title: 'Documents & Modelling Tools', hint: 'What modelling tools do you already use? (optional)', techs: ['Draw.io', 'Lucidchart', 'Visio', 'StarUML', 'MySQL Workbench', 'Power BI'], plabel: 'DOCUMENT FORMAT', platforms: ['Word / PDF', 'Editable diagrams', 'Both'] },
+  'IT Consultancy': { title: 'Engagement Format', hint: 'How should the consultancy be delivered?', techs: [], plabel: 'ENGAGEMENT', platforms: ['One-off assessment', 'Monthly retainer', 'CTO-as-a-service', 'Workshop / training'] },
+  'Software Maintenance': { title: 'Support Model', hint: 'What kind of support do you need?', techs: [], plabel: 'SUPPORT CHANNEL', platforms: ['Email only', 'Email + WhatsApp', '24/7 on-call', 'On-site visits'] },
+  'Cybersecurity Services': { title: 'Audit Scope, Rules & Tools', hint: 'Any standards you must comply with? (optional)', techs: ['OWASP Top 10', 'ISO 27001', 'PCI-DSS', 'NIST', 'GDPR'], plabel: 'SCOPE', platforms: ['Web app', 'Network', 'Full infrastructure', 'Mail & endpoints'] },
+  'Digital Forensics': { title: 'Forensic Scope & Tools', hint: 'Which tools and legal standards apply? (optional)', techs: ['Autopsy', 'FTK Imager', 'Volatility', 'Wireshark', 'Chain of custody', 'Court-ready report'], plabel: 'DELIVERABLE', platforms: ['Evidence acquisition only', 'Full investigation report', 'Expert witness support', 'Incident response'] },
+  'AI Chatbots': { title: 'Platform & Model', hint: 'Where should the bot live and which AI model should power it?', techs: ['OpenAI GPT', 'Llama 3', 'Mistral', 'Gemini', 'Whisper STT', 'RAG + Vector DB'], plabel: 'DEPLOY TO', platforms: ['Website widget', 'WhatsApp Business', 'Facebook/Instagram', 'Both Website + WhatsApp'] },
+  'AI Fine-Tuning': { title: 'Model & Training Tooling', hint: 'Fine-tuning approach and tools (optional).', techs: ['LoRA', 'QLoRA', 'Full fine-tune', 'RAG', 'HuggingFace', 'PyTorch'], plabel: 'SERVING', platforms: ['Cloud API', 'On-premise', 'Your app / API', 'Advise me'] },
+  'Cloud & DevOps': { title: 'Cloud Stack & Tooling', hint: 'Which cloud and tooling do you use or prefer?', techs: ['AWS', 'Docker', 'Kubernetes', 'Terraform', 'GitHub Actions', 'Nginx', 'PostgreSQL'], plabel: 'PLATFORM', platforms: ['AWS', 'Google Cloud', 'Azure', 'VPS / DigitalOcean', 'Advise me'] },
+  'BRELA & Business Registration': { title: 'Registration Deliverables', hint: 'Which documents should we obtain for you?', techs: [], plabel: 'SERVICE SPEED', platforms: ['Standard (5–10 working days)', 'Express (2–3 working days)', 'Advise me'] },
+  'TRA & Tax Services': { title: 'TRA Filing Scope', hint: 'Which TRA obligations should we handle?', techs: [], plabel: 'FILING MODE', platforms: ['Online (TRA portal)', 'Physical documents', 'Both'] },
+  'Computer Troubleshooting': { title: 'Service Channels & Tools', hint: 'How should our technicians reach your device?', techs: ['AnyDesk', 'TeamViewer', 'RustDesk', 'On-site', 'Drop-off'], plabel: 'SESSION TYPE', platforms: ['Remote session', 'On-site visit', 'Bring device to us'] },
+  'Windows & OS Installation': { title: 'Licensing & Media', hint: 'How will the OS licence/installer be provided?', techs: [], plabel: 'LICENCE', platforms: ['Client provides licence', 'We provide licence', 'Free / open-source OS', 'Not sure'] },
+  'Email & Communication Setup': { title: 'Mail Platform & Security', hint: 'Which mail stack and security standards?', techs: ['SPF', 'DKIM', 'DMARC', 'IMAP/SMTP', 'Microsoft 365', 'Google Workspace'], plabel: 'DELIVERY', platforms: ['Remote configuration', 'On-site', 'Both'] },
+  'Government e-Services': { title: 'Government Portal & Documents', hint: 'Which portal(s) and what documents do you have ready?', techs: [], plabel: 'ASSISTANCE MODE', platforms: ['Guided (you apply, we guide)', 'We apply on your behalf', 'Advise me'] },
+  'Software Installation': { title: 'Installation Logistics', hint: 'How should we install and license the software?', techs: ['Windows', 'macOS', 'Linux', 'Remote', 'On-site'], plabel: 'LICENSING', platforms: ['Client provides licence', 'We recommend', 'Free/open-source only'] },
+};
+
+function renderStep3() {
+  const cfg = SERVICE_STEP3[wizService];
+  const techWrap = $('qTechWrap'), techGrid = $('qTechGrid'), titleEl = $('wizStep3Title'), hintEl = $('wizStep3Hint');
+  const platformSel = $('qPlatform'), plabelEl = $('qPlatformLabel');
+  if (!platformSel) return;
+
+  if (!cfg) {
+    /* Fallback (should not happen — every service has a config). */
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-code text-emerald-300 mr-2"></i>' + (LANG === 'sw' ? 'Hatua 3: Maelezo' : 'Step 3: Details');
+    if (hintEl) hintEl.textContent = LANG === 'sw' ? 'Tuambie jambo lolote lingine muhimu.' : 'Tell us anything else that matters.';
+    if (techWrap) techWrap.classList.add('hidden');
+    plabelEl.textContent = LANG === 'sw' ? 'JUKWAA' : 'PLATFORM';
+    platformSel.innerHTML = (LANG === 'sw' ? ['Sijui'] : ['Not sure']).map(o => `<option>${o}</option>`).join('');
+    return;
+  }
+
+  if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-code text-emerald-300 mr-2"></i>${LANG === 'sw' ? 'Hatua 3' : 'Step 3'}: ${esc(LANG === 'sw' && cfg.titleSw ? cfg.titleSw : cfg.title)}`;
+  if (hintEl) hintEl.textContent = LANG === 'sw' && cfg.hintSw ? cfg.hintSw : cfg.hint;
+  plabelEl.textContent = LANG === 'sw' && cfg.plabelSw ? cfg.plabelSw : cfg.plabel;
+  platformSel.innerHTML = cfg.platforms.map(o => `<option>${esc(o)}</option>`).join('');
+
+  if (cfg.techs.length) {
+    techWrap.classList.remove('hidden');
+    qTechSel = new Set();
+    $('qTechLabel').textContent = (LANG === 'sw' && cfg.titleSw ? cfg.titleSw.toUpperCase() : cfg.title.toUpperCase()) + (LANG === 'sw' ? ' — CHAGUA YOYOTE (si lazima)' : ' — SELECT ANY (optional)');
+    techGrid.innerHTML = cfg.techs.map(t => `<button onclick="toggleQTech('${t}',this)" class="px-3.5 py-2 rounded-full border border-white/10 text-[12.5px] font-mono hover:border-cyan-400/40 text-white/60">${t}</button>`).join('');
+  } else {
+    techWrap.classList.add('hidden');
+    qTechSel = new Set();
+    techGrid.innerHTML = '';
+  }
+}
+
+function renderServiceFields() {
+  const box = $('qServiceFields');
+  if (!box) return;
+  const fields = serviceFormFields(wizService);
+  if (!fields.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4">
+      <div class="text-[11px] font-bold tracking-[.16em] text-cyan-300 mb-2"><i class="fa-solid fa-list-check mr-1"></i>${esc(wizService).toUpperCase()} — SPECIFIC DETAILS</div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        ${fields.map(f => `<div><label class="text-[12px] font-bold text-white/60">${f.label}</label>${
+          f.type === 'select'
+            ? `<select id="${f.id}" class="input mt-1">${f.options.map(o => `<option>${esc(o)}</option>`).join('')}</select>`
+            : `<input id="${f.id}" class="input mt-1" placeholder="${esc(f.ph || '')}">`
+        }</div>`).join('')}
+      </div>
+      <div class="text-[11px] text-white/40 mt-2">Only ask what matters for this service — no generic noise.</div>
+    </div>`;
+}
+
+function collectServiceFields() {
+  const out = {};
+  serviceFormFields(wizService).forEach(f => { const el = $(f.id); if (el) out[f.label.replace(' *', '')] = el.value.trim(); });
+  return out;
+}
+
+function pickService(t, btn) { wizService = t; document.querySelectorAll('.qsvc').forEach(b => { b.classList.remove('tab-active', 'border-transparent'); b.classList.add('border-white/10', 'text-white/70'); }); btn.classList.add('tab-active'); btn.classList.remove('border-white/10', 'text-white/70'); renderStep3(); renderServiceFields(); }
 function toggleQTech(t, btn) { if (qTechSel.has(t)) { qTechSel.delete(t); btn.classList.remove('tab-active'); } else { qTechSel.add(t); btn.classList.add('tab-active'); } }
 function closeQuoteWizard() { $('quoteModal').classList.add('hidden'); $('quoteModal').classList.remove('flex'); document.body.style.overflow = ''; }
 
 function paintWiz() {
   document.querySelectorAll('.wizard-step').forEach(s => s.classList.toggle('active', +s.dataset.step === wizStep));
   $('wizProgress').innerHTML = [1, 2, 3, 4, 5].map(i => `<div class="flex-1 h-2 rounded-full ${i <= wizStep ? 'bg-gradient-to-r from-cyan-400 to-violet-500' : 'bg-white/10'}"></div>`).join('');
-  $('wizLabel').textContent = `Step ${wizStep} of 5`;
+  $('wizLabel').textContent = LANG === 'sw' ? `Hatua ${wizStep} ya 5` : `Step ${wizStep} of 5`;
   $('wizBack').classList.toggle('invisible', wizStep === 1);
-  $('wizNext').innerHTML = wizStep === 5 ? '<i class="fa-solid fa-paper-plane mr-2"></i>Submit Request' : 'Continue →';
+  $('wizNext').innerHTML = wizStep === 5
+    ? (LANG === 'sw' ? '<i class="fa-solid fa-paper-plane mr-2"></i>Tuma Ombi' : '<i class="fa-solid fa-paper-plane mr-2"></i>Submit Request')
+    : (LANG === 'sw' ? 'Endelea →' : 'Continue →');
   if (wizStep === 5) {
+    const sf = collectServiceFields();
+    const sfRows = Object.entries(sf).map(([k, v]) => `<div><span class="text-white/45">${esc(k)}:</span> <strong class="text-cyan-200">${esc(v || '—')}</strong></div>`).join('');
     $('qReview').innerHTML = `
     <div><span class="text-white/45">Name:</span> <strong>${esc($('qName').value || '—')}</strong> • ${esc($('qPhone').value || '')} • ${esc($('qEmail').value || '')}</div>
     <div><span class="text-white/45">Service:</span> <strong class="text-cyan-300">${esc(wizService || '—')}</strong></div>
     <div><span class="text-white/45">Project:</span> <strong>${esc($('qTitle').value || '—')}</strong></div>
     <div><span class="text-white/45">Details:</span> ${esc(($('qDesc').value || '—').slice(0, 220))}</div>
+    ${sfRows}
     <div><span class="text-white/45">Tech:</span> <span class="font-mono text-cyan-200">${[...qTechSel].join(', ') || 'To be advised by analyst'}</span> • ${esc($('qPlatform').value)} • ${esc($('qPriority').value)}</div>
     <div><span class="text-white/45">Budget:</span> ${esc($('qBudget').value)} • <span class="text-white/45">Deadline:</span> ${esc($('qDeadline').value || 'Flexible')}</div>`;
   }
@@ -661,7 +972,8 @@ async function submitRequest() {
       action: 'create',
       name: $('qName').value.trim(), phone: $('qPhone').value.trim(), email: $('qEmail').value.trim(), company: $('qCompany').value.trim(),
       service: wizService, title: $('qTitle').value.trim(), description: $('qDesc').value.trim(),
-      tech: [...qTechSel], platform: $('qPlatform').value, budget: $('qBudget').value,
+      tech: [...qTechSel], serviceDetails: collectServiceFields(),
+      platform: $('qPlatform').value, budget: $('qBudget').value,
       deadline: $('qDeadline').value, priority: $('qPriority').value,
     });
   } catch (err) {
@@ -701,12 +1013,12 @@ function paintClientHeader() {
 }
 
 async function clientTab(t) {
-  const valid = ['overview', 'requests', 'quotes', 'contracts', 'invoices', 'support'];
+  const valid = ['overview', 'requests', 'quotes', 'contracts', 'invoices', 'support', 'news'];
   if (!valid.includes(t)) t = 'overview';
   cTab = t;
   document.querySelectorAll('#clientNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.ctab === t));
   const u = currentUser(); if (!u) { showView('auth'); return; }
-  const titles = { overview: 'Overview', requests: 'My Requests', quotes: 'Quotations — Nukuu za Bei', contracts: 'Contracts — Mikataba', invoices: 'Invoices & Payments', support: 'Support Center' };
+  const titles = { overview: 'Overview', requests: 'My Requests', quotes: 'Quotations — Nukuu za Bei', contracts: 'Contracts — Mikataba', invoices: 'Invoices & Payments', support: 'Support Center', news: 'News & Updates' };
   $('clientTabTitle').textContent = titles[t];
   $('clientContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading your data…</div>';
 
@@ -787,6 +1099,24 @@ async function clientTab(t) {
     h = `<div class="grid gap-3">${myI.map(v => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-5 flex flex-wrap items-center justify-between gap-3"><div><div class="font-bold">${v.id} — ${esc(v.title)}</div><div class="text-[12px] text-white/45">Due ${fmtDate(v.dueDate)} • ${v.method}</div><span class="badge ${v.status === 'Paid' ? 'status-Completed' : 'status-Pending'} mt-1 inline-block">${v.status.toUpperCase()}</span></div><div class="text-right"><div class="font-display font-bold text-xl">${fmtTZS(v.amount)}</div>${v.status !== 'Paid' ? `<button onclick="payInvoice('${v.id}')" class="mt-2 px-5 py-2.5 rounded-xl gold-btn text-[13px] font-bold text-[#2a1500]"><i class="fa-solid fa-mobile-screen mr-1"></i> Pay via M-Pesa</button>` : '<div class="text-emerald-300 text-[13px] font-bold">✓ Paid — Asante!</div>'}</div></div>`).join('') || '<div class="text-white/40 text-sm">No invoices yet.</div>'}</div>
     <div class="mt-4 rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4 text-[12.5px] text-white/70"><strong class="text-white"><i class="fa-solid fa-coins text-gold mr-1"></i>Kanuni ya malipo — 50/50:</strong> <strong class="text-gold">Lipa 50% (deposit) kabla project kuanza</strong> — mradi unanza rasmi baada ya deposit na saini ya CEO; nusu iliyobaki inalipwa baada ya kukabidhi project. <strong class="text-white">Payment:</strong> M-Pesa 0796 752 645 (Jackson Mbilinyi) • Bank details on invoice. Send receipt on WhatsApp after paying.</div>`;
   }
+  if (t === 'news') {
+    let news = [];
+    try { news = (await apiGet('api/news.php', { action: 'list' })).news || []; } catch (e) { news = []; }
+    h = `<div class="rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+      <i class="fa-solid fa-newspaper text-cyan-300 mr-2"></i><span data-en="Announcements and updates from the Mbilinyi Tech team." data-sw="Matangazo na taarifa kutoka timu ya Mbilinyi Tech.">Announcements and updates from the Mbilinyi Tech team.</span>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+    ${news.map(n => `
+      <article class="rounded-2xl border border-white/10 bg-white/[.02] overflow-hidden flex flex-col">
+        ${n.imageUrl ? `<div class="h-40 overflow-hidden"><img src="${esc(n.imageUrl)}" class="w-full h-full object-cover" loading="lazy" alt="${esc(n.title)}"></div>` : ''}
+        <div class="p-5 flex-1 flex flex-col">
+          <div class="flex flex-wrap items-center gap-2"><span class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">${esc(n.category)}</span><span class="text-[11.5px] text-white/40">${fmtDate(n.createdAt)}</span></div>
+          <div class="font-bold text-[15px] mt-2">${esc(n.title)}</div>
+          <p class="text-[13px] text-white/55 mt-1.5 leading-relaxed flex-1">${esc(n.excerpt)}</p>
+          <button onclick="viewNews('${n.id}')" class="mt-3 text-[13px] font-bold text-cyan-300 hover:text-white text-left">Read more →</button>
+        </div>
+      </article>`).join('') || '<div class="md:col-span-2 text-white/40 glass rounded-3xl p-8 text-center">No news yet — check back soon.</div>'}</div>`;
+  }
   if (t === 'support') {
     h = `<div class="flex flex-wrap gap-2"><input id="tkSub" class="input !w-auto flex-1 min-w-[200px]" placeholder="Subject"><button onclick="clientNewTicket()" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm">+ New Ticket</button></div>
     <textarea id="tkMsg" rows="2" class="input mt-2" placeholder="Describe your issue..."></textarea>
@@ -798,11 +1128,14 @@ async function clientTab(t) {
 async function viewRequestDetail(id) {
   let r;
   try { r = (await apiGet('api/requests.php', { action: 'get', id })).request; } catch (e) { toast(esc(e.message), 'err'); return; }
+  const sd = r.serviceDetails || {};
+  const sdRows = Object.entries(sd).map(([k, v]) => `<div class="flex gap-2"><span class="text-white/40 text-[11px] font-bold uppercase mt-0.5">${esc(k)}</span><span class="text-white/85">${esc(v)}</span></div>`).join('');
   openGen(`Request ${r.trackingId}`, `<div class="grid gap-3 text-[14px]">
     <div class="flex justify-between flex-wrap gap-2"><span class="badge status-${r.status.replace(' ', '')}">${r.status}</span><span class="text-white/40 text-[12px]">${fmtDate(r.createdAt)} • ${esc(r.priority)}</span></div>
     <div><div class="text-[11px] font-bold text-white/40">SERVICE</div><div class="font-bold text-cyan-300">${esc(r.service)}</div></div>
     <div><div class="text-[11px] font-bold text-white/40">PROJECT TITLE</div><div class="font-bold">${esc(r.title)}</div></div>
     <div><div class="text-[11px] font-bold text-white/40">FULL REQUIREMENTS</div><div class="p-4 rounded-xl bg-white/[.03] border border-white/10 whitespace-pre-line text-white/75">${esc(r.description)}</div></div>
+    ${sdRows ? `<div><div class="text-[11px] font-bold text-white/40">${esc(r.service).toUpperCase()} — SPECIFIC DETAILS</div><div class="p-4 rounded-xl bg-cyan-500/[.05] border border-cyan-400/25 grid gap-1.5 text-[13px]">${sdRows}</div></div>` : ''}
     <div class="grid sm:grid-cols-3 gap-2 text-[13px]"><div class="p-3 rounded-xl bg-white/[.03] border border-white/10"><div class="text-white/40 text-[11px] font-bold">TECH</div><span class="font-mono">${(r.tech || []).join(', ') || '—'}</span></div><div class="p-3 rounded-xl bg-white/[.03] border border-white/10"><div class="text-white/40 text-[11px] font-bold">BUDGET</div>${esc(r.budget)}</div><div class="p-3 rounded-xl bg-white/[.03] border border-white/10"><div class="text-white/40 text-[11px] font-bold">DEADLINE</div>${esc(r.deadline || 'Flexible')}</div></div>
     ${r.adminNote ? `<div class="p-3 rounded-xl bg-violet-500/[.08] border border-violet-400/25 text-[13px]"><strong class="text-violet-300">CEO note:</strong> ${esc(r.adminNote)}</div>` : ''}
   </div>`);
@@ -1062,7 +1395,7 @@ let aTab = 'overview', adminSearch = '', adminStatusFilter = 'All';
 async function adminTab(t) {
   aTab = t;
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
-  const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration' };
+  const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration' };
   $('adminTabTitle').textContent = titles[t];
   $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
 
@@ -1130,6 +1463,7 @@ async function adminTab(t) {
       <div class="grid gap-3">${list.map(r => { const u = usersById[r.userId]; const q = allQuotes.find(x => x.requestId === r.id); return `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-5">
         <div class="flex flex-wrap justify-between gap-2"><div><span class="font-mono text-cyan-300 text-[12px] font-bold">${r.trackingId}</span> <span class="text-[11px] text-white/40">• ${fmtDate(r.createdAt)} • ${esc(r.priority)}</span><div class="font-bold text-[15px] mt-0.5">${esc(r.title)}</div><div class="text-[12px] text-white/50">${esc(r.name)} • ${esc(r.phone)} • ${esc(r.email)} ${u ? `• <span class="${u.status === 'Active' ? 'text-emerald-300' : 'text-red-300'}">[${u.status}]</span>` : ''}</div></div><span class="badge status-${r.status.replace(' ', '')} h-fit">${r.status.toUpperCase()}</span></div>
         <div class="text-[12.5px] text-white/60 mt-2"><strong class="text-white/80">${esc(r.service)}</strong> • Budget: ${esc(r.budget)} • Deadline: ${esc(r.deadline || '—')} • Tech: <span class="font-mono">${(r.tech || []).join(', ') || '—'}</span></div>
+        ${Object.keys(r.serviceDetails || {}).length ? `<div class="mt-2 flex flex-wrap gap-1.5">${Object.entries(r.serviceDetails).map(([k, v]) => `<span class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-400/25 text-cyan-200"><b>${esc(k)}:</b> ${esc(v)}</span>`).join('')}</div>` : ''}
         <p class="text-[13px] text-white/65 mt-1.5 whitespace-pre-line">${esc(r.description)}</p>
         <div class="flex flex-wrap gap-2 mt-3">
           <select onchange="setReqStatus('${r.id}',this.value)" class="input !w-auto !py-2 text-[12px] font-bold">${['Pending', 'Under Review', 'Quoted', 'Approved', 'In Progress', 'Completed', 'Rejected'].map(s => `<option ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
@@ -1241,6 +1575,62 @@ async function adminTab(t) {
       }).join('') || '<div class="md:col-span-2 text-white/40 glass rounded-3xl p-8 text-center">No testimonials yet. Click "Add Testimonial" — they will appear on the homepage hero immediately.</div>'}</div>`;
     }
 
+    if (t === 'news') {
+      await loadNewsAndTeam(true);
+      let all;
+      try { all = await apiGet('api/news.php', { action: 'list', all: '1' }); } catch (e) { all = { news: NEWS_DB }; }
+      NEWS_DB = all.news || [];
+      h = `<div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div class="text-[13px] text-white/55"><i class="fa-solid fa-newspaper text-cyan-300 mr-1.5"></i>Published posts appear immediately on the <strong>news</strong> page and in the client portal. Unpublished posts stay hidden from users.</div>
+        <button onclick="openNewsEditor('new')" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-plus mr-1"></i> Add News Post</button>
+      </div>
+      <div class="grid md:grid-cols-2 gap-4">
+      ${NEWS_DB.map(n => `
+        <div class="rounded-2xl border ${n.isActive ? 'border-cyan-400/25' : 'border-white/10'} bg-white/[.02] p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2"><span class="badge bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">${esc(n.category)}</span><span class="badge ${n.isActive ? 'status-Completed' : 'status-Rejected'}">${n.isActive ? 'PUBLISHED' : 'HIDDEN'}</span><span class="text-[11px] text-white/40">${fmtDate(n.createdAt)}</span></div>
+              <div class="font-bold text-[15px] mt-2">${esc(n.title)}</div>
+              <p class="text-[12.5px] text-white/55 mt-1 line-clamp-3">${esc(n.excerpt)}</p>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <button onclick="openNewsEditor('${n.id}')" title="Edit" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-400/50"><i class="fa-solid fa-pen text-[11px] text-cyan-300"></i></button>
+              <button onclick="toggleNews('${n.id}')" title="${n.isActive ? 'Unpublish' : 'Publish'}" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:border-yellow-400/50"><i class="fa-solid fa-eye${n.isActive ? '-slash' : ''} text-[11px] text-yellow-300"></i></button>
+              <button onclick="delNews('${n.id}')" title="Delete" class="w-9 h-9 rounded-lg bg-red-500/10 border border-red-400/20 hover:border-red-400/60"><i class="fa-solid fa-trash text-[11px] text-red-300"></i></button>
+            </div>
+          </div>
+        </div>`).join('') || '<div class="md:col-span-2 text-white/40 glass rounded-3xl p-8 text-center">No news posts yet. Click "Add News Post" — published posts appear on the news page immediately.</div>'}</div>`;
+    }
+
+    if (t === 'team') {
+      await loadNewsAndTeam(true);
+      let all;
+      try { all = await apiGet('api/team.php', { action: 'list', all: '1' }); } catch (e) { all = { team: TEAM_DB }; }
+      TEAM_DB = all.team || [];
+      h = `<div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div class="text-[13px] text-white/55"><i class="fa-solid fa-people-group text-violet-300 mr-1.5"></i>Team members appear on the homepage <strong>Our Team</strong> section and the team page. Hidden members are not shown to visitors.</div>
+        <button onclick="openTeamEditor('new')" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-plus mr-1"></i> Add Team Member</button>
+      </div>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      ${TEAM_DB.map(m => {
+        const initials = (m.name || 'MTS').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        return `<div class="rounded-2xl border ${m.isActive ? 'border-violet-400/25' : 'border-white/10'} bg-white/[.02] p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0 flex items-center gap-3">
+              ${m.imageUrl ? `<img src="${esc(m.imageUrl)}" class="w-12 h-12 rounded-2xl object-cover border border-white/10">` : `<div class="w-12 h-12 rounded-2xl grad-btn flex items-center justify-center font-bold">${esc(initials)}</div>`}
+              <div class="min-w-0"><div class="font-bold text-[14px] truncate">${esc(m.name)}</div><div class="text-[11.5px] text-violet-300 truncate">${esc(m.role)}</div><span class="badge ${m.isActive ? 'status-Completed' : 'status-Rejected'} mt-1 inline-block">${m.isActive ? 'VISIBLE' : 'HIDDEN'}</span></div>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <button onclick="openTeamEditor('${m.id}')" title="Edit" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:border-violet-400/50"><i class="fa-solid fa-pen text-[11px] text-violet-300"></i></button>
+              <button onclick="toggleTeam('${m.id}')" title="${m.isActive ? 'Hide' : 'Show'}" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:border-yellow-400/50"><i class="fa-solid fa-eye${m.isActive ? '-slash' : ''} text-[11px] text-yellow-300"></i></button>
+              <button onclick="delTeam('${m.id}')" title="Delete" class="w-9 h-9 rounded-lg bg-red-500/10 border border-red-400/20 hover:border-red-400/60"><i class="fa-solid fa-trash text-[11px] text-red-300"></i></button>
+            </div>
+          </div>
+          <p class="text-[12.5px] text-white/55 mt-3 line-clamp-3">${esc(m.bio)}</p>
+        </div>`;
+      }).join('') || '<div class="md:col-span-2 lg:col-span-3 text-white/40 glass rounded-3xl p-8 text-center">No team members yet. Click "Add Team Member" — they appear on the homepage immediately.</div>'}</div>`;
+    }
+
     if (t === 'settings') {
       const [sd, pl] = await Promise.all([
         apiGet('api/settings.php', { action: 'list' }),
@@ -1301,6 +1691,32 @@ async function adminTab(t) {
       </div>
 
       <div class="mt-4"><button onclick="saveAllSettings()" class="grad-btn px-7 py-3.5 rounded-xl font-bold text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Save Settings</button></div>
+
+      <!-- SERVICE VISIBILITY -->
+      <div class="rounded-2xl border border-amber-400/30 bg-amber-500/[.05] p-5 mt-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <div class="font-bold text-[14px]"><i class="fa-solid fa-toggle-on text-amber-300 mr-2"></i>Service Visibility — switch services on or off</div>
+          <span class="badge bg-amber-500/15 text-amber-200">Your control</span>
+        </div>
+        <div class="text-[12.5px] text-white/55 mb-4">
+          Switch any service <strong>ON</strong> to show it on the website, or <strong>OFF</strong> to hide it everywhere (services grid, quote wizard &amp; dropdowns).
+          <strong class="text-amber-200">Cyber Security and Digital Forensics start switched OFF</strong> — switch them on when you are ready to offer them.
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5" id="svcVisGrid">
+          ${SERVICES.map(s => {
+            const on = (window.__SERVICES_ON__ || {})[s.k] !== false;
+            return `<label class="flex items-center gap-3 rounded-xl bg-black/20 border border-white/10 p-3 cursor-pointer hover:border-amber-400/40">
+              <input type="checkbox" class="w-4 h-4 accent-amber-400" data-svckey="${esc(s.k)}" ${on ? 'checked' : ''}>
+              <span class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0"><i class="fa-solid ${s.icon} text-[13px] text-white/70"></i></span>
+              <span class="text-[12.5px] font-bold leading-snug">${esc(s.t)}</span>
+            </label>`;
+          }).join('')}
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <button onclick="saveServiceVisibility()" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Save Service Visibility</button>
+          <span class="text-[12px] text-white/45">Takes effect on the next page load.</span>
+        </div>
+      </div>
 
       <!-- SERVICE PRICES -->
       <div class="rounded-2xl border border-violet-400/25 bg-violet-500/[.05] p-5 mt-5">
@@ -1407,6 +1823,16 @@ async function saveAllSettings() {
     toast(`Saved ${Object.keys(settings).length} settings ✓ — clients see them immediately.`, 'ok');
   } catch (e) { toast(esc(e.message), 'err'); }
 }
+/* Service visibility is stored as one comma-separated `services_hidden` key. */
+async function saveServiceVisibility() {
+  const hidden = [...document.querySelectorAll('[data-svckey]')]
+    .filter(c => !c.checked)
+    .map(c => c.dataset.svckey);
+  try {
+    await apiPost('api/settings.php', { action: 'save', key: 'services_hidden', value: hidden.join(',') });
+    toast('Service visibility saved ✓ — reload the page to see it applied.', 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
 async function savePlanPrice(id) {
   const n = document.querySelector(`[data-planname="${CSS.escape(id)}"]`);
   const p = document.querySelector(`[data-planprice="${CSS.escape(id)}"]`);
@@ -1503,7 +1929,7 @@ async function openPortfolioEditor(id) {
     <div class="grid sm:grid-cols-2 gap-3">
       <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">TITLE *</label><input id="pfTitle" class="input mt-1" value="${esc(p.title)}" placeholder="e.g. ShulePay Fees Portal"></div>
       <div><label class="text-[12px] font-bold text-white/60">CATEGORY</label><input id="pfCat" class="input mt-1" value="${esc(p.category)}" placeholder="e.g. Education • React + Node + SMS"></div>
-      <div><label class="text-[12px] font-bold text-white/60">STAT / RESULT TAG</label><input id="pfStat" class="input mt-1" value="${esc(p.stat)}" placeholder="e.g. +27% revenue, Zero fee leakage"></div>
+      <div><label class="text-[12px] font-bold text-white/60">STAT / RESULT TAG</label><input id="pfStat" class="input mt-1" value="${esc(p.stat)}" placeholder="e.g. Multi-branch stock control, OWASP hardening"></div>
       <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">IMAGE URL * (recommended 800x600)</label><input id="pfImg" class="input mt-1 font-mono text-[12px]" value="${esc(p.imageUrl)}" placeholder="https://.../photo.jpg or a data URI"></div>
       <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">OPTIONAL EXTERNAL LINK</label><input id="pfLink" class="input mt-1 font-mono text-[12px]" value="${esc(p.link)}" placeholder="https:// (optional — live project URL)"></div>
       <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">DESCRIPTION *</label><textarea id="pfDesc" rows="3" class="input mt-1">${esc(p.description)}</textarea></div>
@@ -1584,16 +2010,110 @@ async function delTestimonial(id) {
   loadPortfolioAndTestimonials(true);
 }
 
+/* ---------- News admin CRUD ---------- */
+const NEWS_CATEGORIES = ['Announcement', 'New Service', 'Product Update', 'Event', 'Case Study', 'Tender', 'Other'];
+
+async function openNewsEditor(id) {
+  let n = { id: 'new', title: '', category: 'Announcement', excerpt: '', body: '', imageUrl: '' };
+  if (id !== 'new') {
+    try { n = (await apiGet('api/news.php', { action: 'get', id })).post; } catch (e) { toast(esc(e.message), 'err'); return; }
+  }
+  const cats = NEWS_CATEGORIES.includes(n.category) ? NEWS_CATEGORIES : [n.category, ...NEWS_CATEGORIES];
+  openGen(id === 'new' ? 'Add News Post' : `Edit News — ${n.title || id}`, `
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">TITLE *</label><input id="nwTitle" class="input mt-1" value="${esc(n.title)}" placeholder="e.g. New AI fine-tuning service now available"></div>
+      <div><label class="text-[12px] font-bold text-white/60">CATEGORY</label><select id="nwCat" class="input mt-1">${cats.map(c => `<option ${n.category === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+      <div><label class="text-[12px] font-bold text-white/60">IMAGE URL (optional)</label><input id="nwImg" class="input mt-1 font-mono text-[12px]" value="${esc(n.imageUrl)}" placeholder="https://.../photo.jpg"></div>
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">SHORT SUMMARY (leave blank to auto-generate)</label><input id="nwExcerpt" class="input mt-1" value="${esc(n.excerpt)}" placeholder="One-line summary shown on the card"></div>
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">FULL ARTICLE *</label><textarea id="nwBody" rows="7" class="input mt-1">${esc(n.body)}</textarea></div>
+    </div>
+    <div class="flex gap-2 mt-5"><button onclick="saveNewsEdit('${id}')" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">${id === 'new' ? 'Publish Post' : 'Save Changes'}</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+async function saveNewsEdit(id) {
+  const payload = {
+    action: id === 'new' ? 'add' : 'update',
+    title: $('nwTitle').value.trim(),
+    category: $('nwCat').value,
+    excerpt: $('nwExcerpt').value.trim(),
+    body: $('nwBody').value.trim(),
+    image_url: $('nwImg').value.trim(),
+  };
+  if (!payload.title || !payload.body) { toast('Title and article body are required.', 'err'); return; }
+  if (id !== 'new') payload.id = id;
+  try { await apiPost('api/news.php', payload); } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); adminTab('news'); toast(id === 'new' ? 'News post published ✓' : 'News post updated ✓', 'ok');
+}
+async function toggleNews(id) {
+  try { await apiPost('api/news.php', { action: 'toggle', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('news'); toast('Publish status changed.', 'info');
+}
+async function delNews(id) {
+  if (!confirm('Delete this news post permanently?')) return;
+  try { await apiPost('api/news.php', { action: 'delete', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('news'); toast('News post deleted.', 'info');
+}
+
+/* ---------- Team admin CRUD ---------- */
+async function openTeamEditor(id) {
+  let m = { id: 'new', name: '', role: '', bio: '', imageUrl: '', email: '', phone: '', linkedin: '', sortOrder: 0 };
+  if (id !== 'new') {
+    await loadNewsAndTeam(true);
+    const found = TEAM_DB.find(x => x.id === id);
+    if (found) m = found;
+  }
+  openGen(id === 'new' ? 'Add Team Member' : `Edit Member — ${m.name || id}`, `
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div><label class="text-[12px] font-bold text-white/60">FULL NAME *</label><input id="tmName" class="input mt-1" value="${esc(m.name)}" placeholder="e.g. Jackson Mbilinyi"></div>
+      <div><label class="text-[12px] font-bold text-white/60">ROLE / TITLE</label><input id="tmRole" class="input mt-1" value="${esc(m.role)}" placeholder="e.g. CEO &amp; Founder"></div>
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">PHOTO URL (optional)</label><input id="tmImg" class="input mt-1 font-mono text-[12px]" value="${esc(m.imageUrl)}" placeholder="https://.../photo.jpg"></div>
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">SHORT BIO</label><textarea id="tmBio" rows="3" class="input mt-1" placeholder="One or two sentences about this person">${esc(m.bio)}</textarea></div>
+      <div><label class="text-[12px] font-bold text-white/60">EMAIL</label><input id="tmEmail" class="input mt-1" value="${esc(m.email)}" placeholder="name@mbilinyitech.co.tz"></div>
+      <div><label class="text-[12px] font-bold text-white/60">PHONE</label><input id="tmPhone" class="input mt-1" value="${esc(m.phone)}" placeholder="07XX XXX XXX"></div>
+      <div><label class="text-[12px] font-bold text-white/60">LINKEDIN URL</label><input id="tmLinkedin" class="input mt-1 font-mono text-[12px]" value="${esc(m.linkedin)}" placeholder="https://linkedin.com/in/..."></div>
+      <div><label class="text-[12px] font-bold text-white/60">SORT ORDER</label><input id="tmSort" type="number" class="input mt-1" value="${Number(m.sortOrder) || 0}"></div>
+    </div>
+    <div class="flex gap-2 mt-5"><button onclick="saveTeamEdit('${id}')" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">${id === 'new' ? 'Add Member' : 'Save Changes'}</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+async function saveTeamEdit(id) {
+  const payload = {
+    action: id === 'new' ? 'add' : 'update',
+    name: $('tmName').value.trim(),
+    role: $('tmRole').value.trim(),
+    bio: $('tmBio').value.trim(),
+    image_url: $('tmImg').value.trim(),
+    email: $('tmEmail').value.trim(),
+    phone: $('tmPhone').value.trim(),
+    linkedin: $('tmLinkedin').value.trim(),
+    sort_order: Number($('tmSort').value) || 0,
+  };
+  if (!payload.name) { toast('Name is required.', 'err'); return; }
+  if (id !== 'new') payload.id = id;
+  try { await apiPost('api/team.php', payload); } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); adminTab('team'); toast(id === 'new' ? 'Team member added ✓' : 'Team member updated ✓', 'ok');
+}
+async function toggleTeam(id) {
+  try { await apiPost('api/team.php', { action: 'toggle', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('team'); toast('Visibility changed.', 'info');
+}
+async function delTeam(id) {
+  if (!confirm('Remove this team member permanently?')) return;
+  try { await apiPost('api/team.php', { action: 'delete', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('team'); toast('Team member removed.', 'info');
+}
+
 /* full edit of a request (admin) */
 async function openRequestEditor(id) {
   let r;
   try { r = (await apiGet('api/requests.php', { action: 'get', id })).request; } catch (e) { toast(esc(e.message), 'err'); return; }
-  const services = SERVICES.map(s => `<option ${r.service === s.t ? 'selected' : ''}>${s.t}</option>`).join('');
+  const services = VISIBLE_SERVICES.map(s => `<option ${r.service === s.t ? 'selected' : ''}>${s.t}</option>`).join('');
   const extra = SERVICES.some(s => s.t === r.service) ? '' : `<option selected>${esc(r.service)}</option>`;
   openGen(`Edit Request — ${r.trackingId}`, `
     <label class="text-[12px] font-bold text-white/60">SERVICE</label><select id="reService" class="input mt-1">${extra}${services}</select>
     <label class="text-[12px] font-bold text-white/60 mt-3 block">PROJECT TITLE</label><input id="reTitle" class="input mt-1" value="${esc(r.title)}">
     <label class="text-[12px] font-bold text-white/60 mt-3 block">REQUIREMENTS</label><textarea id="reDesc" rows="4" class="input mt-1">${esc(r.description)}</textarea>
+    ${Object.keys(r.serviceDetails || {}).length ? `<div class="mt-3 rounded-xl border border-cyan-400/25 bg-cyan-500/[.05] p-3"><div class="text-[11px] font-bold text-cyan-300 mb-1.5">CLIENT'S SERVICE-SPECIFIC ANSWERS</div><div class="grid gap-1 text-[12.5px]">${Object.entries(r.serviceDetails).map(([k, v]) => `<div class="flex gap-2"><span class="text-white/40 font-bold uppercase text-[10.5px] mt-0.5">${esc(k)}</span><span class="text-white/85">${esc(v)}</span></div>`).join('')}</div></div>` : ''}
     <div class="grid sm:grid-cols-3 gap-3 mt-3"><div><label class="text-[12px] font-bold text-white/60">PRIORITY</label><select id="rePriority" class="input mt-1"><option ${r.priority === 'Normal' ? 'selected' : ''}>Normal</option><option ${r.priority === 'Urgent' ? 'selected' : ''}>Urgent</option><option ${r.priority === 'Critical / ASAP' ? 'selected' : ''}>Critical / ASAP</option></select></div><div><label class="text-[12px] font-bold text-white/60">BUDGET</label><input id="reBudget" class="input mt-1" value="${esc(r.budget)}"></div><div><label class="text-[12px] font-bold text-white/60">DEADLINE</label><input id="reDeadline" class="input mt-1" value="${esc(r.deadline || '')}" placeholder="YYYY-MM-DD"></div></div>
     <label class="text-[12px] font-bold text-white/60 mt-3 block">STATUS</label><select id="reStatus" class="input mt-1">${['Pending', 'Under Review', 'Quoted', 'Approved', 'In Progress', 'Completed', 'Rejected'].map(s => `<option ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
     <label class="text-[12px] font-bold text-white/60 mt-3 block">CEO NOTE (client will see it)</label><textarea id="reNote" rows="2" class="input mt-1">${esc(r.adminNote || '')}</textarea>
@@ -1895,8 +2415,8 @@ async function brain(raw) {
   if (/bei|price|cost|gharama|pesa|how much|quotation|nukuu/.test(t)) return `💰 <strong>Pricing guide (TZS):</strong><br>• Websites: 500K+ • Business systems: 1.5M–5M • Mobile apps: 2M+ • Chatbots: 600K+ • Maintenance: 150K/mo+ • Security audit: 800K+<br><br>Exact price = official quotation from CEO within 24hrs after you submit the <a href="#" onclick="openQuoteWizard();return false;" class="text-cyan-300 underline font-bold">Requirements Form →</a>`;
   if (/maint|matengenezo|support|update|bug|warranty/.test(t)) return `🛠 <strong>Software Maintenance:</strong> Starter 150K/mo • Business SLA 450K/mo (popular) • Enterprise 24/7 1.2M/mo.<br>Includes updates, backups, bug fixes & monitoring. <a href="#" onclick="openQuoteWizard('Software Maintenance');return false;" class="text-cyan-300 underline font-bold">Subscribe →</a>`;
   if (/secur|hack|virus|pentest|audit|usalama/.test(t)) return `🔒 <strong>Security Services:</strong> Audit 800K • Pentest 2.5M • Managed 900K/mo.<br>OWASP Top-10, malware removal, WAF, SSL & staff training. Zero breaches to date. <a href="#" onclick="openQuoteWizard('Cybersecurity Services');return false;" class="text-cyan-300 underline font-bold">Secure my system →</a>`;
-  if (/fine|tuning|ai|chatbot|llm|robot|bot/.test(t)) return `🤖 <strong>AI Services:</strong> WhatsApp & website chatbots (Swahili + English) + LLM fine-tuning on YOUR data (price lists, FAQs, policies). Try the <a href="ai" class="text-cyan-300 underline font-bold">live AI demo →</a> or <a href="#" onclick="openQuoteWizard('AI Solutions & Fine-Tuning');return false;" class="text-cyan-300 underline font-bold">request AI project →</a>`;
-  if (/service|huduma|offer|fanya|mnatoa/.test(t)) return `We offer <strong>15</strong> service lines:<br><strong>1.</strong> Custom Software<br><strong>2.</strong> System Analysis<br><strong>3.</strong> IT Consultancy<br><strong>4.</strong> Maintenance<br><strong>5.</strong> Cybersecurity<br><strong>6.</strong> AI Chatbots<br><strong>7.</strong> AI Fine-Tuning<br><strong>8.</strong> Cloud & DevOps<br><strong>9.</strong> BRELA & Business Registration<br><strong>10.</strong> TRA & Tax Services<br><strong>11.</strong> Computer Troubleshooting<br><strong>12.</strong> Windows & OS Installation<br><strong>13.</strong> Email Setup & Repair<br><strong>14.</strong> Government e-Services<br><strong>15.</strong> Software Installation<br><a href="services" class="text-cyan-300 underline font-bold">View details →</a> or <a href="#" onclick="openQuoteWizard();return false;" class="text-cyan-300 underline font-bold">Start a request →</a>`;
+  if (/fine|tuning|ai|chatbot|llm|robot|bot/.test(t)) return `🤖 <strong>AI & Chatbot:</strong> Build your own AI & Chatbot with MBILINYITECH — WhatsApp & website bots (Swahili + English) + LLM fine-tuning on YOUR data (price lists, FAQs, policies). Try the <a href="ai" class="text-cyan-300 underline font-bold">live AI demo →</a> or <a href="#" onclick="openQuoteWizard('AI Solutions & Fine-Tuning');return false;" class="text-cyan-300 underline font-bold">build your own AI →</a>`;
+  if (/service|huduma|offer|fanya|mnatoa/.test(t)) return `We offer <strong>15</strong> service lines:<br><strong>1.</strong> Custom Software (Mobile + Desktop + Web)<br><strong>2.</strong> System Analysis<br><strong>3.</strong> IT Consultancy<br><strong>4.</strong> Maintenance<br><strong>5.</strong> Cybersecurity<br><strong>6.</strong> AI Chatbots<br><strong>7.</strong> AI Fine-Tuning (Build your own AI & Chatbot with MBILINYITECH)<br><strong>8.</strong> Cloud & DevOps<br><strong>9.</strong> BRELA & Business Registration<br><strong>10.</strong> TRA & Tax Services<br><strong>11.</strong> Computer Troubleshooting<br><strong>12.</strong> Windows & OS Installation<br><strong>13.</strong> Email Setup & Repair<br><strong>14.</strong> Government e-Services<br><strong>15.</strong> Software Installation<br><a href="services" class="text-cyan-300 underline font-bold">View details →</a> or <a href="#" onclick="openQuoteWizard();return false;" class="text-cyan-300 underline font-bold">Start a request →</a>`;
   if (/brela|tin|register|sajili|license|certificate/.test(t)) return `✅ <strong>100% Legitimate:</strong> BRELA Registered (Z-418822-77-TZ) • TRA TIN <span class="font-mono">192-147-522</span>. We also DO BRELA + TRA registrations for YOUR business. Every project includes a stamped service contract, e-signature & official receipts.`;
   if (/contact|mawasiliano|number|namba|email|instagram|whatsapp|call|ceo|jackson|mbilinyi/.test(t)) return `📞 <strong>CEO Jackson Mbilinyi</strong><br>• Phone/WhatsApp/SMS: <a href="tel:+255796752645" class="text-cyan-300 font-bold">0796 752 645</a><br>• Email: <a href="mailto:mbilinyitech@gmail.com" class="text-cyan-300 font-bold">mbilinyitech@gmail.com</a><br>• Instagram: <strong>@mbilinyitech</strong><br>• Hours: Mon–Sat 8:00–20:00 EAT`;
   if (/\br\b|rust|react|python|html|php|laravel|language|stack|teknolojia/.test(t)) return `💻 <strong>Our stack:</strong> PHP 96% • Laravel 94% • Python 98% • React 97% • Rust 90% • R 88% • HTML/CSS/JS 99% • Node 92% • Flutter 85% • SQL & Cloud 94%. We choose the right tool per project — speed, security & scale guaranteed.`;
@@ -1923,6 +2443,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPricing();
   loadPublicPrices();
   renderWork();
+  renderNews();
+  renderTeam();
   initFeedbackStars();
 
   if ($('view-client')) {
@@ -1961,6 +2483,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('quoteModal')?.addEventListener('click', e => { if (e.target === $('quoteModal')) closeQuoteWizard(); });
   $('genModal')?.addEventListener('click', e => { if (e.target === $('genModal')) closeGen(); });
+
+  applyLang(LANG); // re-apply after every first-paint renderer so the chosen language is never mixed
 });
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeQuoteWizard(); closeGen(); } });

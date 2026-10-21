@@ -31,20 +31,20 @@ try {
             // System prompt tailored to Mbilinyi Tech — ALWAYS injected as first
             $servicesList = '';
             $svcs = [
-                ['Custom Software Development', 'Web, mobile & desktop systems in React, Python, Rust, PHP, Laravel, R & HTML/CSS/JS.'],
+                ['Custom Software Development', 'Build your own software with MBILINYITECH — mobile apps, desktop apps & web applications in React, Python, Rust, PHP, Laravel, R & HTML/CSS/JS.'],
                 ['System Analysis & Design', 'SRS, database design, UML, workflows, feasibility studies.'],
                 ['IT Consultancy', 'Digital strategy, system audits, CTO-as-a-service.'],
-                ['Software Maintenance', 'Bug fixes, updates, backups, SLA 99.9% & 24/7 support.'],
+                ['Software Maintenance', 'Software maintenance & support — bug fixes, updates, backups, SLA 99.9% & 24/7 support.'],
                 ['Cybersecurity Services', 'Pentest, OWASP audits, malware removal, SSL, firewall, staff training.'],
-                ['AI Chatbots', 'Website & WhatsApp chatbots in English + Kiswahili.'],
-                ['AI Fine-Tuning', 'LLM fine-tuning on YOUR data (LoRA, RAG) for on-brand accurate answers.'],
+                ['AI Chatbots', 'Build your own AI & Chatbot with MBILINYITECH — website & WhatsApp chatbots in English + Kiswahili, trained on your data.'],
+                ['AI Fine-Tuning', 'Build your own AI & Chatbot with MBILINYITECH — LLM fine-tuning on YOUR data (LoRA, RAG) for on-brand accurate answers.'],
                 ['Cloud & DevOps', 'AWS/VPS, CI/CD, Docker, domains, business emails.'],
                 ['BRELA & Business Registration', 'Usajili wa Biashara, SME, Company (BRELA Z-418822-77-TZ).'],
                 ['TRA & Tax Services', 'TIN, Tax returns, VAT, PAYE (TIN 192-147-522).'],
                 ['Computer Troubleshooting', 'Software issues, malware removal, slow PC, crashes, data recovery.'],
-                ['Windows & OS Installation', 'Windows 10/11, Linux, macOS + drivers + activation.'],
-                ['Email & Communication Setup', 'G-Suite, Zoho, cPanel, SMTP, SPF/DKIM, email troubleshooting.'],
-                ['Government e-Services', 'NIDA, NHIF, NSSF, Huduma Number, eCitizen & other gov portals.'],
+                ['Windows & OS Installation', 'Windows installation & OS setup — Windows 10/11, Linux, macOS + drivers + activation.'],
+                ['Email & Communication Setup', 'Business email setup — G-Suite, Zoho, cPanel, SMTP, SPF/DKIM, email troubleshooting.'],
+                ['Government Application Services', 'Government application services — NIDA, NHIF, NSSF, Huduma Number, eCitizen, BRELA & TRA portals, TIN, leseni na other gov portals.'],
                 ['Software Installation', 'MS Office, Adobe, IDEs, Antivirus, design apps & custom setup.'],
             ];
             foreach ($svcs as $i => $s) { $servicesList .= ($i+1) . '. ' . $s[0] . ' — ' . $s[1] . "\n"; }
@@ -74,6 +74,7 @@ Company location: DODOMA, TANZANIA. All work is delivered ONLINE / REMOTELY to c
 Website: https://mbilinyitech.co.tz
 CEO & Sole Administrator: JACKSON MBILINYI — phone/WhatsApp/SMS +255 796 752 645, email mbilinyitech@gmail.com, Instagram @mbilinyitech.
 Company TAGLINE: "YOUR PROBLEM, OUR SOLUTION" — Kiswahili: "SHIDA YAKO, TATUZO LETU".
+AI SERVICE MOTTO: "Build your own AI & Chatbot with MBILINYITECH" — mention it whenever AI chatbots or AI fine-tuning come up.
 Working hours: Mon-Sat 08:00 — 20:00 EAT.
 
 ## PRICES (quote these in Tanzanian Shillings — they are the current published rates):

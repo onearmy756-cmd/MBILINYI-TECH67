@@ -44,21 +44,21 @@ require __DIR__ . '/partials/head.php';
         <p class="text-white/55 text-[13px] mt-1"><span data-en="Fields marked * are required." data-sw="Sehemu zilizo na * ni lazima.">Fields marked * are required.</span></p>
 
         <div class="grid sm:grid-cols-2 gap-3 mt-5">
-          <input id="fbName" class="input" placeholder="Your name / Jina lako *">
-          <input id="fbEmail" class="input" type="email" placeholder="Email / Barua pepe">
+          <input id="fbName" class="input" data-ph-en="Your name *" data-ph-sw="Jina lako *" placeholder="Your name *">
+          <input id="fbEmail" class="input" type="email" data-ph-en="Email address" data-ph-sw="Barua pepe" placeholder="Email address">
         </div>
 
-        <input id="fbSubject" class="input mt-3" placeholder="Subject / Somo (optional)">
+        <input id="fbSubject" class="input mt-3" data-ph-en="Subject (optional)" data-ph-sw="Somo (si lazima)" placeholder="Subject (optional)">
 
         <div class="grid sm:grid-cols-2 gap-3 mt-3">
           <select id="fbCategory" class="input">
-            <option value="general">General feedback / Maoni ya jumla</option>
-            <option value="praise">Praise / Sifa</option>
-            <option value="complaint">Complaint / Malalamiko</option>
-            <option value="feature">Feature idea / Wazo la kipengele</option>
-            <option value="bug">Bug report / Ripoti ya hitilafu</option>
-            <option value="service">Service quality / Ubora wa huduma</option>
-            <option value="price">Pricing / Bei</option>
+            <option value="general" data-en="General feedback" data-sw="Maoni ya jumla">General feedback</option>
+            <option value="praise" data-en="Praise" data-sw="Sifa">Praise</option>
+            <option value="complaint" data-en="Complaint" data-sw="Malalamiko">Complaint</option>
+            <option value="feature" data-en="Feature idea" data-sw="Wazo la kipengele">Feature idea</option>
+            <option value="bug" data-en="Bug report" data-sw="Ripoti ya hitilafu">Bug report</option>
+            <option value="service" data-en="Service quality" data-sw="Ubora wa huduma">Service quality</option>
+            <option value="price" data-en="Pricing" data-sw="Bei">Pricing</option>
           </select>
 
           <div>
@@ -70,7 +70,7 @@ require __DIR__ . '/partials/head.php';
           </div>
         </div>
 
-        <textarea id="fbMessage" rows="6" class="input mt-3" placeholder="Write your feedback here... / Andika maoni yako hapa... *"></textarea>
+        <textarea id="fbMessage" rows="6" class="input mt-3" data-ph-en="Write your feedback here... *" data-ph-sw="Andika maoni yako hapa... *" placeholder="Write your feedback here... *"></textarea>
 
         <button onclick="submitFeedback()" id="fbBtn" class="grad-btn w-full mt-4 px-6 py-3.5 rounded-xl font-bold">
           <i class="fa-solid fa-paper-plane mr-2"></i><span data-en="Send Feedback" data-sw="Tuma Maoni">Send Feedback</span>

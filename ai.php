@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/config/app.php';
-$pageTitle = 'AI Fine-Tuning & Chatbots — LLMs Trained on Your Data | Mbilinyi Tech Solutions';
+$pageTitle = 'Build Your Own AI & Chatbot with MBILINYITECH — AI Fine-Tuning & Chatbots | Mbilinyi Tech Solutions';
 $page = 'landing';
 require __DIR__ . '/partials/head.php';
 ?>
@@ -10,6 +10,11 @@ require __DIR__ . '/partials/head.php';
 <!-- ============ AI & FINE-TUNING PAGE ============ -->
 <div id="view-landing" class="view-section active">
   <section id="ai" class="max-w-7xl mx-auto px-4 pt-8 pb-16">
+    <div class="text-center max-w-3xl mx-auto mb-8">
+      <div class="badge bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-400/30 inline-block">AI &amp; CHATBOT</div>
+      <h1 class="font-display font-bold text-3xl md:text-5xl mt-4">Build Your Own <span class="grad-text">AI &amp; Chatbot</span> with MBILINYITECH</h1>
+      <p class="text-white/55 mt-3 text-[14.5px]">Fine-tuned LLMs and 24/7 website &amp; WhatsApp chatbots trained on YOUR business data — in English &amp; Kiswahili.</p>
+    </div>
     <div class="grid lg:grid-cols-2 gap-6">
       <div class="rounded-3xl p-[1.5px] bg-gradient-to-br from-cyan-400 via-blue-600 to-violet-600">
         <div class="rounded-3xl bg-[#070D1F] p-6 md:p-8 h-full">

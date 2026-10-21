@@ -34,9 +34,11 @@
       <a href="/" class="hover:text-white" data-en="Home" data-sw="Mwanzo">Home</a>
       <a href="services" class="hover:text-white" data-en="Services" data-sw="Huduma">Services</a>
       <a href="stack" class="hover:text-white" data-en="Tech Stack" data-sw="Teknolojia">Tech Stack</a>
-      <a href="ai" class="hover:text-white">AI & Fine-Tuning</a>
+      <a href="ai" class="hover:text-white" data-en="AI & Fine-Tuning" data-sw="AI na Urekebishaji">AI & Fine-Tuning</a>
       <a href="pricing" class="hover:text-white" data-en="Pricing" data-sw="Bei">Pricing</a>
       <a href="work" class="hover:text-white" data-en="Work" data-sw="Kazi">Work</a>
+      <a href="news" class="hover:text-white" data-en="News" data-sw="Habari">News</a>
+      <a href="team" class="hover:text-white" data-en="Our Team" data-sw="Timu Yetu">Our Team</a>
       <a href="track" class="hover:text-white flex items-center gap-1"><i class="fa-solid fa-magnifying-glass text-cyan-300 text-xs"></i> <span data-en="Track Order" data-sw="Fuatilia Oda">Track Order</span></a>
       <a href="contact" class="hover:text-white" data-en="Contact" data-sw="Mawasiliano">Contact</a>
     </nav>
@@ -47,16 +49,18 @@
     </div>
   </div>
   <div id="mobileMenu" class="hidden lg:hidden border-t border-white/10 px-4 py-4 grid gap-2 text-sm bg-[#0A1226]">
-    <a href="/" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">Home / Mwanzo</a>
-    <a href="services" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">Services / Huduma</a>
-    <a href="stack" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">Tech Stack</a>
-    <a href="ai" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">AI & Fine-Tuning</a>
-    <a href="pricing" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">Pricing / Bei</a>
-    <a href="work" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">Work / Kazi</a>
-    <a href="process" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">How It Works</a>
-    <a href="track" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">Track Order</a>
-    <a href="contact" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5">Contact</a>
-    <button onclick="location.href='auth'" class="p-3 rounded-xl bg-white/5 text-left"><i class="fa-solid fa-right-to-bracket mr-2 text-cyan-300"></i> Sign In / Client & Admin Portal</button>
+    <a href="/" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Home" data-sw="Mwanzo">Home</a>
+    <a href="services" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Services" data-sw="Huduma">Services</a>
+    <a href="stack" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Tech Stack" data-sw="Teknolojia">Tech Stack</a>
+    <a href="ai" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="AI &amp; Fine-Tuning" data-sw="AI na Urekebishaji">AI &amp; Fine-Tuning</a>
+    <a href="pricing" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Pricing" data-sw="Bei">Pricing</a>
+    <a href="work" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Work" data-sw="Kazi">Work</a>
+    <a href="news" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="News" data-sw="Habari">News</a>
+    <a href="team" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Our Team" data-sw="Timu Yetu">Our Team</a>
+    <a href="process" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="How It Works" data-sw="Inavyofanya Kazi">How It Works</a>
+    <a href="track" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Track Order" data-sw="Fuatilia Oda">Track Order</a>
+    <a href="contact" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Contact" data-sw="Mawasiliano">Contact</a>
+    <button onclick="location.href='auth'" class="p-3 rounded-xl bg-white/5 text-left"><i class="fa-solid fa-right-to-bracket mr-2 text-cyan-300"></i> <span data-en="Sign In / Client &amp; Admin Portal" data-sw="Ingia / Portal ya Mteja na Msimamizi">Sign In / Client &amp; Admin Portal</span></button>
   </div>
 </header>
 

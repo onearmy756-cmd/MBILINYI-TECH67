@@ -61,15 +61,15 @@ function mts_legal_page(array $doc): void {
 
           <div class="grid sm:grid-cols-3 gap-3 mt-6 text-[12.5px]">
             <div class="rounded-xl bg-white/[.03] border border-white/10 p-3.5">
-              <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1">Effective / Kuanzia</div>
+              <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1" data-en="EFFECTIVE" data-sw="KUANZIA">Effective</div>
               <div class="font-semibold"><?php echo mts_e($effective); ?></div>
             </div>
             <div class="rounded-xl bg-white/[.03] border border-white/10 p-3.5">
-              <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1">Last updated / Imesasishwa</div>
+              <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1" data-en="LAST UPDATED" data-sw="IMESASISHWA">Last updated</div>
               <div class="font-semibold"><?php echo mts_e($updated); ?></div>
             </div>
             <div class="rounded-xl bg-white/[.03] border border-white/10 p-3.5">
-              <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1">Jurisdiction / Sheria</div>
+              <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-300 mb-1" data-en="JURISDICTION" data-sw="SHERIA">Jurisdiction</div>
               <div class="font-semibold" data-en="United Republic of Tanzania" data-sw="Jamhuri ya Muungano wa Tanzania">United Republic of Tanzania</div>
             </div>
           </div>

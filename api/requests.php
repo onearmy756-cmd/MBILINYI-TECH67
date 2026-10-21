@@ -81,15 +81,24 @@ try {
             $tech = param('tech', []);
             if (!is_array($tech)) $tech = [];
 
+            /* Per-service form answers (each service asks different questions). */
+            $serviceDetails = param('serviceDetails', []);
+            if (!is_array($serviceDetails)) $serviceDetails = [];
+            $serviceDetails = array_filter(
+                array_map(static fn($v) => is_scalar($v) ? trim((string)$v) : '', $serviceDetails),
+                static fn($v) => $v !== ''
+            );
+
             $rid = new_id('R-');
             $tracking = unique_tracking_id();
             db_run(
                 'INSERT INTO requests
-                 (id,tracking_id,user_id,name,email,phone,company,service,title,description,tech,platform,budget,deadline,priority,status,admin_note,created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,now())',
+                 (id,tracking_id,user_id,name,email,phone,company,service,title,description,tech,service_details,platform,budget,deadline,priority,status,admin_note,created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,now())',
                 [
                     $rid, $tracking, $user['id'], $name, $email, $phone, $company, $service, $title, $description,
                     json_encode(array_values($tech), JSON_UNESCAPED_UNICODE),
+                    json_encode($serviceDetails, JSON_UNESCAPED_UNICODE),
                     str_param('platform', 'Web Application'),
                     str_param('budget', ''),
                     str_param('deadline', ''),

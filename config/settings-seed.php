@@ -37,6 +37,10 @@ function mts_seed_settings(PDO $pdo): void {
         'company_domain'   => 'mbilinyitech.co.tz',
         'company_email'    => 'info@mbilinyitech.co.tz',
         'company_phone'    => '0796 752 645',
+
+        /* --- Service visibility: Cyber Security & Digital Forensics ship OFF.
+         * The admin switches them on (or off) from Settings → Service Visibility. */
+        'services_hidden'  => 'cybersecurity,forensics',
     ];
 
     /* --- Service prices (admin-editable; chatbot + pricing page read these) ---
@@ -54,6 +58,7 @@ function mts_seed_settings(PDO $pdo): void {
         'maintenance'    => 150000,
         'brela'          => 150000,
         'tra_tax'        => 100000,
+        'forensics'      => 1200000,
     ];
     foreach ($servicePrices as $code => $price) {
         $defaults['price_' . $code] = (string)$price;
@@ -62,6 +67,35 @@ function mts_seed_settings(PDO $pdo): void {
     $ins = $pdo->prepare('INSERT IGNORE INTO settings (skey, svalue, updated_at) VALUES (?, ?, ?)');
     foreach ($defaults as $k => $v) {
         $ins->execute([$k, (string)$v, $now]);
+    }
+
+    /* ---------------- our team (starting roster — admin owns it after) --------- */
+    $team = [
+        ['TM-01', 'Jackson Mbilinyi', 'CEO, Software Developer, System Analyst & IT Consultant',
+         'Founded Mbilinyi Tech Solutions (BRELA, TIN 192-147-522). Designs, builds, secures and maintains mission-critical systems in Python, Rust, R, React and modern cloud stacks.',
+         '', 'mbilinyitech@gmail.com', '0796752645', '', 0],
+    ];
+    $insTeam = $pdo->prepare(
+        'INSERT IGNORE INTO team_members (id, name, role, bio, image_url, email, phone, linkedin, sort_order, is_active, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)'
+    );
+    foreach ($team as $m) {
+        $insTeam->execute([...$m, $now]);
+    }
+
+    /* ---------------- news (a welcome post so the page is never empty) --------- */
+    $news = [
+        ['N-01', 'Welcome to Mbilinyi Tech Solutions', 'Announcement',
+         'World-class software, AI, maintenance and security — delivered online from Dodoma, Tanzania.',
+         "Mbilinyi Tech Solutions ni kampuni iliyosajiliwa BRELA (TIN 192-147-522) inayotoa huduma za software, AI, maintenance na usalama wa mtandao.\n\nTunajivunia: Custom Software (mobile, desktop, web), System Analysis, IT Consultancy, Software Maintenance, Cybersecurity, AI & Chatbots, Email setup, Windows installation na huduma za maombi ya serikali.\n\nWasiliana nasi kupitia fomu ya 'Request Service' au WhatsApp 0796 752 645 — unapata nukuu rasmi ndani ya saa 24.",
+         ''],
+    ];
+    $insNews = $pdo->prepare(
+        'INSERT IGNORE INTO news_posts (id, title, category, excerpt, body, image_url, is_active, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?)'
+    );
+    foreach ($news as $n) {
+        $insNews->execute([...$n, $now]);
     }
 
     /* ---------------- pricing plans ---------------- */

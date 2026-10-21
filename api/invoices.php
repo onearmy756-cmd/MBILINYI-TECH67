@@ -95,6 +95,8 @@ try {
             require_csrf();
             require_admin();
             $id = str_param('id');
+            $row = db_one('SELECT * FROM invoices WHERE id = ?', [$id]);
+            if (!$row) j_err('Invoice not found.', 404);
             db_run('UPDATE invoices SET status = ? WHERE id = ?', ['Paid', $id]);
             j_ok(['invoice' => map_invoice(db_one('SELECT * FROM invoices WHERE id = ?', [$id]))]);
         }
