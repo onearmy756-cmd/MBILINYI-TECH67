@@ -24,3 +24,10 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Rust build output: ~1.3 GB of objects, and reproducible with `cargo build`.
+rust/mts-core/target/
+# The runtime database the Rust core creates (same rule as storage/*.sqlite).
+storage/mts.sqlite
+storage/mts.sqlite-wal
+storage/mts.sqlite-shm
