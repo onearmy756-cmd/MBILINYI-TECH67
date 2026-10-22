@@ -119,6 +119,26 @@ function toast(msg, type = 'ok') {
   setTimeout(() => { el.style.transition = '.4s'; el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; setTimeout(() => el.remove(), 400); }, 4200);
 }
 
+/* ---------- OUR PROJECTS → MbilinyiTech Platform ----------
+ * The CEO pastes the platform link in Admin → Settings → Company Information.
+ * Until it is set we hide the button rather than send visitors to a dead page,
+ * and the "see projects on this site" link stays as the working alternative. */
+function paintPlatformCta() {
+  const a = $('platformCta');
+  if (!a) return;
+  const p = window.__PLATFORM__ || {};
+  const url = String(p.url || '').trim();
+  if (!url) { a.classList.add('hidden'); return; }
+  a.href = url;
+  const label = a.querySelector('[data-en]');
+  if (label) {
+    const name = String(p.name || '').trim() || 'MbilinyiTech Platform';
+    label.dataset.en = `Visit ${name}`;
+    label.dataset.sw = `Tembelea ${name}`;
+    label.textContent = LANG === 'sw' ? label.dataset.sw : label.dataset.en;
+  }
+}
+
 /* ---------- NAV / PAGES ---------- */
 /* Kila sehemu ya landing ni ukurasa wake halisi — kubonyeza inakupeleka ukurasa mpya.
  * URLs are extensionless: the server rewrites /pricing -> pricing.php. */
@@ -1809,6 +1829,26 @@ async function adminTab(t) {
         </div>
       </div>
 
+      <!-- MBILINYITECH PLATFORM -->
+      <div class="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/[.05] p-5 mt-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <div class="font-bold text-[14px]"><i class="fa-solid fa-diagram-project text-fuchsia-300 mr-2"></i>MbilinyiTech Platform — the "OUR PROJECTS" button</div>
+          <span class="badge bg-fuchsia-500/15 text-fuchsia-200">Your control</span>
+        </div>
+        <div class="text-[12.5px] text-white/55 mb-4">
+          Paste the link to your platform here. The <strong>OUR PROJECTS</strong> section on the homepage then sends visitors straight there, where they can see every project.
+          Leave it blank and the button is hidden automatically — no dead links.
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          ${fld('platform_url', 'Platform link (https://…)', 'https://…')}
+          ${fld('platform_name', 'Platform name shown on the button', 'MbilinyiTech Platform')}
+        </div>
+        <div class="mt-3 rounded-xl bg-black/25 border border-white/10 p-3.5 text-[12px] text-white/60">
+          <i class="fa-solid fa-circle-info text-fuchsia-300 mr-2"></i>
+          Type the full address including <strong>https://</strong>. Press <strong>Save Settings</strong> below, then reload the homepage.
+        </div>
+      </div>
+
       <div class="mt-4"><button onclick="saveAllSettings()" class="grad-btn px-7 py-3.5 rounded-xl font-bold text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Save Settings</button></div>
 
       <!-- SERVICE VISIBILITY -->
@@ -2710,6 +2750,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderWork();
   renderNews();
   renderTeam();
+  paintPlatformCta();
   initFeedbackStars();
 
   if ($('view-client')) {

@@ -123,6 +123,77 @@ require __DIR__ . '/partials/head.php';
     </div>
     <div id="teamGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8"></div>
   </section>
+
+  <!-- SIGN IN / SIGN UP — right on the homepage -->
+  <?php if (!$me): ?>
+  <section id="homeAuth" class="max-w-7xl mx-auto px-4 py-14">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-8">
+        <div class="badge bg-gold/15 text-gold border border-gold/30" data-en="CLIENT PORTAL" data-sw="PORTAL YA MTEJA">CLIENT PORTAL</div>
+        <h2 class="font-display font-bold text-3xl md:text-4xl mt-3">
+          <span data-en="Sign In or" data-sw="Ingia au">Sign In or</span>
+          <span class="grad-text" data-en="Create Your Account" data-sw="Fungua Akaunti Yako">Create Your Account</span>
+        </h2>
+        <p class="text-white/55 text-[14.5px] mt-3 max-w-2xl mx-auto" data-en="One secure login for everything: submit requirements, receive official quotations, e-sign contracts, pay invoices and chat with support." data-sw="Kuingia moja salama kwa kila kitu: tuma mahitaji, pokea nukuu rasmi, saini mikataba kidijitali, lipa ankara na zungumza na msaada.">One secure login for everything: submit requirements, receive official quotations, e-sign contracts, pay invoices and chat with support.</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 items-stretch">
+        <div class="rounded-3xl p-[1.5px] bg-gradient-to-br from-cyan-400 to-violet-600">
+          <div class="rounded-3xl bg-[#070D1F] p-8 h-full flex flex-col justify-between relative overflow-hidden">
+            <div class="orb w-[300px] h-[300px] bg-violet-600/30 -top-20 -right-20"></div>
+            <div class="relative">
+              <div class="w-14 h-14 rounded-2xl grad-btn flex items-center justify-center font-display font-bold text-2xl">M</div>
+              <h3 class="font-display font-bold text-2xl mt-5"><span data-en="Why sign in?" data-sw="Kwa nini kuingia?">Why sign in?</span></h3>
+              <div class="grid gap-2.5 mt-5 text-[13px]">
+                <div class="flex items-center gap-3 glass rounded-xl px-4 py-3"><i class="fa-solid fa-file-pen text-cyan-300"></i> <span data-en="Requirement forms with tracking IDs" data-sw="Fomu za mahitaji zenye namba za kufuatilia">Requirement forms with tracking IDs</span></div>
+                <div class="flex items-center gap-3 glass rounded-xl px-4 py-3"><i class="fa-solid fa-file-invoice-dollar text-gold"></i> <span data-en="Official quotations & transparent pricing" data-sw="Nukuu rasmi na bei iliyo wazi">Official quotations &amp; transparent pricing</span></div>
+                <div class="flex items-center gap-3 glass rounded-xl px-4 py-3"><i class="fa-solid fa-file-contract text-violet-300"></i> <span data-en="BRELA contracts with e-signature" data-sw="Mikataba ya BRELA yenye sahihi ya kidijitali">BRELA contracts with e-signature</span></div>
+                <div class="flex items-center gap-3 glass rounded-xl px-4 py-3"><i class="fa-solid fa-users-gear text-emerald-300"></i> <span data-en="Full account management" data-sw="Usimamizi kamili wa akaunti">Full account management</span></div>
+              </div>
+            </div>
+            <div class="relative mt-6 rounded-2xl bg-cyan-500/[.06] border border-cyan-400/25 p-4 text-[12px] text-white/70">
+              <div class="font-bold text-cyan-300 mb-1"><i class="fa-solid fa-shield-halved mr-1"></i> <span data-en="VERIFIED SIGN-IN" data-sw="KUINGIA KUTHIBITISHWA">VERIFIED SIGN-IN</span></div>
+              <span data-en="After your password we ask for your PIN (or the last 4 digits of your phone) so nobody else can enter your portal." data-sw="Baada ya neno la siri tunakuomba PIN yako (au tarakimu 4 za mwisho za simu yako) ili mtu mwingine asipate portal yako.">After your password we ask for your PIN (or the last 4 digits of your phone) so nobody else can enter your portal.</span>
+            </div>
+          </div>
+        </div>
+        <?php require __DIR__ . '/partials/auth-panel.php'; ?>
+      </div>
+    </div>
+  </section>
+  <?php endif; ?>
+
+  <!-- OUR PROJECTS → the MbilinyiTech Platform -->
+  <section class="max-w-7xl mx-auto px-4 pb-16">
+    <div class="glass rounded-3xl p-6 md:p-10 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500"></div>
+      <div class="orb w-[360px] h-[360px] bg-cyan-500/20 -top-24 -right-24"></div>
+      <div class="relative grid md:grid-cols-[1fr_auto] gap-8 items-center">
+        <div>
+          <div class="badge bg-cyan-500/15 text-cyan-300 border border-cyan-400/30" data-en="OUR PROJECTS" data-sw="MIRADI YETU">OUR PROJECTS</div>
+          <h2 class="font-display font-bold text-3xl md:text-4xl mt-3">
+            <span data-en="See Everything We Have" data-sw="Ona Kila Kitu Tulichojenga">See Everything We Have</span>
+            <span class="grad-text" data-en="Built" data-sw="Kujenga">Built</span>
+          </h2>
+          <p class="text-white/60 text-[14.5px] mt-3 leading-relaxed max-w-2xl" data-en="Systems, platforms and tools we have designed, built and delivered — with the full stack, the problem each one solves and its live status. Browse the complete catalogue on the MbilinyiTech Platform." data-sw="Mifumo, majukwaa na zana tulizobuni, tukajenga na tukakabidhi — pamoja na teknolojia, tatizo ambalo kila moja hutatua na hali yake. Angalia orodha kamili kwenye MbilinyiTech Platform.">Systems, platforms and tools we have designed, built and delivered — with the full stack, the problem each one solves and its live status. Browse the complete catalogue on the MbilinyiTech Platform.</p>
+          <div class="flex flex-wrap gap-2 mt-5 text-[12px]">
+            <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-diagram-project text-cyan-300 mr-1"></i> <span data-en="Every project, in full detail" data-sw="Kila mradi, kwa maelezo kamili">Every project, in full detail</span></span>
+            <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-layer-group text-violet-300 mr-1"></i> <span data-en="Stack & technologies used" data-sw="Teknolojia zilizotumika">Stack &amp; technologies used</span></span>
+            <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-circle-check text-emerald-300 mr-1"></i> <span data-en="Live status of each build" data-sw="Hali ya kila mradi">Live status of each build</span></span>
+          </div>
+        </div>
+        <div class="grid gap-3 min-w-[240px]">
+          <a id="platformCta" href="#" target="_blank" rel="noopener" class="grad-btn px-7 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-center">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span data-en="Visit MbilinyiTech Platform" data-sw="Tembelea MbilinyiTech Platform">Visit MbilinyiTech Platform</span>
+          </a>
+          <a href="work" class="px-7 py-4 rounded-2xl font-bold border border-white/15 hover:bg-white/5 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-briefcase text-gold"></i>
+            <span data-en="See projects on this site" data-sw="Ona miradi kwenye tovuti hii">See projects on this site</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

@@ -143,6 +143,11 @@ window.__CSRF__ = <?= json_encode(csrf_token()) ?>;
 window.__ME__   = <?= json_encode(current_user()) ?>;
 window.__PAGE__ = <?= json_encode($page ?? '') ?>;
 window.__SERVICES_ON__ = <?= json_encode(service_visibility()) ?>;
+/* Set by the CEO in Admin → Settings. Empty means "not configured yet". */
+window.__PLATFORM__ = <?= json_encode([
+    'url'  => setting('platform_url'),
+    'name' => setting('platform_name', 'MbilinyiTech Platform'),
+], JSON_UNESCAPED_SLASHES) ?>;
 </script>
 <?php /* Versioned so a returning visitor never runs a stale script. */ ?>
 <script src="assets/app.js?v=<?= (int)@filemtime(__DIR__ . '/../assets/app.js') ?>"></script>

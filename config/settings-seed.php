@@ -40,6 +40,14 @@ function mts_seed_settings(PDO $pdo): void {
         'company_email'    => 'info@mbilinyitech.co.tz',
         'company_phone'    => '0796 752 645',
 
+        /* --- MbilinyiTech Platform -------------------------------------------
+         * The admin pastes the link here and the homepage "OUR PROJECTS"
+         * button points at it. Blank until the CEO sets it, and the homepage
+         * then falls back to the on-site portfolio instead of showing a dead
+         * button. */
+        'platform_url'     => '',
+        'platform_name'    => 'MbilinyiTech Platform',
+
         /* --- Service visibility: Cyber Security & Digital Forensics ship OFF.
          * The admin switches them on (or off) from Settings → Service Visibility. */
         'services_hidden'  => 'cybersecurity,forensics',
