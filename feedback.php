@@ -88,9 +88,9 @@ require __DIR__ . '/partials/head.php';
               <div class="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0"><i class="fa-solid fa-phone text-green-300"></i></div>
               <div><div class="font-bold">0796 752 645</div><div class="text-white/50 text-[12px]" data-en="Call • WhatsApp • SMS" data-sw="Simu • WhatsApp • SMS">Call • WhatsApp • SMS</div></div>
             </a>
-            <a href="mailto:<?php echo htmlspecialchars(setting('company_email', 'info@mbilinyitech.co.tz'), ENT_QUOTES); ?>" class="flex items-center gap-3 p-3.5 rounded-xl bg-white/[.03] border border-white/10 hover:border-blue-400/40">
+            <a href="mailto:<?php echo htmlspecialchars(setting('company_email', 'mbilinyitech@gmail.com'), ENT_QUOTES); ?>" class="flex items-center gap-3 p-3.5 rounded-xl bg-white/[.03] border border-white/10 hover:border-blue-400/40">
               <div class="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0"><i class="fa-solid fa-envelope text-blue-300"></i></div>
-              <div><div class="font-bold break-all"><?php echo htmlspecialchars(setting('company_email', 'info@mbilinyitech.co.tz'), ENT_QUOTES); ?></div><div class="text-white/50 text-[12px]" data-en="Replies within 4 business hours" data-sw="Hujibu ndani ya saa 4 za kazi">Replies within 4 business hours</div></div>
+              <div><div class="font-bold break-all"><?php echo htmlspecialchars(setting('company_email', 'mbilinyitech@gmail.com'), ENT_QUOTES); ?></div><div class="text-white/50 text-[12px]" data-en="Replies within 4 business hours" data-sw="Hujibu ndani ya saa 4 za kazi">Replies within 4 business hours</div></div>
             </a>
             <a href="contact" class="flex items-center gap-3 p-3.5 rounded-xl bg-white/[.03] border border-white/10 hover:border-violet-400/40">
               <div class="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0"><i class="fa-solid fa-ticket text-violet-300"></i></div>

@@ -58,7 +58,7 @@ unchanged.
 
 | Account | Role |
 |---------|------|
-| `admin@mbilinyitech.co.tz` / `Admin@2026` | Admin / CEO |
+| `mbilinyitech@gmail.com` / `Admin@2026` | Admin / CEO |
 | `demo@client.com` / `demo123` | Client (Amina Juma) |
 | `baraka@kilimo.co.tz` / `demo123` | Client (Baraka Mwansa) |
 

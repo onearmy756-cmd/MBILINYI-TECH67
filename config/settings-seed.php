@@ -37,7 +37,7 @@ function mts_seed_settings(PDO $pdo): void {
         'company_location' => 'Dodoma, Tanzania',
         'company_work_mode'=> 'Online / Remote',
         'company_domain'   => 'mbilinyitech.co.tz',
-        'company_email'    => 'info@mbilinyitech.co.tz',
+        'company_email'    => 'mbilinyitech@gmail.com',
         'company_phone'    => '0796 752 645',
 
         /* --- MbilinyiTech Platform -------------------------------------------

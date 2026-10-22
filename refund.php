@@ -36,8 +36,8 @@ require __DIR__ . '/partials/legal-render.php';
              'sw' => 'Kwa huduma nje ya software — ushauri, mafunzo, muundo wa mara moja, uchunguzi wa usalama kwa ombi — masharti ya malipo ni yale tuliyokubaliana kimaandishi kabla ya kazi kuanza. Hakuna kinacholipwa zaidi ya makubaliano hayo.'],
         ]],
         ['hEn' => 'Refund eligibility', 'hSw' => 'Masharti ya kustahili marejesho', 'p' => [
-            ['en' => 'Refund requests must be made in writing to info@mbilinyitech.co.tz or through your client portal within 7 days of the payment date.',
-             'sw' => 'Maombi ya kurudisha pesa yanapaswa kufanywa kwa maandishi kwa info@mbilinyitech.co.tz au kupitia portal yako ya mteja ndani ya siku 7 kutoka tarehe ya malipo.'],
+            ['en' => 'Refund requests must be made in writing to mbilinyitech@gmail.com or through your client portal within 7 days of the payment date.',
+             'sw' => 'Maombi ya kurudisha pesa yanapaswa kufanywa kwa maandishi kwa mbilinyitech@gmail.com au kupitia portal yako ya mteja ndani ya siku 7 kutoka tarehe ya malipo.'],
             ['en' => 'Approved refunds are processed within 14 working days back to the original payment method (bank account or mobile money number used).',
              'sw' => 'Marejesho yaliyoidhinishwa hufanyika ndani ya siku 14 za kazi kurudi kwenye njia yake ya asili (akaunti ya benki au namba ya malipo ya simu zilizotumika).'],
         ]],
@@ -60,8 +60,8 @@ require __DIR__ . '/partials/legal-render.php';
              'sw' => 'Mwezi tayari uliolipwa na ulioanza haurudishwi, lakini huduma inaendelea hadi mwisho wa kipindi hicho.'],
         ]],
         ['hEn' => 'How to request a refund', 'hSw' => 'Jinsi ya kuomba marejesho', 'ul' => [
-            ['en' => 'Email info@mbilinyitech.co.tz or open a ticket in your portal with your tracking ID and payment proof.',
-             'sw' => 'Tuma barua pepe kwa info@mbilinyitech.co.tz au fungua tiketi kwenye portal yako na tracking ID na uthibitisho wa malipo.'],
+            ['en' => 'Email mbilinyitech@gmail.com or open a ticket in your portal with your tracking ID and payment proof.',
+             'sw' => 'Tuma barua pepe kwa mbilinyitech@gmail.com au fungua tiketi kwenye portal yako na tracking ID na uthibitisho wa malipo.'],
             ['en' => 'We acknowledge within 1 business day and give a decision within 5 working days.',
              'sw' => 'Tunathibitisha kupokea ndani ya siku 1 ya kazi na kutoa uamuzi ndani ya siku 5 za kazi.'],
             ['en' => 'Approved amounts are sent back to the original payment method only.',

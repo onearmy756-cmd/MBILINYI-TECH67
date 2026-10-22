@@ -139,7 +139,7 @@ function mts_legal_page(array $doc): void {
             <div class="text-[13px] text-white/55" data-en="We reply within 4 business hours, Mon–Sat 08:00–20:00 EAT." data-sw="Tunajibu ndani ya saa 4 za kazi, Jumatatu–Jumamosi 08:00–20:00 EAT.">We reply within 4 business hours, Mon–Sat 08:00–20:00 EAT.</div>
           </div>
           <div class="flex flex-wrap gap-2.5">
-            <a href="mailto:<?php echo mts_e(setting('company_email', 'info@mbilinyitech.co.tz')); ?>" class="px-5 py-3 rounded-xl font-bold text-sm grad-btn"><i class="fa-solid fa-envelope mr-2"></i><?php echo mts_e(setting('company_email', 'info@mbilinyitech.co.tz')); ?></a>
+            <a href="mailto:<?php echo mts_e(setting('company_email', 'mbilinyitech@gmail.com')); ?>" class="px-5 py-3 rounded-xl font-bold text-sm grad-btn"><i class="fa-solid fa-envelope mr-2"></i><?php echo mts_e(setting('company_email', 'mbilinyitech@gmail.com')); ?></a>
             <a href="https://wa.me/255796752645" target="_blank" class="px-5 py-3 rounded-xl font-bold text-sm bg-[#25D366]/15 border border-[#25D366]/40 text-[#4be584] hover:bg-[#25D366]/25"><i class="fa-brands fa-whatsapp mr-2"></i>WhatsApp</a>
             <a href="contact" class="px-5 py-3 rounded-xl font-bold text-sm border border-white/15 hover:bg-white/5"><i class="fa-solid fa-headset mr-2"></i><span data-en="Support" data-sw="Msaada">Support</span></a>
           </div>

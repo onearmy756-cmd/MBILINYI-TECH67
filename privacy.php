@@ -82,8 +82,8 @@ require __DIR__ . '/partials/legal-render.php';
              'sw' => 'Huduma zetu zinalenga biashaka na watu wazima; hatukusanyi data ya chini ya miaka 18 kwa makusudi. Viungo vya tovuti nyingine vinasimamiwa na sera za tovuti hizo wenyewe, si zetu.'],
         ]],
         ['hEn' => 'Contact us', 'hSw' => 'Wasiliana nasi', 'p' => [
-            ['en' => 'Questions or requests about your data: info@mbilinyitech.co.tz, or call/WhatsApp 0796 752 645 (Mon–Sat, 08:00–20:00 EAT). Mbilinyi Tech Solutions, Dodoma, Tanzania. CEO: Jackson Mbilinyi.',
-             'sw' => 'Maswali au maombi kuhusu data yako: info@mbilinyitech.co.tz, au piga/WhatsApp 0796 752 645 (Jumatatu–Jumamosi, 08:00–20:00 EAT). Mbilinyi Tech Solutions, Dodoma, Tanzania. CEO: Jackson Mbilinyi.'],
+            ['en' => 'Questions or requests about your data: mbilinyitech@gmail.com, or call/WhatsApp 0796 752 645 (Mon–Sat, 08:00–20:00 EAT). Mbilinyi Tech Solutions, Dodoma, Tanzania. CEO: Jackson Mbilinyi.',
+             'sw' => 'Maswali au maombi kuhusu data yako: mbilinyitech@gmail.com, au piga/WhatsApp 0796 752 645 (Jumatatu–Jumamosi, 08:00–20:00 EAT). Mbilinyi Tech Solutions, Dodoma, Tanzania. CEO: Jackson Mbilinyi.'],
         ]],
     ],
 ]); ?>

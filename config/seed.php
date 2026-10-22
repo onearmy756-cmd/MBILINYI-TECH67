@@ -13,7 +13,7 @@ function mts_seed(PDO $pdo): void {
     $userSql = 'INSERT INTO users (id,name,email,phone,company,password_hash,role,status,created_at)
                 VALUES (?,?,?,?,?,?,?,?,?)' . $noop;
     $ins($userSql, [
-        ['U-ADMIN', 'Jackson Mbilinyi', 'admin@mbilinyitech.co.tz', '0796752645', 'Mbilinyi Tech Solutions',
+        ['U-ADMIN', 'Jackson Mbilinyi', 'mbilinyitech@gmail.com', '0796752645', 'Mbilinyi Tech Solutions',
             password_hash('Admin@2026', PASSWORD_DEFAULT), 'admin', 'Active', '2024-01-15 08:00:00'],
         ['U-DEMO', 'Amina Juma', 'demo@client.com', '0712345678', 'Amina Pharmacy Ltd',
             password_hash('demo123', PASSWORD_DEFAULT), 'client', 'Active', '2025-08-02 09:00:00'],

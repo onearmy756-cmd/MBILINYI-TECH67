@@ -44,12 +44,12 @@ function Refresh-Csrf($sess) {
 
 Write-Output '======== ADMIN LOGIN + OTP ========'
 $A = New-Sess
-$lr = Api $A "$Base/api/auth.php" @{ action = 'login'; email = 'admin@mbilinyitech.co.tz'; password = 'Admin@2026' }
+$lr = Api $A "$Base/api/auth.php" @{ action = 'login'; email = 'mbilinyitech@gmail.com'; password = 'Admin@2026' }
 $ld = Json $lr.raw
 $code = $ld.data.otp_debug_only
 Step 'admin login issues OTP' ($ld.ok -and $ld.data.otp_required -eq $true -and [bool]$code) "code=$code"
 
-$vr = Api $A "$Base/api/auth.php" @{ action = 'verify-login-otp'; email = 'admin@mbilinyitech.co.tz'; code = $code }
+$vr = Api $A "$Base/api/auth.php" @{ action = 'verify-login-otp'; email = 'mbilinyitech@gmail.com'; code = $code }
 $vd = Json $vr.raw
 Step 'admin OTP verify -> role=admin' ($vd.ok -and $vd.data.user.role -eq 'admin') "role=$($vd.data.user.role)"
 Refresh-Csrf $A | Out-Null

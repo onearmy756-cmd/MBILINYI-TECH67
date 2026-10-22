@@ -34,10 +34,10 @@ echo "== 1. public track lookup =="
 curl -sL "$B/api/track.php?action=get&id=MTS-2026-4810" | jq -c '{ok, status:.data.request.status, total:.data.quote.total, contract:.data.contract.status}'
 
 echo "== 2. admin login (password, then PIN verification) =="
-C=$(csrf $JA); post $JA api/auth.php '{"action":"login","email":"admin@mbilinyitech.co.tz","password":"Admin@2026"}' "$C" | jq -c '{ok, otp_required:.data.otp_required, pin_kind:.data.pin_kind}'
+C=$(csrf $JA); post $JA api/auth.php '{"action":"login","email":"mbilinyitech@gmail.com","password":"Admin@2026"}' "$C" | jq -c '{ok, otp_required:.data.otp_required, pin_kind:.data.pin_kind}'
 # Login is a two-step flow: the password step only asks for the PIN, the PIN step
 # establishes the session. Admin's PIN is the tail of the registered phone.
-post $JA api/auth.php '{"action":"verify-login-pin","email":"admin@mbilinyitech.co.tz","pin":"2645"}' "$C" | jq -c '{ok, role:.data.user.role}'
+post $JA api/auth.php '{"action":"verify-login-pin","email":"mbilinyitech@gmail.com","pin":"2645"}' "$C" | jq -c '{ok, role:.data.user.role}'
 C=$(csrf $JA)
 
 echo "== 3. admin dashboard =="

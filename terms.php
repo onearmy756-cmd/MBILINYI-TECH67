@@ -22,8 +22,8 @@ require __DIR__ . '/partials/legal-render.php';
         ['hEn' => 'Who we are', 'hSw' => 'Sisi ni nani', 'p' => [
             ['en' => 'Mbilinyi Tech Solutions is a BRELA-registered limited company (Reg. 706668, TIN 192-147-522) owned by CEO Jackson Mbilinyi. We are based in Dodoma, Tanzania and deliver all work online / remotely, serving clients nationwide and worldwide.',
              'sw' => 'Mbilinyi Tech Solutions ni kampuni iliyosajiliwa na BRELA (Usajili 706668, TIN 192-147-522) inayomilikiwa na CEO Jackson Mbilinyi. Tuko Dodoma, Tanzania na tunatoa kazi zote mtandaoni / remote, tukiwahudumia wateja ndani ya nchi na duniani kote.'],
-            ['en' => 'Contact: 0796 752 645 (Call / WhatsApp / SMS), info@mbilinyitech.co.tz, mbilinyitech@gmail.com. Hours: Monday–Saturday, 08:00–20:00 East Africa Time.',
-             'sw' => 'Mawasiliano: 0796 752 645 (Simu / WhatsApp / SMS), info@mbilinyitech.co.tz, mbilinyitech@gmail.com. Saa za kazi: Jumatatu–Jumamosi, 08:00–20:00 saa za Afrika Mashariki.'],
+            ['en' => 'Contact: 0796 752 645 (Call / WhatsApp / SMS), mbilinyitech@gmail.com. Hours: Monday–Saturday, 08:00–20:00 East Africa Time.',
+             'sw' => 'Mawasiliano: 0796 752 645 (Simu / WhatsApp / SMS), mbilinyitech@gmail.com. Saa za kazi: Jumatatu–Jumamosi, 08:00–20:00 saa za Afrika Mashariki.'],
         ]],
         ['hEn' => 'Services covered', 'hSw' => 'Huduma zilizojumuishwa', 'ul' => [
             ['en' => 'Custom software and web development, mobile apps and system analysis.',

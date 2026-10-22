@@ -2229,7 +2229,7 @@ async function openTeamEditor(id) {
       <div><label class="text-[12px] font-bold text-white/60">ROLE / TITLE (KISWAHILI)</label><input id="tmRoleSw" class="input mt-1" value="${esc(m.roleSw)}" placeholder="mf. Mkurugenzi Mtendaji"></div>
       <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">SHORT BIO (ENGLISH)</label><textarea id="tmBio" rows="3" class="input mt-1" placeholder="One or two sentences about this person">${esc(m.bio)}</textarea></div>
       <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">SHORT BIO (KISWAHILI)</label><textarea id="tmBioSw" rows="3" class="input mt-1" placeholder="Sentensi moja au mbili kuhusu mtu huyu">${esc(m.bioSw)}</textarea></div>
-      <div><label class="text-[12px] font-bold text-white/60">EMAIL</label><input id="tmEmail" class="input mt-1" value="${esc(m.email)}" placeholder="name@mbilinyitech.co.tz"></div>
+      <div><label class="text-[12px] font-bold text-white/60">EMAIL</label><input id="tmEmail" class="input mt-1" value="${esc(m.email)}" placeholder="mbilinyitech@gmail.com"></div>
       <div><label class="text-[12px] font-bold text-white/60">PHONE</label><input id="tmPhone" class="input mt-1" value="${esc(m.phone)}" placeholder="07XX XXX XXX"></div>
       <div><label class="text-[12px] font-bold text-white/60">LINKEDIN URL</label><input id="tmLinkedin" class="input mt-1 font-mono text-[12px]" value="${esc(m.linkedin)}" placeholder="https://linkedin.com/in/..."></div>
       <div><label class="text-[12px] font-bold text-white/60">SORT ORDER</label><input id="tmSort" type="number" class="input mt-1" value="${Number(m.sortOrder) || 0}"></div>
