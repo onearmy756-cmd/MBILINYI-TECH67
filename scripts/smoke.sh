@@ -2,9 +2,25 @@
 # End-to-end smoke test for the Mbilinyi Tech Solutions PHP + MySQL system.
 # Usage: BASE=http://127.0.0.1:8080 bash scripts/smoke.sh
 set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 B="${BASE:-http://127.0.0.1:8080}"
 JA=/tmp/mts_jar_admin.txt; JC=/tmp/mts_jar_client.txt; JG=/tmp/mts_jar_guest.txt
 rm -f $JA $JC $JG
+
+# Contracts are permanent legal records and are never deleted, so the contract
+# this script signs on the first run is still there on the second — step 10 would
+# then find nothing "Sent" and report false failures. Start from the pristine
+# database a fresh clone gets. Set SMOKE_RESET=0 to test an existing database.
+if [ "${SMOKE_RESET:-1}" = "1" ]; then
+  rm -f "$ROOT/storage/mts.sqlite" "$ROOT/storage/mts.sqlite-journal" "$ROOT/storage/mts.sqlite-wal" 2>/dev/null
+  rm -rf "$ROOT/storage/sessions" 2>/dev/null
+  for CLI in mariadb mysql; do
+    if command -v "$CLI" >/dev/null 2>&1; then
+      "$CLI" -u mts -pmts_local_dev -h 127.0.0.1 -e 'DROP DATABASE IF EXISTS mbilinyi;' >/dev/null 2>&1 && break
+    fi
+  done
+  echo "-- database reset (SMOKE_RESET=0 to keep it)"
+fi
 
 csrf(){ curl -sL -b "$1" -c "$1" "$B/index.php" | grep -o 'window.__CSRF__ = "[a-f0-9]*"' | grep -o '[a-f0-9]\{64\}'; }
 # -L everywhere: with router.php a .php path answers 301 to its clean URL, and
