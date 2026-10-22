@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../lib/webauthn.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -267,6 +268,172 @@ try {
             );
             login_user($id);
             j_ok(['user' => map_user(db_one('SELECT * FROM users WHERE id = ?', [$id]))]);
+        }
+
+        /* ---------- passkeys (WebAuthn) ----------
+         * A passkey replaces the password AND the PIN: the device holds a
+         * private key that never leaves it, and the phone or laptop asks for
+         * its own unlock (fingerprint, face, PIN or pattern) before signing.
+         * This site never sees that unlock — only the signature, which it
+         * verifies against the public key stored at registration. */
+
+        case 'passkey-register-begin': {
+            require_csrf();
+            $user = require_user();
+            $challenge = wa_b64u_enc(random_bytes(32));
+            $_SESSION['wa_reg'] = ['c' => $challenge, 't' => time()];
+
+            $existing = db_all('SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?', [$user['id']]);
+            j_ok([
+                'challenge' => $challenge,
+                'rp' => ['id' => wa_rp_id(), 'name' => setting('webauthn_rp_name', 'Mbilinyi Tech Solutions')],
+                'user' => [
+                    'id' => wa_b64u_enc((string)$user['id']),
+                    'name' => (string)$user['email'],
+                    'displayName' => (string)$user['name'],
+                ],
+                'pubKeyCredParams' => [
+                    ['type' => 'public-key', 'alg' => -7],     // ES256
+                    ['type' => 'public-key', 'alg' => -257],   // RS256
+                ],
+                'timeout' => 60000,
+                'attestation' => 'none',
+                'authenticatorSelection' => [
+                    'residentKey' => 'preferred',
+                    'userVerification' => 'preferred',
+                ],
+                'excludeCredentials' => array_map(fn($c) => [
+                    'type' => 'public-key',
+                    'id' => $c['credential_id'],
+                    'transports' => array_values(array_filter(explode(',', (string)$c['transports']))),
+                ], $existing),
+            ]);
+        }
+
+        case 'passkey-register-finish': {
+            require_csrf();
+            $user = require_user();
+            $ch = $_SESSION['wa_reg'] ?? null;
+            unset($_SESSION['wa_reg']);
+            if (!$ch || time() - (int)$ch['t'] > 300) j_err('This registration expired. Please try again.', 400);
+
+            $res = param('response', []);
+            if (!is_array($res)) j_err('Malformed registration response.', 400);
+            $transports = param('transports', []);
+            if (!is_array($transports)) $transports = [];
+
+            $info = wa_verify_registration(
+                (string)($res['clientDataJSON'] ?? ''),
+                (string)($res['attestationObject'] ?? ''),
+                (string)$ch['c'],
+                wa_origin(),
+                wa_rp_id(),
+                $transports
+            );
+
+            if (db_one('SELECT id FROM webauthn_credentials WHERE credential_id = ?', [$info['credentialId']])) {
+                j_err('This device is already registered.', 409);
+            }
+
+            $label = mb_substr(trim(str_param('label', 'Passkey')), 0, 100);
+            db_run(
+                'INSERT INTO webauthn_credentials
+                    (id, user_id, credential_id, public_key, sign_count, transports, label, aaguid, created_at)
+                 VALUES (?,?,?,?,?,?,?,?, NOW())',
+                [
+                    new_id('PK-'), $user['id'], $info['credentialId'], $info['publicKey'],
+                    $info['signCount'], $info['transports'], $label, $info['aaguid'],
+                ]
+            );
+            j_ok(['registered' => true, 'label' => $label]);
+        }
+
+        /* No email is needed when the device keeps a discoverable passkey: the
+         * browser hands back the credential id and we look the owner up. */
+        case 'passkey-login-begin': {
+            require_csrf();
+            $email = strtolower(str_param('email'));
+            $allow = [];
+            if ($email !== '') {
+                $u = db_one('SELECT id FROM users WHERE lower(email) = ?', [$email]);
+                if ($u) {
+                    $allow = db_all('SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?', [$u['id']]);
+                }
+            }
+            $challenge = wa_b64u_enc(random_bytes(32));
+            $_SESSION['wa_auth'] = ['c' => $challenge, 't' => time()];
+            j_ok([
+                'challenge' => $challenge,
+                'rpId' => wa_rp_id(),
+                'timeout' => 60000,
+                'userVerification' => 'preferred',
+                'allowCredentials' => array_map(fn($c) => [
+                    'type' => 'public-key',
+                    'id' => $c['credential_id'],
+                    'transports' => array_values(array_filter(explode(',', (string)$c['transports']))),
+                ], $allow),
+            ]);
+        }
+
+        case 'passkey-login-finish': {
+            require_csrf();
+            $ch = $_SESSION['wa_auth'] ?? null;
+            unset($_SESSION['wa_auth']);
+            if (!$ch || time() - (int)$ch['t'] > 300) j_err('This sign-in expired. Please try again.', 400);
+
+            $res = param('response', []);
+            if (!is_array($res)) j_err('Malformed sign-in response.', 400);
+
+            $row = db_one('SELECT * FROM webauthn_credentials WHERE credential_id = ?', [str_param('id')]);
+            if (!$row) j_err('This passkey is not registered on this site.', 404);
+
+            $owner = db_one('SELECT * FROM users WHERE id = ?', [$row['user_id']]);
+            if (!$owner) j_err('This passkey is no longer attached to an account.', 404);
+            if ($owner['status'] !== 'Active') j_err('Account is suspended. Contact 0796 752 645.', 403);
+
+            try {
+                $newCount = wa_verify_assertion(
+                    (string)($res['clientDataJSON'] ?? ''),
+                    (string)($res['authenticatorData'] ?? ''),
+                    (string)($res['signature'] ?? ''),
+                    (string)$row['public_key'],
+                    (int)$row['sign_count'],
+                    (string)$ch['c'],
+                    wa_origin(),
+                    wa_rp_id()
+                );
+            } catch (\Throwable $e) {
+                error_log('[passkey] ' . $e->getMessage());
+                j_err($e->getMessage(), 400);
+            }
+
+            db_run('UPDATE webauthn_credentials SET sign_count = ?, last_used_at = NOW() WHERE id = ?', [$newCount, $row['id']]);
+            login_user($owner['id']);
+            j_ok(['user' => map_user($owner)]);
+        }
+
+        case 'passkey-list': {
+            $user = require_user();
+            $rows = db_all(
+                'SELECT id, label, transports, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at',
+                [$user['id']]
+            );
+            j_ok(['passkeys' => array_map(fn($r) => [
+                'id' => $r['id'],
+                'label' => (string)$r['label'],
+                'transports' => (string)$r['transports'],
+                'created_at' => iso((string)$r['created_at']),
+                'last_used_at' => $r['last_used_at'] ? iso((string)$r['last_used_at']) : null,
+            ], $rows)]);
+        }
+
+        case 'passkey-delete': {
+            require_csrf();
+            $user = require_user();
+            $row = db_one('SELECT id FROM webauthn_credentials WHERE id = ? AND user_id = ?', [str_param('id'), $user['id']]);
+            if (!$row) j_err('Passkey not found.', 404);
+            db_run('DELETE FROM webauthn_credentials WHERE id = ?', [$row['id']]);
+            j_ok(['deleted' => true]);
         }
 
         case 'logout': {

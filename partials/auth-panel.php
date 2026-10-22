@@ -25,6 +25,11 @@ $authShowBack = $authShowBack ?? false;
     <label class="text-[12px] font-bold text-white/60 mt-4 block" data-en="PASSWORD" data-sw="NENO LA SIRI">PASSWORD</label>
     <div class="ifield mt-1.5"><i class="fa-solid fa-lock"></i><input id="loginPass" type="password" class="input input-i !pr-12" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"><button onclick="togglePw('loginPass',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-cyan-300"><i class="fa-solid fa-eye"></i></button></div>
     <button onclick="doLogin()" id="btnDoLogin" class="grad-btn w-full mt-6 py-4 rounded-2xl font-bold"><i class="fa-solid fa-right-to-bracket mr-2"></i><span data-en="Sign In Securely" data-sw="Ingia Kwa Usalama">Sign In Securely</span></button>
+    <div id="passkeyLoginWrap" class="hidden">
+      <div class="flex items-center gap-3 my-4"><div class="h-px flex-1 bg-white/10"></div><span class="text-[11px] text-white/35" data-en="OR" data-sw="AU">OR</span><div class="h-px flex-1 bg-white/10"></div></div>
+      <button onclick="doPasskeyLogin()" id="btnPasskeyLogin" class="w-full py-4 rounded-2xl font-bold border border-cyan-400/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20 transition"><i class="fa-solid fa-fingerprint mr-2"></i><span data-en="Sign in with a passkey" data-sw="Ingia kwa passkey">Sign in with a passkey</span></button>
+      <div class="text-[11px] text-white/40 mt-2 text-center"><span data-en="Use your fingerprint, face or screen lock — no password, no code." data-sw="Tumia alama ya kidole, uso au lock ya simu — hakuna neno la siri wala code.">Use your fingerprint, face or screen lock — no password, no code.</span></div>
+    </div>
     <div class="flex justify-between mt-4 text-[12px]">
       <a href="javascript:void(0)" onclick="openForgotPassword()" class="text-cyan-300 hover:text-cyan-200 font-bold"><span data-en="Forgot Password?" data-sw="Umesahau Neno la Siri?">Forgot Password?</span></a>
       <a href="javascript:void(0)" onclick="openResendCodeFlow()" class="text-white/50 hover:text-white/80"><span data-en="Need new login code?" data-sw="Nahitaji code mpya?">Need new login code?</span></a>

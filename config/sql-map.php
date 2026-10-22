@@ -195,7 +195,7 @@ function mts_sqlite_schema_sql(string $mysqlDdl): string {
 
 /** `a, b(11)` -> "a, b" for a UNIQUE(...) clause (strip index prefix lengths). */
 function mts_sqlite_cols(string $list): string {
-    $parts = array_map(fn($c) => trim(preg_replace('/\(\d+\)/', '', trim($c)), ' `'), explode(',', $list));
+    $parts = array_map(fn($c) => trim(preg_replace('/\(\d+\)?/', '', trim($c)), ' `'), explode(',', $list));
     return implode(', ', array_filter($parts, fn($c) => $c !== ''));
 }
 
@@ -206,7 +206,7 @@ function mts_sqlite_column(string $line): string {
         return trim($name, '`') . ' INTEGER PRIMARY KEY AUTOINCREMENT';
     }
     // TINYINT / BIGINT / INT -> INTEGER ; JSON -> TEXT
-    $line = preg_replace('/\b(TINYINT|BIGINT|SMALLINT|MEDIUMINT)\s*(\(\d+\))?/i', 'INTEGER', $line);
+    $line = preg_replace('/\b(TINYINT|BIGINT|SMALLINT|MEDIUMINT)\b(\s*\(\d+\))?/i', 'INTEGER', $line);
     $line = preg_replace('/\bJSON\b/i', 'TEXT', $line);
     // SQLite ignores VARCHAR length but tolerates it.
     // Drop MySQL's ON UPDATE CURRENT_TIMESTAMP.

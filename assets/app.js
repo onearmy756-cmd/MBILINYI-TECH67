@@ -792,6 +792,160 @@ async function doLogin() {
   } catch (err) { toast(esc(err.message), 'err'); }
 }
 
+/* ---------- passkeys (WebAuthn) ----------
+ * The device holds a private key that never leaves it. The browser asks for the
+ * phone's or laptop's own unlock — fingerprint, face, PIN or pattern — and hands
+ * back only a signature, which the server verifies. This site never sees that
+ * unlock, so a passkey is both stronger and shorter than password + code. */
+
+function waSupported() {
+  return typeof window.PublicKeyCredential !== 'undefined' && !!(navigator.credentials && navigator.credentials.create);
+}
+
+/* The browser speaks ArrayBuffer; JSON speaks base64url. These two bridge them. */
+function b64uToBuf(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
+function bufToB64u(buf) {
+  const b = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* Hide the passkey button on browsers without WebAuthn, or on a page served
+ * over plain HTTP where the browser refuses to run the ceremony at all. */
+function paintPasskeyLogin() {
+  const wrap = $('passkeyLoginWrap');
+  if (!wrap) return;
+  wrap.classList.toggle('hidden', !waSupported());
+}
+
+function passkeyErr(e) {
+  const name = e && e.name ? e.name : '';
+  if (name === 'NotAllowedError') return LANG === 'sw' ? 'Umeghairi au muda uliisha.' : 'Cancelled or timed out.';
+  if (name === 'InvalidStateError') return LANG === 'sw' ? 'Kifaa hiki kimesajiliwa tayari.' : 'This device is already registered.';
+  if (name === 'NotSupportedError') return LANG === 'sw' ? 'Kivinjari hiki hakiwezi passkeys. Tumia HTTPS.' : 'This browser cannot use passkeys. Use HTTPS.';
+  return esc(e && e.message ? e.message : 'Passkey failed.');
+}
+
+async function doPasskeyLogin() {
+  if (!waSupported()) { toast(LANG === 'sw' ? 'Kivinjari hiki hakiwezi passkeys.' : 'This browser cannot use passkeys.', 'err'); return; }
+  const btn = $('btnPasskeyLogin'), old = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>' + (LANG === 'sw' ? 'Inasubiri kifaa…' : 'Waiting for your device…'); }
+  try {
+    const email = ($('loginEmail')?.value || '').trim();
+    const begin = await apiPost('api/auth.php', { action: 'passkey-login-begin', email });
+    const pk = { challenge: b64uToBuf(begin.challenge), rpId: begin.rpId, timeout: begin.timeout, userVerification: begin.userVerification };
+    if (begin.allowCredentials && begin.allowCredentials.length) {
+      pk.allowCredentials = begin.allowCredentials.map(c => ({ type: 'public-key', id: b64uToBuf(c.id), transports: c.transports }));
+    }
+    const cred = await navigator.credentials.get({ publicKey: pk });
+    const d = await apiPost('api/auth.php', {
+      action: 'passkey-login-finish',
+      id: bufToB64u(cred.rawId),
+      response: {
+        clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+        authenticatorData: bufToB64u(cred.response.authenticatorData),
+        signature: bufToB64u(cred.response.signature),
+      },
+    });
+    window.__ME__ = d.user;
+    toast(LANG === 'sw' ? `Karibu, ${esc(d.user.name)}! ✓` : `Welcome back, ${esc(d.user.name)}! ✓`, 'ok');
+    location.href = returnTarget(d.user.role);
+  } catch (err) {
+    toast(passkeyErr(err), 'err');
+    if (btn) { btn.disabled = false; btn.innerHTML = old; }
+  }
+}
+
+/** Register the current device as a passkey for the signed-in user. */
+async function doPasskeyRegister() {
+  if (!waSupported()) { toast(LANG === 'sw' ? 'Kivinjari hiki hakiwezi passkeys.' : 'This browser cannot use passkeys.', 'err'); return; }
+  const btn = $('btnAddPasskey'), old = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>' + (LANG === 'sw' ? 'Inasajili…' : 'Registering…'); }
+  try {
+    const begin = await apiPost('api/auth.php', { action: 'passkey-register-begin' });
+    const label = passkeyLabel();
+    const cred = await navigator.credentials.create({ publicKey: {
+      challenge: b64uToBuf(begin.challenge),
+      rp: begin.rp,
+      user: { id: b64uToBuf(begin.user.id), name: begin.user.name, displayName: begin.user.displayName },
+      pubKeyCredParams: begin.pubKeyCredParams,
+      timeout: begin.timeout,
+      attestation: begin.attestation,
+      authenticatorSelection: begin.authenticatorSelection,
+      excludeCredentials: (begin.excludeCredentials || []).map(c => ({ type: 'public-key', id: b64uToBuf(c.id), transports: c.transports })),
+    } });
+    const transports = (cred.response.getTransports ? cred.response.getTransports() : []);
+    await apiPost('api/auth.php', {
+      action: 'passkey-register-finish',
+      label,
+      transports,
+      response: {
+        clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+        attestationObject: bufToB64u(cred.response.attestationObject),
+      },
+    });
+    toast(LANG === 'sw' ? 'Passkey imesajiliwa ✓ Kifaa hiki sasa kinaweza kuingia bila neno la siri.' : 'Passkey added ✓ This device can now sign in without a password.', 'ok');
+    loadPasskeys();
+  } catch (err) {
+    toast(passkeyErr(err), 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = old; }
+  }
+}
+
+/** A human name for the new passkey, guessed from the platform. */
+function passkeyLabel() {
+  const ua = navigator.userAgent;
+  if (/iPhone/i.test(ua)) return 'iPhone';
+  if (/iPad/i.test(ua)) return 'iPad';
+  if (/Android/i.test(ua)) return 'Android phone';
+  if (/Macintosh/i.test(ua)) return 'Mac';
+  if (/Windows/i.test(ua)) return 'Windows PC';
+  if (/Linux/i.test(ua)) return 'Linux device';
+  return 'Passkey';
+}
+
+async function loadPasskeys() {
+  const box = $('passkeyList');
+  if (!box) return;
+  try {
+    const d = await apiGet('api/auth.php', { action: 'passkey-list' });
+    const rows = d.passkeys || [];
+    if (!rows.length) {
+      box.innerHTML = `<div class="text-white/40 text-[12.5px]">${LANG === 'sw' ? 'Hakuna passkey bado. Ongeza kifaa chako ili kuingia bila neno la siri.' : 'No passkeys yet. Add your device to sign in without a password.'}</div>`;
+      return;
+    }
+    box.innerHTML = rows.map(p => `
+      <div class="flex items-center gap-3 py-2.5 border-b border-white/[.06] last:border-0">
+        <i class="fa-solid fa-fingerprint text-cyan-300"></i>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-[13px] truncate">${esc(p.label || 'Passkey')}</div>
+          <div class="text-white/40 text-[11px]">${LANG === 'sw' ? 'Imeongezwa' : 'Added'} ${esc((p.created_at || '').slice(0, 10))}${p.last_used_at ? ' • ' + (LANG === 'sw' ? 'ilitumika' : 'last used') + ' ' + esc(p.last_used_at.slice(0, 10)) : ''}</div>
+        </div>
+        <button onclick="deletePasskey('${esc(p.id)}')" class="text-red-300/70 hover:text-red-300 text-[12px] font-bold px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+      </div>`).join('');
+  } catch (e) {
+    box.innerHTML = `<div class="text-red-300/80 text-[12.5px]">${esc(e.message)}</div>`;
+  }
+}
+
+async function deletePasskey(id) {
+  if (!confirm(LANG === 'sw' ? 'Ondoa passkey hii? Kifaa hicho hakitaweza kuingia kwa passkey tena.' : 'Remove this passkey? That device will no longer sign in with it.')) return;
+  try {
+    await apiPost('api/auth.php', { action: 'passkey-delete', id });
+    toast(LANG === 'sw' ? 'Passkey imeondolewa.' : 'Passkey removed.', 'ok');
+    loadPasskeys();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
 /* Local phone patterns accepted at sign-up: +255XXXXXXXXX or 0XXXXXXXXX.
  * Mirrors mts_phone_valid() in api/auth.php so the two never disagree. */
 function validTzPhone(raw) {
@@ -1211,7 +1365,18 @@ async function clientTab(t) {
     <div class="mt-5 rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-5 flex flex-wrap items-center gap-4"><div class="flex-1 min-w-[220px]"><div class="font-bold">${T('Need a new system, maintenance or security audit?', 'Unahitaji mfumo mpya, matengenezo au ukaguzi wa usalama?')}</div><div class="text-[13px] text-white/55">${T('Submit requirements — get an official priced quotation within 24 hours.', 'Tuma mahitaji yako — upate nukuu rasmi yenye bei ndani ya saa 24.')}</div></div><button onclick="openQuoteWizard()" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm">+ ${T('New Request', 'Ombi Jipya')}</button></div>
     <div class="font-bold mt-6 mb-3">${T('Recent Activity', 'Shughuli za Karibuni')}</div>
     <div class="grid gap-2">${myReq.slice(0, 4).map(r => `<div class="flex items-center gap-3 p-3.5 rounded-xl bg-white/[.02] border border-white/10 text-[13px]"><span class="font-mono text-cyan-300 text-[12px]">${r.trackingId}</span><span class="flex-1 truncate">${esc(r.title)}</span><span class="badge status-${r.status.replace(' ', '')}">${r.status}</span></div>`).join('') || `<div class="text-white/40 text-sm">${T('No requests yet — click New Request above.', 'Hakuna maombi bado — bofya Ombi Jipya juu.')}</div>`}</div>
-    ${payCard}`;
+    ${payCard}
+    <div class="font-bold mt-6 mb-3">${T('Security', 'Usalama')}</div>
+    <div class="rounded-2xl border border-white/10 bg-white/[.02] p-5">
+      <div class="flex flex-wrap items-start gap-4">
+        <div class="flex-1 min-w-[240px]">
+          <div class="font-bold text-[14px]"><i class="fa-solid fa-fingerprint text-cyan-300 mr-2"></i>${T('Passkeys', 'Passkeys')}</div>
+          <div class="text-[12.5px] text-white/55 mt-1">${T('Sign in with your fingerprint, face or screen lock instead of a password and a code. Nothing secret ever leaves your device.', 'Ingia kwa alama ya kidole, uso au lock ya simu badala ya neno la siri na code. Hakuna siri inayoondoka kwenye kifaa chako.')}</div>
+        </div>
+        <button id="btnAddPasskey" onclick="doPasskeyRegister()" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-plus mr-1.5"></i>${T('Add this device', 'Ongeza kifaa hiki')}</button>
+      </div>
+      <div id="passkeyList" class="mt-4"></div>
+    </div>`;
   }
   if (t === 'requests') {
     h = `<div class="grid gap-3">${myReq.map(r => { const q = myQ.find(x => x.requestId === r.id); return `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-5">
@@ -1262,6 +1427,7 @@ async function clientTab(t) {
     <div class="grid gap-3 mt-4">${myT.map(x => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-4"><div class="flex justify-between gap-2 flex-wrap"><div class="font-bold text-[14px]">${esc(x.subject)}</div><span class="badge ${x.status === 'Open' ? 'status-Pending' : 'status-Completed'}">${x.status.toUpperCase()}</span></div><div class="text-[13px] text-white/60 mt-1 whitespace-pre-line">${esc(x.message)}</div>${(x.replies || []).map(r => `<div class="mt-2 ml-4 p-3 rounded-xl bg-cyan-500/[.06] border border-cyan-400/20 text-[13px]"><strong class="text-cyan-300">${esc(r.by)}:</strong> ${esc(r.text)}</div>`).join('')}<div class="flex gap-2 mt-2"><input id="rep-${x.id}" class="input !py-2 text-[13px]" placeholder="${T('Reply...', 'Jibu...')}"><button onclick="clientReply('${x.id}')" class="px-4 rounded-xl bg-white/5 border border-white/10 text-[12px] font-bold">${T('Send', 'Tuma')}</button></div></div>`).join('') || `<div class="text-white/40 text-sm">${T('No tickets yet.', 'Hakuna tiketi bado.')}</div>`}</div>`;
   }
   $('clientContent').innerHTML = h;
+  if (t === 'overview') loadPasskeys();
 }
 
 async function viewRequestDetail(id) {
@@ -1846,6 +2012,22 @@ async function adminTab(t) {
         <div class="mt-3 rounded-xl bg-black/25 border border-white/10 p-3.5 text-[12px] text-white/60">
           <i class="fa-solid fa-circle-info text-fuchsia-300 mr-2"></i>
           Type the full address including <strong>https://</strong>. Press <strong>Save Settings</strong> below, then reload the homepage.
+        </div>
+      </div>
+
+      <!-- PASSKEYS -->
+      <div class="rounded-2xl border border-cyan-400/30 bg-cyan-500/[.05] p-5 mt-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <div class="font-bold text-[14px]"><i class="fa-solid fa-fingerprint text-cyan-300 mr-2"></i>Passkeys — sign in with a fingerprint</div>
+          <span class="badge bg-cyan-500/15 text-cyan-200">Advanced</span>
+        </div>
+        <div class="text-[12.5px] text-white/55 mb-4">
+          Leave both fields blank and the site figures them out from the address visitors use — correct for the live domain. Only fill them in if the site sits behind a proxy that changes the host or scheme, otherwise the browser will refuse every passkey.
+        </div>
+        <div class="grid sm:grid-cols-3 gap-3">
+          ${fld('webauthn_rp_name', 'Name shown in the passkey prompt')}
+          ${fld('webauthn_rp_id', 'Relying party ID (bare domain)', 'mbilinyitech.co.tz')}
+          ${fld('webauthn_origin', 'Origin (scheme + host)', 'https://mbilinyitech.co.tz')}
         </div>
       </div>
 
@@ -2774,6 +2956,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if ($('view-landing')) {
     setTimeout(() => { toast(T('👋 Welcome to Mbilinyi Tech Solutions! Click the robot for AI help, or Request Service to start.', '👋 Karibu Mbilinyi Tech Solutions! Gusa roboti kwa msaada wa AI, au Omba Huduma kuanza.'), 'info'); }, 1200);
   }
+
+  // The passkey button only appears where WebAuthn can actually run.
+  paintPasskeyLogin();
 
   // Auto-open password reset panel if URL has ?reset_token=...&email=...
   if ($('authLogin') || $('authReset')) {

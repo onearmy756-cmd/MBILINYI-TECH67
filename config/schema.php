@@ -1,7 +1,18 @@
 <?php
 declare(strict_types=1);
 
-/** MySQL (InnoDB, utf8mb4) schema — idempotent, safe to run on every boot. */
+/**
+ * MySQL (InnoDB, utf8mb4) schema — idempotent, safe to run on every boot.
+ *
+ * Keep every statement starting with CREATE TABLE and add no comments inside
+ * the heredoc: mts_sqlite_schema_sql() walks the text statement by statement
+ * and skips anything that does not begin with CREATE TABLE.
+ *
+ * `webauthn_credentials` holds one passkey per row so a user can keep several
+ * (phone, laptop, security key) and revoke one without touching the rest.
+ * `public_key` is the PEM of the COSE key the authenticator handed us and
+ * `sign_count` guards against cloned authenticators.
+ */
 function mts_schema_sql(): string {
     return <<<'SQL'
 CREATE TABLE IF NOT EXISTS users (
@@ -272,6 +283,22 @@ CREATE TABLE IF NOT EXISTS visitor_logs (
   KEY idx_vl_visited (visited_at),
   KEY idx_vl_session (session_id),
   KEY idx_vl_page (page_path(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
+  id            VARCHAR(64)   NOT NULL,
+  user_id       VARCHAR(64)   NOT NULL,
+  credential_id VARCHAR(512)  NOT NULL,
+  public_key    TEXT          NOT NULL,
+  sign_count    BIGINT        NOT NULL DEFAULT 0,
+  transports    VARCHAR(120)  NOT NULL DEFAULT '',
+  label         VARCHAR(120)  NOT NULL DEFAULT '',
+  aaguid        VARCHAR(64)   NOT NULL DEFAULT '',
+  created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at  DATETIME      NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_wac_cred (credential_id(190)),
+  KEY idx_wac_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL;
 }

@@ -54,6 +54,39 @@ unchanged.
 
 `/deploy` reports which engine is in use.
 
+## Signing in
+
+Two steps, and the second step can be skipped entirely once a passkey is set up:
+
+1. **Email + password.**
+2. **Verification** — the 6-digit code emailed to you (always available), your
+   own 4–6 digit PIN, or the last 4 digits of your phone if you never chose a PIN.
+   Five wrong attempts lock the PIN, and the emailed code still works.
+
+### Passkeys (WebAuthn)
+
+A client can add a **passkey** from *My Portal → Security → Add this device*. After
+that, **Sign in with a passkey** on the login card is enough: the phone or laptop
+asks for its own unlock — fingerprint, face, screen-lock PIN or pattern — and hands
+the site only a signature. The site never sees that unlock, and there is no password
+or code to type.
+
+This is the only way a website can use the device's own screen lock. A browser
+cannot read a phone's dot pattern or lock PIN; WebAuthn is the standard mechanism
+that delegates the unlock to the operating system.
+
+The library is hand-written in `lib/webauthn.php` (CBOR, COSE→PEM, signature and
+signature-counter checks) because this host has no Composer. The relying party id
+and origin are derived from the request, and can be pinned in
+*Admin → Settings → Passkeys* when the site sits behind a proxy.
+
+WebAuthn needs a secure context: `https://` in production, or `localhost` for
+local testing. `127.0.0.1` is rejected by the browser as an invalid domain.
+
+Tests: `php scripts/webauthn-test.php` (unit) and
+`BASE=http://localhost:12000 python3 scripts/passkey-e2e.py` (real Chromium with a
+virtual authenticator; needs `pip install websocket-client`).
+
 ## Demo data
 
 | Account | Role |

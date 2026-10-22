@@ -40,6 +40,16 @@ function mts_seed_settings(PDO $pdo): void {
         'company_email'    => 'mbilinyitech@gmail.com',
         'company_phone'    => '0796 752 645',
 
+        /* --- Passkeys (WebAuthn) ---
+         * rp_id must be the bare hostname the site is actually served from;
+         * the browser refuses a passkey whose rpId does not match the page.
+         * Left blank, the request host is used, which is right for the live
+         * domain but wrong behind a proxy — so the CEO can pin it here.
+         * webauthn_origin overrides the scheme+host the browser reports. */
+        'webauthn_rp_name' => 'Mbilinyi Tech Solutions',
+        'webauthn_rp_id'   => '',
+        'webauthn_origin'  => '',
+
         /* --- MbilinyiTech Platform -------------------------------------------
          * The admin pastes the link here and the homepage "OUR PROJECTS"
          * button points at it. Blank until the CEO sets it, and the homepage
