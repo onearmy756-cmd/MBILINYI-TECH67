@@ -48,3 +48,11 @@ session reset and `~/.cargo` does not.
 - An API sweep over 43 endpoints passes; the two errors are intended 403s.
 - `cargo test`: 4 pass (webauthn).
 - R reports return real results (`r:true`) for revenue/requests/payments/escrow.
+
+## Push state (2026-10-21)
+- `master` and `main` both point at `2f1a99e` on the remote; `main` was a stale
+  ref behind `master` and was fast-forwarded (no history rewrite).
+- Pushed with the PAT in a one-off URL. `.git/config` holds only the plain
+  `https://github.com/...` URL — verified no token is in it.
+- Confirmed via the API that `rust/mts-core/target/` and `storage/mts.sqlite`
+  are NOT on the remote.
