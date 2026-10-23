@@ -41,6 +41,7 @@ fn gateways_list(_c: &Ctx) -> Response {
     ok(json!({
         "gateways": crate::payments::available(),
         "currency": settings::get("pay_currency", "TZS"),
+        "fx": { "usd_tzs": crate::payments::usd_rate() },
     }))
 }
 
@@ -109,8 +110,27 @@ async fn start(c: &Ctx) -> Response {
     };
     let payer_email = u.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
 
+    // The invoice's own currency is the base, not the platform default, so an
+    // invoice written in USD keeps its meaning after the default changes.
+    let invoice_currency = {
+        let stored = inv.get("currency").and_then(|v| v.as_str()).unwrap_or("");
+        if stored.is_empty() { settings::get("pay_currency", "TZS") } else { stored.to_string() }
+    };
+    let charge = if currency.eq_ignore_ascii_case(&invoice_currency) {
+        amount
+    } else {
+        match crate::payments::convert(amount, &invoice_currency, &currency) {
+            Some(v) => crate::payments::round2(v),
+            None => {
+                return bad(&format!(
+                    "Paying a {invoice_currency} invoice in {currency} needs an exchange rate. Ask the CEO to set it in Admin → Settings."
+                ))
+            }
+        }
+    };
+
     let payment_id = crate::payments::create_payment(
-        &invoice_id, &uid, &gateway, amount, &currency, &payer_name, &payer_phone, &payer_email,
+        &invoice_id, &uid, &gateway, charge, &currency, &payer_name, &payer_phone, &payer_email,
     );
     let reference = crate::payments::verify::make_reference(
         &crate::payments::get_payment(&payment_id)
@@ -118,9 +138,8 @@ async fn start(c: &Ctx) -> Response {
             .unwrap_or_default(),
     );
 
-    let invoice_currency = settings::get("pay_currency", "TZS");
     let outcome = gateways::initiate(
-        &gateway, amount, &currency, &invoice_currency,
+        &gateway, charge, &currency, &invoice_currency,
         &payer_phone, &payer_email, &payer_name, &reference,
     )
     .await;

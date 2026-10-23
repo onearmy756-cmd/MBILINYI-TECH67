@@ -99,6 +99,42 @@ pub fn config_fields() -> Vec<J> {
     out
 }
 
+/// The number of Tanzanian shillings in one US dollar, as the CEO sets it.
+/// Held in settings so the figure can be corrected without a redeploy.
+pub fn usd_rate() -> f64 {
+    settings::num("fx_usd_tzs", 0.0)
+}
+
+/// Convert an amount between the invoice currency and the currency the payer
+/// chose, at a given shillings-per-dollar rate. `None` means the pair cannot be
+/// converted — the caller must refuse rather than charge the wrong figure. A
+/// TZS invoice paid in USD must never send the shilling amount to Stripe as
+/// dollars.
+pub fn convert_at(amount: f64, from: &str, to: &str, rate: f64) -> Option<f64> {
+    let (from, to) = (from.to_uppercase(), to.to_uppercase());
+    if from == to {
+        return Some(amount);
+    }
+    if rate <= 0.0 {
+        return None;
+    }
+    match (from.as_str(), to.as_str()) {
+        ("TZS", "USD") => Some(amount / rate),
+        ("USD", "TZS") => Some(amount * rate),
+        _ => None,
+    }
+}
+
+/// `convert_at` at the rate the CEO configured.
+pub fn convert(amount: f64, from: &str, to: &str) -> Option<f64> {
+    convert_at(amount, from, to, usd_rate())
+}
+
+/// Round money to two decimals, so a converted figure is a payable amount.
+pub fn round2(v: f64) -> f64 {
+    (v * 100.0).round() / 100.0
+}
+
 fn arg(v: J) -> rusqlite::types::Value {
     db::from_json(v)
 }
@@ -292,3 +328,35 @@ pub fn take_challenge(session_id: &str, kind: &str) -> Option<String> {
     );
     r.get("challenge").and_then(|v| v.as_str()).map(str::to_string)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn same_currency_needs_no_rate() {
+        assert_eq!(convert_at(100.0, "USD", "USD", 0.0), Some(100.0));
+        assert_eq!(convert_at(100.0, "TZS", "tzs", 0.0), Some(100.0));
+    }
+
+    #[test]
+    fn a_tzs_invoice_paid_in_usd_divides_by_the_rate() {
+        // 2,600,000 TZS at 2,600 TZS/USD is 1,000 USD — never 2,600,000 USD.
+        assert_eq!(convert_at(2_600_000.0, "TZS", "USD", 2600.0), Some(1000.0));
+        assert_eq!(convert_at(1000.0, "USD", "TZS", 2600.0), Some(2_600_000.0));
+    }
+
+    #[test]
+    fn round2_settles_to_a_payable_figure() {
+        assert_eq!(round2(1234.567), 1234.57);
+        assert_eq!(round2(0.005), 0.01);
+    }
+
+    #[test]
+    fn an_unconvertible_pair_is_refused_rather_than_guessed() {
+        assert_eq!(convert_at(100.0, "TZS", "USD", 0.0), None);
+        assert_eq!(convert_at(100.0, "TZS", "EUR", 2600.0), None);
+        assert_eq!(convert_at(100.0, "GBP", "USD", 2600.0), None);
+    }
+}
+

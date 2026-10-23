@@ -7,6 +7,15 @@
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
 const fmtTZS = n => 'TZS ' + Number(n || 0).toLocaleString('en-TZ');
+
+/* Money in whichever currency an invoice was written in. */
+const fmtMoney = (n, cur) => {
+  const c = (cur || 'TZS').toUpperCase();
+  if (c === 'TZS') return fmtTZS(n);
+  const sym = c === 'USD' ? '$' : c === 'EUR' ? '€' : c === 'GBP' ? '£' : '';
+  const v = Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return sym ? sym + v : c + ' ' + v;
+};
 const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const uid = p => p + Math.random().toString(36).slice(2, 8).toUpperCase();
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1320,7 +1329,7 @@ async function clientTab(t) {
       apiGet('api/requests.php', { action: 'mine' }).then(d => d.requests),
       apiGet('api/quotes.php', { action: 'mine' }).then(d => d.quotes),
       apiGet('api/contracts.php', { action: 'mine' }).then(d => d.contracts),
-      apiGet('api/invoices.php', { action: 'mine' }).then(d => d.invoices),
+      apiGet('api/invoices.php', { action: 'mine' }).then(d => { window.__MYI__ = d.invoices; return d.invoices; }),
       apiGet('api/tickets.php', { action: 'mine' }).then(d => d.tickets),
     ]);
   } catch (e) { toast(esc(e.message), 'err'); $('clientContent').innerHTML = ''; return; }
@@ -1379,8 +1388,23 @@ async function clientTab(t) {
     </div>`;
   }
   if (t === 'requests') {
-    h = `<div class="grid gap-3">${myReq.map(r => { const q = myQ.find(x => x.requestId === r.id); return `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-5">
+    // For each request, fetch the expert serving it and how far along it is —
+    // the client asked to watch progress and be satisfied by what they see.
+    const workers = {};
+    await Promise.all(myReq.map(async r => {
+      try { workers[r.id] = await apiGet('api/wafanyakazi.php', { action: 'my_worker', requestId: r.id }); }
+      catch (e) { workers[r.id] = null; }
+    }));
+    h = `<div class="grid gap-3">${myReq.map(r => { const q = myQ.find(x => x.requestId === r.id); const w = workers[r.id] || {}; const prog = Number(w.progress) || 0; return `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-5">
       <div class="flex flex-wrap items-center gap-2 justify-between"><div><span class="font-mono text-cyan-300 text-[12px] font-bold">${r.trackingId}</span><div class="font-bold text-[15px]">${esc(r.title)}</div><div class="text-[12px] text-white/45">${esc(r.service)} • ${fmtDate(r.createdAt)} • ${T('Priority', 'Kipaumbele')}: ${esc(r.priority)}</div></div><span class="badge status-${r.status.replace(' ', '')}">${r.status.toUpperCase()}</span></div>
+      <div class="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/[.04] p-3">
+        <div class="flex items-center justify-between text-[11.5px] font-bold text-white/60 mb-1.5"><span>${T('Progress', 'Maendeleo')}</span><span class="text-cyan-300">${prog}%</span></div>
+        <div class="progress-rail"><div class="progress-fill" style="width:${prog}%"></div></div>
+        ${w.worker ? `<div class="flex items-center gap-2 mt-2.5">
+          ${w.worker.photo ? `<img src="${esc(w.worker.photo)}" class="w-8 h-8 rounded-lg object-cover border border-white/15">` : `<div class="w-8 h-8 rounded-lg grad-btn flex items-center justify-center text-[11px] font-bold">${esc((w.worker.fullName || 'M').slice(0, 2).toUpperCase())}</div>`}
+          <div class="text-[12px] text-white/70"><strong class="text-white">${esc(w.worker.fullName)}</strong> — ${esc(w.worker.profession)} <span class="chip ${'text-emerald-300'} ml-1">${esc(w.worker.level)}</span></div>
+        </div>` : `<div class="text-[12px] text-white/45 mt-2">${T('An expert will be assigned to you shortly.', 'Mtaalamu atapewa ombi lako hivi karibuni.')}</div>`}
+      </div>
       <p class="text-[13px] text-white/60 mt-2">${esc(r.description.slice(0, 180))}...</p>
       ${r.adminNote ? `<div class="mt-2 text-[13px] rounded-xl bg-violet-500/[.08] border border-violet-400/25 p-3"><strong class="text-violet-300">${T('Update from the CEO', 'Taarifa kutoka kwa CEO')}:</strong> ${esc(r.adminNote)}</div>` : ''}
       <div class="flex flex-wrap gap-2 mt-3 text-[12px] font-bold"><button onclick="viewRequestDetail('${r.id}')" class="px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-cyan-400/40">${T('View Details', 'Ona Maelezo')}</button>${q ? `<button onclick="clientTab('quotes')" class="px-4 py-2 rounded-full grad-btn">${T('View Quotation', 'Ona Nukuu')} ${fmtTZS(q.total)}</button>` : ''}<a href="https://wa.me/255796752645?text=Hi!%20About%20${r.trackingId}" target="_blank" class="px-4 py-2 rounded-full bg-[#25D366]/10 border border-[#25D366]/30 text-[#4be584]">WhatsApp</a></div>
@@ -1400,7 +1424,7 @@ async function clientTab(t) {
     <div class="mt-3 rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4 text-[12.5px] text-white/70"><strong class="text-white"><i class="fa-solid fa-coins text-gold mr-1"></i>${T('Payment rule (50/50)', 'Kanuni ya malipo (50/50)')}:</strong> ${T('<strong class="text-gold">50% is paid before the project starts</strong>; the remaining half is paid at mid-project, before handover. Your deposit invoice is under', '<strong class="text-gold">50% hulipwa kabla mradi kuanza</strong>; nusu iliyobaki hulipwa katikati ya mradi, kabla ya kukabidhi. Ankara yako ya amana ipo kwenye')} <button onclick="clientTab('invoices')" class="text-cyan-300 underline font-bold">${T('Invoices & Pay', 'Ankara na Malipo')}</button>.</div>`;
   }
   if (t === 'invoices') {
-    h = `<div class="grid gap-3">${myI.map(v => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-5 flex flex-wrap items-center justify-between gap-3"><div><div class="font-bold">${v.id} — ${esc(v.title)}</div><div class="text-[12px] text-white/45">${T('Due', 'Inalipwa')} ${fmtDate(v.dueDate)} • ${v.method}</div><span class="badge ${v.status === 'Paid' ? 'status-Completed' : 'status-Pending'} mt-1 inline-block">${v.status.toUpperCase()}</span></div><div class="text-right"><div class="font-display font-bold text-xl">${fmtTZS(v.amount)}</div>${v.status !== 'Paid' ? `<button onclick="payInvoice('${v.id}')" class="mt-2 px-5 py-2.5 rounded-xl gold-btn text-[13px] font-bold text-[#2a1500]"><i class="fa-solid fa-mobile-screen mr-1"></i> ${T('Pay via M-Pesa', 'Lipa kwa M-Pesa')}</button>` : `<div class="text-emerald-300 text-[13px] font-bold">✓ ${T('Paid — thank you!', 'Imelipwa — asante!')}</div>`}</div></div>`).join('') || `<div class="text-white/40 text-sm">${T('No invoices yet.', 'Hakuna ankara bado.')}</div>`}</div>
+    h = `<div class="grid gap-3">${myI.map(v => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-5 flex flex-wrap items-center justify-between gap-3"><div><div class="font-bold">${v.id} — ${esc(v.title)}</div><div class="text-[12px] text-white/45">${T('Due', 'Inalipwa')} ${fmtDate(v.dueDate)} • ${v.method}</div><span class="badge ${v.status === 'Paid' ? 'status-Completed' : 'status-Pending'} mt-1 inline-block">${v.status.toUpperCase()}</span></div><div class="text-right"><div class="font-display font-bold text-xl">${fmtMoney(v.amount, v.currency)}</div>${v.status !== 'Paid' ? `<button onclick="payInvoice('${v.id}')" class="mt-2 px-5 py-2.5 rounded-xl gold-btn text-[13px] font-bold text-[#2a1500]"><i class="fa-solid fa-credit-card mr-1"></i> ${T('Pay now (card / mobile money)', 'Lipa sasa (kadi / simu)')}</button>` : `<div class="text-emerald-300 text-[13px] font-bold">✓ ${T('Paid — thank you!', 'Imelipwa — asante!')}</div>`}</div></div>`).join('') || `<div class="text-white/40 text-sm">${T('No invoices yet.', 'Hakuna ankara bado.')}</div>`}</div>
     <div class="mt-4 rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4 text-[12.5px] text-white/70"><strong class="text-white"><i class="fa-solid fa-coins text-gold mr-1"></i>${T('Payment rule — 50/50', 'Kanuni ya malipo — 50/50')}:</strong> ${T('<strong class="text-gold">Pay 50% (deposit) before the project starts</strong> — work begins officially after the deposit and the CEO signature; the remaining half is paid at mid-project. <strong class="text-white">Payment:</strong> M-Pesa 0796 752 645 (Jackson Mbilinyi) • bank details on the invoice. Send the receipt on WhatsApp after paying.', '<strong class="text-gold">Lipa 50% (amana) kabla mradi kuanza</strong> — kazi huanza rasmi baada ya amana na saini ya CEO; nusu iliyobaki hulipwa katikati ya mradi. <strong class="text-white">Malipo:</strong> M-Pesa 0796 752 645 (Jackson Mbilinyi) • taarifa za benki zipo kwenye ankara. Tuma risiti kwa WhatsApp baada ya kulipa.')}</div>`;
   }
   if (t === 'news') {
@@ -1475,15 +1499,165 @@ async function respondQuote(id, dec) {
   clientTab('quotes');
 }
 
+/* ---------- PAYMENTS (gateways + USD/TZS) ----------
+   The payer picks a method and the currency they will send. A Tanzanian
+   mobile-money gateway takes TZS; Stripe/PayPal take USD. When the two
+   currencies differ the amount is converted at the CEO's rate, and the
+   gateway's own currency list decides what may be offered. */
+let PAY_GW = null, PAY_PICK = null, PAY_CUR = 'TZS', PAY_INVOICE = '', PAY_BASE = 'TZS';
+
+async function loadGateways() {
+  if (PAY_GW) return PAY_GW;
+  try { PAY_GW = await apiGet('api/payments.php', { action: 'gateways' }); }
+  catch (e) { PAY_GW = { gateways: [], currency: 'TZS', fx: { usd_tzs: 0 } }; }
+  return PAY_GW;
+}
+
+function money(v, cur) {
+  const n = Number(v) || 0;
+  if (cur === 'USD') return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (cur === 'EUR') return '€' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (cur === 'GBP') return '£' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return 'TZS ' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
 async function payInvoice(id) {
-  openGen(`Pay ${id} — invoice`, `
-    <div class="text-center"><div class="w-16 h-16 mx-auto rounded-2xl bg-[#25D366]/15 flex items-center justify-center text-3xl"><i class="fa-brands fa-whatsapp text-[#4be584]"></i></div>
-    <div class="font-bold text-lg mt-3">M-Pesa Payment</div>
-    <p class="text-white/55 text-[13px]">Send your payment to <strong class="font-mono text-white">0796 752 645</strong> (Jackson Mbilinyi), then click confirm.</p>
-    <div class="mt-2 rounded-xl bg-cyan-500/[.06] border border-cyan-400/25 p-3 text-[12px] text-white/70 text-left"><i class="fa-solid fa-coins text-gold mr-1"></i>Deposit ya <strong class="text-white">50%</strong> inaruhusu CEO kusaini na kuanza project. Nusu iliyobaki inalipwa baada ya kukabidhi project.</div>
-    <div class="grid grid-cols-3 gap-2 mt-4 text-[12px]"><button class="py-2.5 rounded-xl border border-white/10 font-bold">M-Pesa</button><button class="py-2.5 rounded-xl border border-white/10 font-bold">Tigo Pesa</button><button class="py-2.5 rounded-xl border border-white/10 font-bold">Bank</button></div>
-    <input id="payRef" class="input mt-3 font-mono" placeholder="Enter M-Pesa transaction code (e.g. TX98412...)">
-    <button onclick="confirmPay('${id}')" class="gold-btn w-full mt-3 py-3.5 rounded-xl font-bold text-[#2a1500]">I Have Paid — Confirm</button></div>`);
+  let inv = (window.__MYI__ || []).find(x => x.id === id);
+  if (!inv) {
+    // Reached from a link rather than the invoice list — fetch it.
+    try { inv = (await apiGet('api/invoices.php', { action: 'mine' })).invoices.find(x => x.id === id); }
+    catch (e) { inv = null; }
+  }
+  const gw = await loadGateways();
+  const base = (inv && inv.currency) || gw.currency || 'TZS';
+  const amount = inv ? Number(inv.amount) || 0 : 0;
+  const list = (gw.gateways || []).filter(g => g.enabled);
+  PAY_PICK = null; PAY_CUR = base; PAY_INVOICE = id; PAY_BASE = base;
+  const rate = Number(gw.fx && gw.fx.usd_tzs) || 0;
+
+  if (!list.length) {
+    openGen(`Pay ${id}`, `<div class="text-center py-6"><div class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-3xl"><i class="fa-solid fa-hourglass-half text-amber-300"></i></div>
+      <div class="font-bold text-lg mt-3">No online method is switched on yet</div>
+      <p class="text-white/55 text-[13px] mt-2">The CEO has not yet enabled a payment gateway. Pay by M-Pesa <strong class="font-mono text-white">0796 752 645</strong> (Jackson Mbilinyi) and confirm below, or contact us.</p>
+      <input id="payRef" class="input mt-4 font-mono" placeholder="Transaction code (e.g. TX98412...)">
+      <button onclick="confirmPay('${id}')" class="gold-btn w-full mt-3 py-3.5 rounded-xl font-bold text-[#2a1500]">I Have Paid — Confirm</button></div>`);
+    return;
+  }
+
+  openGen(`Pay ${id}`, `
+    <div class="rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4 mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div><div class="text-[11px] font-bold tracking-wider text-white/50 uppercase">Amount due</div>
+        <div id="payAmount" class="font-display font-bold text-2xl grad-text">${money(amount, base)}</div></div>
+        <div class="text-right"><div class="text-[11px] font-bold tracking-wider text-white/50 uppercase">Invoice</div>
+        <div class="font-mono text-[13px] text-cyan-300">${esc(id)}</div></div>
+      </div>
+      <div id="payConvert" class="text-[12px] text-white/60 mt-2"></div>
+    </div>
+    <label class="text-[12px] font-bold text-white/60">1. CHOOSE THE CURRENCY YOU WILL PAY IN</label>
+    <div id="payCurRow" class="flex flex-wrap gap-2 mt-1.5">${payCurrencyChoices(base, list).map(c => `<button onclick="pickPayCurrency('${c}')" data-cur="${c}" class="paycur px-5 py-2.5 rounded-xl border font-bold text-[13px] ${c === base ? 'tab-active border-transparent' : 'border-white/10 text-white/70 hover:border-cyan-400/40'}">${c === 'USD' ? '<i class="fa-solid fa-dollar-sign mr-1"></i>' : ''}${c}</button>`).join('')}</div>
+    ${rate > 0 ? '' : `<div class="text-[12px] text-amber-300 mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>No exchange rate is set — paying in a currency other than ${base} is blocked until the CEO sets it.</div>`}
+    <label class="text-[12px] font-bold text-white/60 mt-4 block">2. CHOOSE HOW YOU WILL PAY</label>
+    <div id="payGwRow" class="grid gap-2 mt-1.5"></div>
+    <div id="payStage" class="mt-4"></div>
+    <div id="payManual" class="mt-4 hidden"><input id="payRef" class="input font-mono" placeholder="Transaction code (e.g. TX98412...)"><button onclick="confirmPay('${id}')" class="gold-btn w-full mt-3 py-3.5 rounded-xl font-bold text-[#2a1500]">I Have Paid — Confirm</button></div>
+  `);
+  renderPayGateways(amount, base);
+}
+
+/* Only offer currencies that at least one switched-on gateway accepts. The
+   invoice's own currency always stays, so the client can never reach a dead end
+   where every choice is refused. */
+function payCurrencyChoices(base, enabledGateways) {
+  const accepted = new Set();
+  (enabledGateways || []).forEach(g => (g.currencies || []).forEach(c => accepted.add(c)));
+  const out = [base];
+  ['USD', 'TZS', 'EUR', 'GBP'].forEach(c => { if (c !== base && accepted.has(c)) out.push(c); });
+  return out;
+}
+
+function pickPayCurrency(cur) {
+  PAY_CUR = cur;
+  document.querySelectorAll('.paycur').forEach(b => {
+    const on = b.dataset.cur === cur;
+    b.classList.toggle('tab-active', on); b.classList.toggle('border-transparent', on);
+    b.classList.toggle('border-white/10', !on); b.classList.toggle('text-white/70', !on);
+  });
+  renderPayGateways(Number(PAY_GW && PAY_GW.lastAmount) || 0, PAY_BASE);
+}
+
+function renderPayGateways(amount, base) {
+  PAY_GW.lastAmount = amount;
+  const rate = Number(PAY_GW.fx && PAY_GW.fx.usd_tzs) || 0;
+  const show = c => c === base ? amount : (rate > 0 ? Math.round((c === 'USD' ? amount / rate : amount * rate) * 100) / 100 : null);
+  const conv = show(PAY_CUR);
+  const convEl = $('payConvert');
+  if (convEl) {
+    convEl.innerHTML = PAY_CUR === base
+      ? `Charged in ${base}.`
+      : (conv == null ? `<span class="text-amber-300">Cannot convert ${base} → ${PAY_CUR} without a rate.</span>`
+        : `You will be charged <strong class="text-white">${money(conv, PAY_CUR)}</strong> at 1 USD = ${rate.toLocaleString()} TZS.`);
+  }
+  const amountEl = $('payAmount');
+  if (amountEl) amountEl.textContent = conv == null ? money(amount, base) : money(conv, PAY_CUR);
+
+  const row = $('payGwRow');
+  if (!row) return;
+  const allowed = (PAY_GW.gateways || []).filter(g => g.enabled && (g.currencies || []).includes(PAY_CUR));
+  if (!allowed.length) {
+    row.innerHTML = `<div class="text-[12.5px] text-amber-300 rounded-xl border border-amber-400/25 bg-amber-500/[.05] p-3"><i class="fa-solid fa-circle-info mr-1"></i>No enabled method accepts ${PAY_CUR}. ${PAY_CUR === 'USD' ? 'Turn on Stripe or PayPal in Admin → Settings, or pay in TZS.' : 'Choose USD, or pay by bank transfer.'}</div>`;
+    return;
+  }
+  row.innerHTML = allowed.map(g => `<button onclick="pickGateway('${g.key}','${esc(g.name)}')" class="paygw flex items-center gap-3 p-3.5 rounded-xl border border-white/10 hover:border-cyan-400/50 hover:bg-white/5 text-left" data-key="${g.key}">
+    <span class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background:${g.brand}22;color:${g.brand}"><i class="${g.icon}"></i></span>
+    <span class="flex-1"><span class="font-bold text-[13.5px] block">${esc(g.name)}</span>
+    <span class="text-[11.5px] text-white/50">${esc(g.kind)} • ${(g.currencies || []).join(', ')}</span></span>
+    ${g.configured ? '<i class="fa-solid fa-circle-check text-emerald-300"></i>' : '<span class="chip text-amber-300">setup needed</span>'}
+  </button>`).join('');
+}
+
+async function pickGateway(key, name) {
+  document.querySelectorAll('.paygw').forEach(b => b.classList.toggle('tab-active', b.dataset.key === key));
+  PAY_PICK = key;
+  const stage = $('payStage');
+  const g = (PAY_GW.gateways || []).find(x => x.key === key) || {};
+  if (!g.configured) {
+    stage.innerHTML = `<div class="rounded-xl border border-amber-400/25 bg-amber-500/[.05] p-3 text-[12.5px] text-white/70"><i class="fa-solid fa-key text-amber-300 mr-1"></i><strong>${esc(name)}</strong> is enabled but its credentials are not filled in. The CEO must add them in Admin → Settings before money can move.</div>`;
+    return;
+  }
+  stage.innerHTML = `<div class="text-[12.5px] text-white/60"><i class="fa-solid fa-circle-notch fa-spin text-cyan-300 mr-1.5"></i>Starting ${esc(name)}…</div>`;
+  try {
+    const r = await apiPost('api/payments.php', {
+      action: 'pay', invoiceId: PAY_INVOICE, gateway: key, currency: PAY_CUR,
+    });
+    const code = r.verifyCode || '';
+    if (r.redirect) {
+      stage.innerHTML = `<div class="rounded-xl border border-cyan-400/30 bg-cyan-500/[.06] p-4">
+        <div class="font-bold text-[13.5px]">Complete the payment</div>
+        <p class="text-[12.5px] text-white/65 mt-1.5">${esc(r.instructions || 'You will be taken to the secure payment page.')}</p>
+        <a href="${esc(r.redirect)}" target="_blank" rel="noopener" class="grad-btn inline-block mt-3 px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>Open Secure Payment Page</a>
+        <button onclick="verifyPayment('${r.paymentId}')" class="ml-2 px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">I Have Paid — Check</button>
+        ${code ? `<div class="text-[11.5px] text-white/45 mt-3">Reference <span class="font-mono text-cyan-300">${esc(r.reference || '')}</span> • Verification code <span class="font-mono text-white">${esc(code)}</span></div>` : ''}
+      </div>`;
+    } else {
+      stage.innerHTML = `<div class="rounded-xl border border-emerald-400/30 bg-emerald-500/[.06] p-4">
+        <div class="font-bold text-[13.5px]"><i class="fa-solid fa-circle-info text-emerald-300 mr-1"></i>Payment instructions</div>
+        <div class="text-[12.5px] text-white/75 mt-2 whitespace-pre-line">${esc(r.instructions || '')}</div>
+        ${code ? `<div class="text-[11.5px] text-white/45 mt-2">Verification code <span class="font-mono text-white">${esc(code)}</span></div>` : ''}
+        <button onclick="verifyPayment('${r.paymentId}')" class="grad-btn mt-3 px-5 py-3 rounded-xl font-bold text-sm">I Have Paid — Check</button>
+      </div>`;
+    }
+  } catch (e) {
+    stage.innerHTML = `<div class="rounded-xl border border-red-400/30 bg-red-500/[.06] p-3 text-[12.5px] text-red-200"><i class="fa-solid fa-circle-xmark mr-1"></i>${esc(e.message)}</div>`;
+  }
+}
+
+async function verifyPayment(paymentId) {
+  try {
+    const r = await apiPost('api/payments.php', { action: 'verify', paymentId });
+    if (r.settled) { closeGen(); clientTab('invoices'); toast('Payment confirmed — asante sana ✓', 'ok'); return; }
+    toast(r.message || 'Not settled yet. Try again in a moment.', 'info');
+  } catch (e) { toast(esc(e.message), 'err'); }
 }
 
 async function confirmPay(id) {
@@ -1696,11 +1870,15 @@ async function printQuote(id) {
 
 /* ---------- ADMIN PORTAL ---------- */
 let aTab = 'overview', adminSearch = '', adminStatusFilter = 'All';
+// State for the staff, hiring, agent and tool screens added with the MTECHOS merge.
+let DEPARTMENTS = [], EMPLOYEES = [], AGENTS = [], TOOLS = [], JOBS = [];
+let adminEmpDept = '', adminJobFilter = '', adminAgentDept = '', adminToolHolder = null;
 
 async function adminTab(t) {
   aTab = t;
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
-  const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration' };
+  const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
+    wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account' };
   $('adminTabTitle').textContent = titles[t];
   $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
 
@@ -1773,6 +1951,7 @@ async function adminTab(t) {
         <div class="flex flex-wrap gap-2 mt-3">
           <select onchange="setReqStatus('${r.id}',this.value)" class="input !w-auto !py-2 text-[12px] font-bold">${['Pending', 'Under Review', 'Quoted', 'Approved', 'In Progress', 'Completed', 'Rejected'].map(s => `<option ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
           <button onclick="openRequestEditor('${r.id}')" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[12px] font-bold hover:border-cyan-400/40"><i class="fa-solid fa-pen mr-1"></i>Edit</button>
+          <button onclick="openAssignWorker('${r.id}','${esc(r.service)}')" class="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/30 text-emerald-200 text-[12px] font-bold"><i class="fa-solid fa-user-check mr-1"></i>Assign Worker</button>
           <button onclick="openQuoteBuilder('${r.id}')" class="px-4 py-2 rounded-xl grad-btn text-[12px] font-bold"><i class="fa-solid fa-tag mr-1"></i>Set Price & Quote</button>
           <button onclick="adminNote('${r.id}')" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[12px] font-bold">CEO Note</button>
           <button onclick="quoteToContract('${r.id}')" class="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-400/30 text-emerald-200 text-[12px] font-bold">Generate Contract</button>
@@ -1936,10 +2115,290 @@ async function adminTab(t) {
       }).join('') || '<div class="md:col-span-2 lg:col-span-3 text-white/40 glass rounded-3xl p-8 text-center">No team members yet. Click "Add Team Member" — they appear on the homepage immediately.</div>'}</div>`;
     }
 
+    if (t === 'wafanyakazi') {
+      const [deps, emp] = await Promise.all([
+        apiGet('api/wafanyakazi.php', { action: 'departments' }),
+        apiGet('api/wafanyakazi.php', { action: 'list', department: adminEmpDept || '' }),
+      ]);
+      DEPARTMENTS = deps.departments || [];
+      const list = emp.employees || [];
+      const lvlColor = { junior: 'text-sky-300', mid: 'text-cyan-300', senior: 'text-emerald-300', lead: 'text-amber-300', principal: 'text-fuchsia-300' };
+      h = `<div class="rounded-2xl border border-emerald-400/25 bg-emerald-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-user-tie text-emerald-300 mr-2"></i>
+        Hire a worker for a named service. The client's request then goes to whoever serves that service — the client is served by a named person, not a queue. <strong>Only you, the CEO, hire and assign tools.</strong>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 mb-4">
+        <select onchange="adminEmpDept=this.value;adminTab('wafanyakazi')" class="input !w-auto text-[13px]">
+          <option value="">All departments (${list.length})</option>
+          ${DEPARTMENTS.map(d => `<option value="${d.key}" ${adminEmpDept === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}
+        </select>
+        <button onclick="openEmployeeEditor('new')" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-user-plus mr-1"></i> Hire Employee</button>
+      </div>
+      <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      ${list.map(m => {
+        const initials = (m.fullName || 'MTS').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const pop = ['pop-cyan', 'pop-violet', 'pop-emerald', 'pop-amber', 'pop-rose'][(m.fullName || '').length % 5];
+        return `<div class="card3d ${pop} p-5">
+          <div class="flex items-start gap-3">
+            ${m.photo ? `<img src="${esc(m.photo)}" class="w-14 h-14 rounded-2xl object-cover border border-white/15">` : `<div class="w-14 h-14 rounded-2xl grad-btn flex items-center justify-center font-bold">${esc(initials)}</div>`}
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-[14.5px] truncate">${esc(m.fullName)}</div>
+              <div class="text-[12px] text-emerald-300 truncate">${esc(m.profession || '—')}</div>
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
+                <span class="chip ${lvlColor[m.level] || 'text-white/60'}"><i class="fa-solid fa-layer-group"></i>${esc(m.level)}</span>
+                <span class="chip text-white/60">${esc(m.department)}</span>
+                <span class="chip ${m.isActive ? 'text-emerald-300' : 'text-red-300'}">${m.isActive ? 'ACTIVE' : 'PAUSED'}</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-[12px] text-white/50 mt-3 space-y-1">
+            <div><i class="fa-solid fa-location-dot mr-1.5 text-white/35"></i>${esc(m.region || '—')} • ${esc(m.country || 'Tanzania')}</div>
+            <div><i class="fa-solid fa-briefcase mr-1.5 text-white/35"></i>${Number(m.experienceYears) || 0} yrs • ${esc(m.languages || '—')}</div>
+            <div><i class="fa-solid fa-toolbox mr-1.5 text-white/35"></i>${(m.tools || []).length} tools granted</div>
+            <div class="text-white/70"><i class="fa-solid fa-diagram-project mr-1.5 text-white/35"></i>${(m.services || []).map(s => esc(s)).join(', ') || 'No service assigned'}</div>
+          </div>
+          <div class="flex gap-1.5 mt-4">
+            <button onclick="openEmployeeEditor('${m.id}')" title="Edit" class="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-emerald-400/50 text-[12px] font-bold"><i class="fa-solid fa-pen mr-1"></i>Edit</button>
+            <button onclick="openToolGranter('${m.id}','employee')" title="Tools" class="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-sky-400/50 text-[12px] font-bold"><i class="fa-solid fa-toolbox mr-1"></i>Tools</button>
+            <button onclick="toggleEmployee('${m.id}')" title="Pause/Resume" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-amber-400/50"><i class="fa-solid fa-power-off text-[11px] text-amber-300"></i></button>
+            <button onclick="delEmployee('${m.id}')" title="Remove" class="px-3 py-2 rounded-lg bg-red-500/10 border border-red-400/20 hover:border-red-400/60"><i class="fa-solid fa-trash text-[11px] text-red-300"></i></button>
+          </div>
+        </div>`;
+      }).join('') || '<div class="sm:col-span-2 xl:col-span-3 glass rounded-3xl p-8 text-center text-white/40">No employees yet. Click <strong>Hire Employee</strong> — they start serving clients immediately.</div>'}</div>`;
+    }
+
+    if (t === 'ajira') {
+      const [jobs, apps, st] = await Promise.all([
+        apiGet('api/ajira.php', { action: 'admin_openings' }),
+        apiGet('api/ajira.php', { action: 'admin_applications', jobId: adminJobFilter || '' }),
+        apiGet('api/ajira.php', { action: 'status' }),
+      ]);
+      const openings = jobs.openings || [];
+      const applications = apps.applications || [];
+      h = `<div class="rounded-2xl border border-amber-400/25 bg-amber-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-briefcase text-amber-300 mr-2"></i>
+        Post a vacancy; applicants fill in their details (photo, profession, level) and are assessed <strong>theoretically and practically</strong>. The two scores are weighted into one total. Hiring creates the employee record in one step.
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div class="font-bold text-[14px]"><i class="fa-solid fa-bullhorn text-amber-300 mr-1.5"></i>Open Vacancies (${openings.length})</div>
+        <button onclick="openJobEditor('new')" class="grad-btn px-5 py-2.5 rounded-xl font-bold text-[13px]"><i class="fa-solid fa-plus mr-1"></i> Post Vacancy</button>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3 mb-6">
+      ${openings.map(j => `<div class="card3d pop-amber p-4">
+        <div class="flex justify-between items-start gap-2">
+          <div><div class="font-bold text-[14px]">${esc(j.title)}</div>
+          <div class="text-[11.5px] text-amber-300">${esc(j.department)} • ${esc(j.service || '—')} • ${esc(j.level)}</div></div>
+          <span class="chip ${j.isOpen ? 'text-emerald-300' : 'text-red-300'}">${j.isOpen ? 'OPEN' : 'CLOSED'}</span>
+        </div>
+        <div class="text-[12px] text-white/50 mt-2">${esc(j.location)} • ${esc(j.kind)} • ${esc(j.salary || 'Salary on request')}</div>
+        <div class="text-[12px] text-white/45 mt-1.5">Assessment: theory ${j.theoreticalWeight}% / practical ${j.practicalWeight}% • ${j.positions} position(s)</div>
+        <div class="flex gap-1.5 mt-3">
+          <button onclick="adminJobFilter='${j.id}';adminTab('ajira')" class="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-amber-400/50 text-[12px] font-bold">View Applicants</button>
+          <button onclick="openJobEditor('${j.id}')" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-emerald-400/50"><i class="fa-solid fa-pen text-[11px] text-emerald-300"></i></button>
+          <button onclick="delJob('${j.id}')" class="px-3 py-2 rounded-lg bg-red-500/10 border border-red-400/20"><i class="fa-solid fa-trash text-[11px] text-red-300"></i></button>
+        </div>
+      </div>`).join('') || '<div class="sm:col-span-2 glass rounded-3xl p-6 text-center text-white/40">No vacancies posted.</div>'}</div>
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <div class="font-bold text-[14px]"><i class="fa-solid fa-users-viewfinder text-cyan-300 mr-1.5"></i>Applications (${applications.length})</div>
+        <select onchange="adminJobFilter=this.value;adminTab('ajira')" class="input !w-auto text-[12.5px]"><option value="">All vacancies</option>${openings.map(j => `<option value="${j.id}" ${adminJobFilter === j.id ? 'selected' : ''}>${esc(j.title)}</option>`).join('')}</select>
+      </div>
+      <div class="grid gap-2.5">
+      ${applications.map(a => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+        <div class="flex flex-wrap items-center gap-3">
+          ${a.photo ? `<img src="${esc(a.photo)}" class="w-11 h-11 rounded-xl object-cover border border-white/15">` : `<div class="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-bold text-[13px]">${esc((a.fullName || 'A').slice(0, 2).toUpperCase())}</div>`}
+          <div class="flex-1 min-w-[180px]"><div class="font-bold text-[13.5px]">${esc(a.fullName)} <span class="text-white/40 font-normal">— ${esc(a.profession || '')}</span></div>
+          <div class="text-[11.5px] text-white/45">${esc(a.jobTitle || '—')} • ${esc(a.region || '—')} • ${Number(a.experienceYears) || 0} yrs</div></div>
+          <div class="text-center px-3"><div class="font-display font-bold text-lg ${a.totalScore >= 70 ? 'text-emerald-300' : a.totalScore >= 50 ? 'text-amber-300' : 'text-white/50'}">${a.totalScore}%</div><div class="text-[10px] text-white/40 font-bold uppercase">Total</div></div>
+          <span class="badge status-${(a.status || '').replace(' ', '')}">${esc(a.status)}</span>
+          <div class="flex gap-1.5">
+            <button onclick="openAssess('${a.id}','${esc(a.fullName)}',${a.theoreticalScore},${a.practicalScore})" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-400/50 text-[12px] font-bold"><i class="fa-solid fa-clipboard-check mr-1 text-cyan-300"></i>Assess</button>
+            <button onclick="hireApplicant('${a.id}')" class="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/30 hover:border-emerald-400/70 text-[12px] font-bold text-emerald-300"><i class="fa-solid fa-user-plus mr-1"></i>Hire</button>
+            <button onclick="delApplication('${a.id}')" class="px-3 py-2 rounded-lg bg-red-500/10 border border-red-400/20"><i class="fa-solid fa-trash text-[11px] text-red-300"></i></button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3 mt-2.5 text-[11.5px] text-white/50">
+          <span>Theory: <strong class="text-white/80">${a.theoreticalScore}%</strong></span>
+          <span>Practical: <strong class="text-white/80">${a.practicalScore}%</strong></span>
+          <span>Email: <strong class="text-white/80">${esc(a.email || '—')}</strong></span>
+          <span>Phone: <strong class="text-white/80">${esc(a.phone || '—')}</strong></span>
+        </div>
+        ${a.assessmentNotes ? `<div class="text-[12px] text-white/55 mt-2 italic">“${esc(a.assessmentNotes)}”</div>` : ''}
+      </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No applications yet. The public Ajira page is open to everyone.</div>'}</div>`;
+    }
+
+    if (t === 'agents') {
+      const [st, list, mgr] = await Promise.all([
+        apiGet('api/agents.php', { action: 'stats' }),
+        apiGet('api/agents.php', { action: 'list', department: adminAgentDept || '' }),
+        apiGet('api/agents.php', { action: 'manager' }),
+      ]);
+      AGENTS = list.agents || [];
+      const manager = mgr.manager;
+      h = `<div class="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-robot text-fuchsia-300 mr-2"></i>
+        A self-running company of <strong>${st.total}</strong> agents. The manager leads every agent; each agent has one job and only the tools you grant it. You give work and inspect it — the agents carry it out.
+      </div>
+      ${manager ? `<div class="card3d pop-violet p-5 mb-5">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-violet-600 flex items-center justify-center text-2xl"><i class="fa-solid fa-diagram-project"></i></div>
+          <div class="flex-1 min-w-[200px]"><div class="font-display font-bold text-lg">${esc(manager.name)}</div>
+          <div class="text-[12.5px] text-fuchsia-300">${esc(manager.role)}</div>
+          <div class="text-[12px] text-white/50 mt-1">${esc(manager.speciality)}</div></div>
+          <div class="flex flex-wrap gap-1.5">${(manager.tools || []).map(x => `<span class="chip text-fuchsia-300">${esc(x)}</span>`).join('')}</div>
+          <span class="chip text-emerald-300"><i class="fa-solid fa-circle-check"></i>${esc(manager.status)}</span>
+        </div>
+      </div>` : ''}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        ${[['Total agents', st.total, 'fa-users', 'fuchsia'], ['With tools', st.withTools, 'fa-toolbox', 'sky'], ['Departments', (st.byDepartment || []).length, 'fa-sitemap', 'violet'], ['Autonomous', 'YES', 'fa-bolt', 'emerald']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-xl">${v}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
+      </div>
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <div class="font-bold text-[14px]"><i class="fa-solid fa-hexagon-nodes text-fuchsia-300 mr-1.5"></i>Every Seat (${AGENTS.length})</div>
+        <select onchange="adminAgentDept=this.value;adminTab('agents')" class="input !w-auto text-[12.5px]"><option value="">All departments</option>${(st.byDepartment || []).map(d => `<option value="${d.department}" ${adminAgentDept === d.department ? 'selected' : ''}>${d.department} (${d.count})</option>`).join('')}</select>
+      </div>
+      <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+      ${AGENTS.map(a => `<div class="agent-seat">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-500/70 to-violet-600/70 flex items-center justify-center text-[11px] font-bold shrink-0"><i class="fa-solid fa-robot"></i></div>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-[12.5px] truncate">${esc(a.name)}</div>
+          <div class="text-[11px] text-white/45 truncate">${esc(a.speciality || a.role)}</div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-[10.5px] text-sky-300 font-bold">${(a.tools || []).length} tools</div>
+          <div class="text-[10px] text-white/40">${a.tasksDone} done</div>
+        </div>
+        <div class="flex flex-col gap-1 shrink-0">
+          <button onclick="openToolGranter('${a.id}','agent')" title="Assign tools" class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 hover:border-sky-400/60"><i class="fa-solid fa-toolbox text-[10px] text-sky-300"></i></button>
+          <button onclick="toggleAgent('${a.id}')" title="Pause/Resume" class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 hover:border-amber-400/60"><i class="fa-solid fa-power-off text-[10px] text-amber-300"></i></button>
+        </div>
+      </div>`).join('') || '<div class="sm:col-span-2 xl:col-span-3 glass rounded-3xl p-6 text-center text-white/40">No agents in this department.</div>'}</div>`;
+    }
+
+    if (t === 'tools') {
+      const cat = await apiGet('api/tools.php', { action: 'catalogue' });
+      TOOLS = cat.tools || [];
+      const famColor = { software: 'cyan', security: 'rose', ai: 'fuchsia', design: 'violet', business: 'amber', comms: 'sky', platform: 'emerald', agent: 'teal', media: 'orange' };
+      const famLabel = { software: 'Software Development', security: 'Cyber Security', ai: 'AI — Fine-Tuning, Chatbots & Custom AI', design: 'Design & Documents', business: 'Business & Tanzania Services', comms: 'Communication', platform: 'Platform', agent: 'Agent Runtime (OpenHands-class)', media: 'Media & Vision' };
+      h = `<div class="rounded-2xl border border-sky-400/25 bg-sky-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-toolbox text-sky-300 mr-2"></i>
+        Every tool lives inside the platform — <strong>nothing is called from outside</strong>. You grant each tool to a named employee or agent. A worker who was not granted a tool is refused at the endpoint, so no-one works outside their own job.
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        ${[['Total tools', cat.count], ['Families', (cat.families || []).length], ['Employees', (EMPLOYEES || []).length || '—'], ['Agents', (AGENTS || []).length || 101]].map(([l, v]) => `<div class="card3d pop-sky p-4"><div class="font-display font-bold text-xl">${v}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div>`).join('')}
+      </div>
+      <div class="grid gap-4">
+      ${(cat.families || []).map(f => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+        <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-layer-group text-${famColor[f.family] || 'cyan'}-300 mr-1.5"></i>${esc(famLabel[f.family] || f.family)} <span class="text-white/40 font-normal">(${f.tools.length})</span></div>
+        <div class="flex flex-wrap gap-2">
+        ${f.tools.map(x => `<span class="chip text-${famColor[f.family] || 'cyan'}-300 !text-[11px] !px-3 !py-1.5"><i class="${TOOLS.find(y => y.code === x.code) ? (TOOLS.find(y => y.code === x.code).icon || 'fa-solid fa-gear') : 'fa-solid fa-gear'}"></i>${esc(x.name)}${x.agentic ? ' <i class="fa-solid fa-bolt text-amber-300 ml-1" title="Agentic — runs itself"></i>' : ''}${x.tanzaniaOnly ? ' <span class="text-[9px] text-amber-300 font-bold">TZ</span>' : ''}</span>`).join('')}
+        </div>
+      </div>`).join('')}
+      </div>`;
+    }
+
+    if (t === 'ofisi') {
+      const [rooms, sms] = await Promise.all([
+        apiGet('api/ofisi.php', { action: 'rooms' }),
+        apiGet('api/ofisi.php', { action: 'sms_log' }),
+      ]);
+      const kinds = rooms.kinds || [];
+      h = `<div class="rounded-2xl border border-rose-400/25 bg-rose-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-video text-rose-300 mr-2"></i>
+        The online office: live video calls, voice calls, screen sharing, online meetings with an AI scribe — and every SMS the platform sent. A request that arrives by SMS is logged here, ready for you to approve and sign.
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div class="font-bold text-[14px]"><i class="fa-solid fa-users-rectangle text-rose-300 mr-1.5"></i>Rooms (${(rooms.rooms || []).length})</div>
+        <button onclick="openRoomEditor()" class="grad-btn px-5 py-2.5 rounded-xl font-bold text-[13px]"><i class="fa-solid fa-plus mr-1"></i> New Room</button>
+      </div>
+      <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-6">
+      ${(rooms.rooms || []).map(r => `<div class="card3d pop-rose p-4">
+        <div class="flex justify-between items-start gap-2"><div class="font-bold text-[13.5px]">${esc(r.name)}</div><span class="chip ${r.status === 'live' ? 'text-emerald-300' : 'text-white/60'}">${esc(r.status)}</span></div>
+        <div class="text-[11.5px] text-rose-300 mt-1"><i class="fa-solid fa-video mr-1"></i>${esc(r.kind)} • ${r.durationMin} min</div>
+        <div class="text-[11.5px] text-white/45 mt-1">Host: ${esc(r.host || '—')} • ${esc(r.startsAt || 'now')}</div>
+        <div class="flex flex-wrap gap-1.5 mt-2">${r.scribe ? '<span class="chip text-cyan-300"><i class="fa-solid fa-pen-nib"></i>AI Scribe</span>' : ''}${r.recording ? '<span class="chip text-amber-300"><i class="fa-solid fa-circle-dot"></i>Recording</span>' : ''}<span class="chip text-white/50">${(r.invitees || []).length} invitees</span></div>
+        <div class="flex gap-1.5 mt-3">
+          <button onclick="setRoomStatus('${r.id}','live')" class="flex-1 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/30 text-[12px] font-bold text-emerald-300"><i class="fa-solid fa-play mr-1"></i>Go Live</button>
+          <button onclick="setRoomStatus('${r.id}','ended')" class="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-[12px] font-bold">End</button>
+        </div>
+      </div>`).join('') || '<div class="sm:col-span-2 xl:col-span-3 glass rounded-3xl p-6 text-center text-white/40">No rooms yet. Create one to meet a client online.</div>'}</div>
+      <div class="font-bold text-[14px] mb-2"><i class="fa-solid fa-comment-sms text-sky-300 mr-1.5"></i>SMS Log (${sms.count})</div>
+      <div class="grid gap-2">
+      ${(sms.messages || []).map(m => `<div class="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[.02] border border-white/10 text-[12.5px]">
+        <span class="chip text-sky-300"><i class="fa-solid fa-phone"></i>${esc(m.phone)}</span>
+        <span class="flex-1 min-w-[200px] text-white/75">${esc(m.message)}</span>
+        <span class="chip text-white/50">${esc(m.kind)}</span>
+        <span class="chip ${m.status === 'queued' ? 'text-amber-300' : 'text-emerald-300'}">${esc(m.status)}</span>
+        <span class="text-[11px] text-white/35">${esc(m.createdAt)}</span>
+      </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No SMS yet. They are logged automatically when a request is assigned.</div>'}</div>`;
+    }
+
+    if (t === 'ukuaji') {
+      const g = await apiGet('api/ofisi.php', { action: 'growth' });
+      const regions = await apiGet('api/ofisi.php', { action: 'regions', country: 'Tanzania' });
+      h = `<div class="rounded-2xl border border-teal-400/25 bg-teal-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-earth-africa text-teal-300 mr-2"></i>
+        The services reach <strong>${g.countries} countries</strong> and every one of Tanzania's <strong>${g.regions} regions</strong>. Growth is tracked so you can see where the work is coming from. The Tanzania-only services (BRELA, TRA, e-services) are never shown abroad.
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        ${[['Countries', g.countries, 'fa-globe', 'teal'], ['TZ regions', g.regions, 'fa-map-location-dot', 'cyan'], ['Requests', g.requests, 'fa-inbox', 'violet'], ['Coverage', '100%', 'fa-check-double', 'emerald']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-xl">${v}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
+      </div>
+      <div class="grid lg:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+          <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-globe text-teal-300 mr-1.5"></i>Countries Served</div>
+          <div class="flex flex-wrap gap-1.5">${(g.byCountry || []).map(c => `<span class="chip text-teal-300">${esc(c.country)}</span>`).join('')}</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+          <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-map-location-dot text-cyan-300 mr-1.5"></i>Tanzania Regions (${(regions.regions || []).length})</div>
+          <div class="flex flex-wrap gap-1.5">${(regions.regions || []).map(r => `<span class="chip text-cyan-300">${esc(r.region)}</span>`).join('')}</div>
+        </div>
+      </div>`;
+    }
+
+    if (t === 'usalama') {
+      const [sec, acct, log] = await Promise.all([
+        apiGet('api/security.php', { action: 'status' }),
+        apiGet('api/security.php', { action: 'company_account' }),
+        apiGet('api/security.php', { action: 'log' }),
+      ]);
+      const a = acct.account || {};
+      h = `<div class="rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-shield-halved text-cyan-300 mr-2"></i>
+        Contracts are signed with <strong>ECDSA (secp256k1)</strong>. Change any term after signing and verification fails — that is what makes the signature worth having. Money leaves escrow into the company account below.
+      </div>
+      <div class="grid md:grid-cols-3 gap-3 mb-5">
+        <div class="card3d pop-cyan p-4"><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">Signature</div><div class="font-display font-bold text-lg mt-1">${esc(sec.ecdsa.algorithm)}</div><div class="text-[11.5px] text-emerald-300 mt-1"><i class="fa-solid fa-circle-check mr-1"></i>${sec.ecdsa.enabled ? 'Active' : 'Off'}</div><div class="font-mono text-[10px] text-white/35 mt-2 break-all">${esc((sec.ecdsa.publicKey || '').slice(0, 42))}…</div></div>
+        <div class="card3d pop-violet p-4"><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">Quantum readiness</div><div class="font-display font-bold text-lg mt-1">${esc(sec.quantum.signatureScheme)}</div><div class="text-[11.5px] text-white/50 mt-1">${esc(sec.quantum.plan)}</div></div>
+        <div class="card3d pop-emerald p-4"><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">Escrow held</div><div class="font-display font-bold text-lg mt-1">${fmtTZS(sec.escrow.held || 0)}</div><div class="text-[11.5px] text-white/50 mt-1">Gateways: ${sec.gateways.enabled}/${sec.gateways.catalogue} on • Stripe: ${sec.gateways.stripeReady ? 'ready' : 'needs key'}</div></div>
+      </div>
+      <div class="rounded-2xl border border-emerald-400/25 bg-emerald-500/[.04] p-4 mb-4">
+        <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-building-columns text-emerald-300 mr-1.5"></i>Company Account — where the money settles after escrow</div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Account name</label><input id="caName" class="input mt-1" value="${esc(a.name || '')}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Bank</label><input id="caBank" class="input mt-1" value="${esc(a.bank || '')}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Account number</label><input id="caNo" class="input mt-1 font-mono" value="${esc(a.accountNo || '')}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">SWIFT</label><input id="caSwift" class="input mt-1 font-mono" value="${esc(a.swift || '')}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Mobile money</label><input id="caMobile" class="input mt-1 font-mono" value="${esc(a.mobile || '')}"></div>
+          <div class="flex items-end"><button onclick="saveCompanyAccount()" class="grad-btn w-full py-3 rounded-xl font-bold text-sm">Save Company Account</button></div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+        <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-file-signature text-cyan-300 mr-1.5"></i>Signature Log (${(log.entries || []).length})</div>
+        <div class="grid gap-1.5">
+        ${(log.entries || []).map(e => `<div class="flex flex-wrap items-center gap-3 p-2.5 rounded-xl bg-white/[.02] border border-white/5 text-[12.5px]">
+          <span class="chip ${e.action === 'sign' ? 'text-cyan-300' : 'text-violet-300'}">${esc(e.action)}</span>
+          <span class="font-mono text-[11.5px] text-white/60">${esc(e.contractId)}</span>
+          <span class="flex-1 text-[11.5px] text-white/40">${esc(e.algorithm)}</span>
+          <span class="chip ${e.ok ? 'text-emerald-300' : 'text-red-300'}">${e.ok ? 'valid' : 'FAILED'}</span>
+          <span class="text-[11px] text-white/35">${esc(e.createdAt)}</span>
+        </div>`).join('') || '<div class="text-white/40 text-[12.5px]">No signatures yet. Sign a contract from the Contracts tab.</div>'}
+        </div>
+      </div>`;
+    }
+
     if (t === 'settings') {
-      const [sd, pl] = await Promise.all([
+      const [sd, pl, gwc] = await Promise.all([
         apiGet('api/settings.php', { action: 'list' }),
         apiGet('api/settings.php', { action: 'plans' }),
+        apiGet('api/settings.php', { action: 'gateways' }),
       ]);
       const S = sd.settings || {};
       const g = (k, d = '') => (S[k] !== undefined && S[k] !== null ? S[k] : d);
@@ -1969,6 +2428,7 @@ async function adminTab(t) {
           ${fld('pay_mobile_number', 'Mobile money number')}
           ${fld('pay_mobile_holder', 'Mobile money holder')}
           ${fld('pay_currency', 'Currency')}
+          ${fld('fx_usd_tzs', 'Exchange rate — TZS per 1 USD (used when a client pays in the other currency)')}
         </div>
         <div class="px-5 pb-5 grid gap-3">
           <div>
@@ -1980,6 +2440,42 @@ async function adminTab(t) {
             <strong>Software projects:</strong> 50% deposit before start + 50% mid-project.
             <strong>Other services:</strong> terms agreed in writing first.
           </div>
+        </div>
+      </div>
+
+      <!-- ONLINE PAYMENT GATEWAYS -->
+      <div class="rounded-2xl border border-emerald-400/25 overflow-hidden mt-4" style="background:linear-gradient(135deg,rgba(16,185,129,.06),transparent)">
+        <div class="px-5 py-3.5 border-b border-white/10 font-bold text-[14px]" style="border-color:rgba(16,185,129,.25)">
+          <i class="fa-solid fa-plug-circle-bolt text-emerald-300 mr-2"></i>Online Payment Gateways — money lands in the company account
+        </div>
+        <div class="px-5 py-3 text-[12.5px] text-white/60 border-b border-white/5">
+          Switch a gateway on and money settles straight into the company account. A gateway cannot be switched on until every credential below it is filled in, so nothing is left half-configured. Clients only see what is switched on.
+        </div>
+        <div class="p-5 grid gap-3">
+          ${(gwc.gateways || []).map(gw => {
+            const fields = (gwc.fields || []).filter(f => f.gateway === gw.key);
+            return `<div class="rounded-xl border ${gw.enabled ? 'border-emerald-400/40 bg-emerald-500/[.04]' : 'border-white/10 bg-white/[.02]'} p-4">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <span class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style="background:${gw.brand}22;color:${gw.brand}"><i class="${gw.icon}"></i></span>
+                  <div>
+                    <div class="font-bold text-[13.5px]">${esc(gw.name)}</div>
+                    <div class="text-[11.5px] text-white/45">${esc(gw.kind)} • ${(gw.currencies || []).join(', ')}</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="chip ${gw.configured ? 'text-emerald-300' : 'text-amber-300'}">${gw.configured ? 'credentials set' : 'setup needed'}</span>
+                  <button onclick="toggleGateway('${gw.key}', ${gw.enabled ? 0 : 1})" class="${gw.enabled ? 'px-4 py-2 rounded-xl border border-red-400/40 text-red-200 text-[12.5px] font-bold' : 'grad-btn px-4 py-2 rounded-xl text-[12.5px] font-bold'}">${gw.enabled ? 'Switch off' : 'Switch on'}</button>
+                </div>
+              </div>
+              <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                ${fields.map(f => `<div>
+                  <label class="text-[10.5px] font-bold text-white/50 uppercase tracking-wider">${esc(f.key.replace('gw_' + gw.key + '_', '').replace(/_/g, ' '))}${f.secret ? ' (secret)' : ''}</label>
+                  <input class="input mt-1 ${f.secret ? 'font-mono text-[12px]' : ''}" data-setkey="${f.key}" ${f.secret ? 'data-secret="1"' : ''} type="${f.secret ? 'password' : 'text'}" value="${esc(f.value || '')}" placeholder="${f.isSet ? '•••• saved — type to replace' : 'not set'}">
+                </div>`).join('')}
+              </div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
 
@@ -2158,10 +2654,26 @@ async function adminTab(t) {
 /* admin actions */
 async function saveAllSettings() {
   const settings = {};
-  document.querySelectorAll('[data-setkey]').forEach(i => { settings[i.dataset.setkey] = i.value; });
+  document.querySelectorAll('[data-setkey]').forEach(i => {
+    // A blank secret box means "leave the stored key alone", never "erase it".
+    if (i.dataset.secret === '1' && !i.value.trim()) return;
+    settings[i.dataset.setkey] = i.value;
+  });
   try {
     await apiPost('api/settings.php', { action: 'save_all', settings });
     toast(`Saved ${Object.keys(settings).length} settings ✓ — clients see them immediately.`, 'ok');
+    // Re-render so "credentials set / setup needed" reflects what was just saved.
+    if (aTab === 'settings') adminTab('settings');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* Switching a gateway on runs the server's own completeness check, so the
+   reason a gateway refuses to start is the server's, not a guess made here. */
+async function toggleGateway(key, on) {
+  try {
+    await apiPost('api/settings.php', { action: 'gateway_toggle', gateway: key, enabled: on ? '1' : '0' });
+    toast(on ? 'Gateway switched on ✓ — clients can now use it.' : 'Gateway switched off.', 'ok');
+    adminTab('settings');
   } catch (e) { toast(esc(e.message), 'err'); }
 }
 /* Service visibility is stored as one comma-separated `services_hidden` key. */
@@ -2980,3 +3492,383 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeQuoteWizard(); closeGen(); } });
+
+/* ---- assign a client's request to the worker who serves it ---- */
+async function openAssignWorker(requestId, service) {
+  let emps = [];
+  try { emps = (await apiGet('api/wafanyakazi.php', { action: 'list' })).employees || []; } catch (e) { toast(esc(e.message), 'err'); return; }
+  const active = emps.filter(m => m.isActive);
+  if (!active.length) { toast('Hire an employee first — open the Wafanyakazi tab.', 'err'); return; }
+  // The workers who serve this service come first, since they are the right pick.
+  const serves = m => (m.services || []).some(s => String(s).toLowerCase() === String(service).toLowerCase());
+  const best = active.filter(serves);
+  const rest = active.filter(m => !serves(m));
+  const opt = m => `<option value="${m.id}">${esc(m.fullName)} — ${esc(m.profession)} (${esc(m.level)})${serves(m) ? ' ★ serves this' : ''}</option>`;
+  openGen(`Assign Worker — ${service || 'request'}`, `
+    <div class="text-[12.5px] text-white/60 mb-3"><i class="fa-solid fa-user-check text-emerald-300 mr-1.5"></i>The client will see who is serving them and can watch the progress. The worker may use only the tools you granted them.</div>
+    <label class="text-[12px] font-bold text-white/60">CHOOSE THE WORKER</label>
+    <select id="awWorker" class="input mt-1">
+      ${best.length ? `<optgroup label="Serves ${esc(service)}">${best.map(opt).join('')}</optgroup>` : ''}
+      ${rest.length ? `<optgroup label="Other workers">${rest.map(opt).join('')}</optgroup>` : ''}
+    </select>
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">NOTE (optional)</label>
+    <input id="awNote" class="input mt-1" placeholder="e.g. Priority client — start today">
+    <div class="flex gap-2 mt-5">
+      <button onclick="saveAssignWorker('${requestId}')" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">Assign Worker</button>
+      <button onclick="autoAssignWorker('${requestId}')" class="px-4 py-3 rounded-xl border border-cyan-400/40 text-cyan-200 font-bold text-sm"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Auto-pick</button>
+      <button onclick="closeGen()" class="px-4 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button>
+    </div>
+  `);
+}
+
+async function saveAssignWorker(requestId) {
+  const employeeId = $('awWorker').value;
+  try {
+    const r = await apiPost('api/wafanyakazi.php', { action: 'assign', requestId, employeeId, note: $('awNote').value.trim() });
+    closeGen(); adminTab('requests');
+    toast(`${r.employee} will serve this client ✓`, 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function autoAssignWorker(requestId) {
+  try {
+    const r = await apiPost('api/wafanyakazi.php', { action: 'auto_assign', requestId });
+    closeGen(); adminTab('requests');
+    if (r.assigned) toast(`${r.employee} auto-assigned ✓`, 'ok');
+    else toast(r.reason || 'No worker serves this service yet.', 'info');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ============================================================
+   WAFANYAKAZI — hiring staff, assigning tools, routing clients
+   ============================================================ */
+const LEVELS = ['junior', 'mid', 'senior', 'lead', 'principal'];
+
+async function openEmployeeEditor(id) {
+  let m = { id: 'new', fullName: '', photo: '', profession: '', level: 'mid', department: 'employee', email: '', phone: '', region: '', country: 'Tanzania', languages: 'Kiswahili, English', experienceYears: 0, skills: [], services: [], tools: [], salary: 0, currency: 'TZS', bio: '', status: 'active' };
+  if (id !== 'new') {
+    try { m = (await apiGet('api/wafanyakazi.php', { action: 'get', id })).employee; } catch (e) { toast(esc(e.message), 'err'); return; }
+  }
+  if (!DEPARTMENTS.length) { try { DEPARTMENTS = (await apiGet('api/wafanyakazi.php', { action: 'departments' })).departments || []; } catch (e) { /* defaults below */ } }
+  if (!TOOLS.length) { try { TOOLS = (await apiGet('api/tools.php', { action: 'catalogue' })).tools || []; } catch (e) { /* tools optional */ } }
+  const services = VISIBLE_SERVICES.map(s => s.t);
+  const toolByFam = {};
+  TOOLS.forEach(t => { (toolByFam[t.family] = toolByFam[t.family] || []).push(t); });
+  openGen(id === 'new' ? 'Hire Employee' : `Edit Employee — ${m.fullName || id}`, `
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">FULL NAME *</label><input id="emName" class="input mt-1" value="${esc(m.fullName)}" placeholder="e.g. Neema Mwakyusa"></div>
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">PHOTO (upload an image)</label>
+        <div class="flex items-center gap-3 mt-1">
+          <img id="emPhotoPrev" src="${esc(m.photo)}" class="w-14 h-14 rounded-xl object-cover border border-white/15 ${m.photo ? '' : 'hidden'}">
+          <input id="emPhotoFile" type="file" accept="image/*" onchange="readEmployeePhoto(this)" class="input flex-1 text-[12px]">
+          <input type="hidden" id="emPhoto" value="${esc(m.photo)}">
+        </div>
+        <div class="text-[11px] text-white/40 mt-1">Upload a photo under 512 KB — it appears on the client's progress page and the public staff page.</div>
+      </div>
+      <div><label class="text-[12px] font-bold text-white/60">PROFESSION / TAALUMA *</label><input id="emProf" class="input mt-1" value="${esc(m.profession)}" placeholder="e.g. Cyber Security Analyst"></div>
+      <div><label class="text-[12px] font-bold text-white/60">LEVEL</label><select id="emLevel" class="input mt-1">${LEVELS.map(l => `<option ${m.level === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div><label class="text-[12px] font-bold text-white/60">DEPARTMENT</label><select id="emDept" class="input mt-1">${DEPARTMENTS.map(d => `<option value="${d.key}" ${m.department === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}</select></div>
+      <div><label class="text-[12px] font-bold text-white/60">REGION</label><input id="emRegion" class="input mt-1" value="${esc(m.region)}" placeholder="e.g. Dar es Salaam"></div>
+      <div><label class="text-[12px] font-bold text-white/60">EMAIL</label><input id="emEmail" class="input mt-1" value="${esc(m.email)}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">PHONE</label><input id="emPhone" class="input mt-1" value="${esc(m.phone)}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">LANGUAGES</label><input id="emLangs" class="input mt-1" value="${esc(m.languages)}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">YEARS OF EXPERIENCE</label><input id="emExp" type="number" class="input mt-1" value="${Number(m.experienceYears) || 0}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">SKILLS (comma separated)</label><input id="emSkills" class="input mt-1" value="${esc((m.skills || []).join(', '))}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">SALARY</label><input id="emSalary" type="number" class="input mt-1" value="${Number(m.salary) || 0}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">CURRENCY</label><select id="emCurrency" class="input mt-1"><option ${m.currency === 'TZS' ? 'selected' : ''}>TZS</option><option ${m.currency === 'USD' ? 'selected' : ''}>USD</option></select></div>
+      <div><label class="text-[12px] font-bold text-white/60">STATUS</label><select id="emStatus" class="input mt-1"><option value="active" ${m.status === 'active' ? 'selected' : ''}>Active (serving clients)</option><option value="inactive" ${m.status !== 'active' ? 'selected' : ''}>Paused</option></select></div>
+    </div>
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">SERVICES THIS WORKER HANDLES * <span class="text-white/40 font-normal">(client requests for these go to them)</span></label>
+    <div class="grid sm:grid-cols-2 gap-1.5 mt-1 max-h-52 overflow-y-auto p-2 rounded-xl border border-white/10 bg-white/[.02]">
+      ${services.map(s => `<label class="flex items-center gap-2 text-[12.5px] p-1.5 rounded-lg hover:bg-white/5"><input type="checkbox" class="emSvc" value="${esc(s)}" ${(m.services || []).includes(s) ? 'checked' : ''}> ${esc(s)}</label>`).join('')}
+    </div>
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">TOOLS GRANTED <span class="text-white/40 font-normal">(they may use only these)</span></label>
+    <div class="grid sm:grid-cols-2 gap-3 mt-1 max-h-64 overflow-y-auto p-2 rounded-xl border border-white/10 bg-white/[.02]">
+      ${Object.keys(toolByFam).map(f => `<div><div class="text-[10.5px] font-bold text-cyan-300 uppercase tracking-wider mb-1">${esc(f)}</div>
+        ${toolByFam[f].map(t => `<label class="flex items-center gap-2 text-[12px] p-1 rounded-lg hover:bg-white/5"><input type="checkbox" class="emTool" value="${t.code}" ${(m.tools || []).includes(t.code) ? 'checked' : ''}> ${esc(t.name)}</label>`).join('')}</div>`).join('')}
+    </div>
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">BIO</label>
+    <textarea id="emBio" rows="2" class="input mt-1">${esc(m.bio)}</textarea>
+    <div class="flex gap-2 mt-5"><button onclick="saveEmployee('${id}')" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">${id === 'new' ? 'Hire Employee' : 'Save Changes'}</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+
+function readEmployeePhoto(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 512 * 1024) { toast('Photo must be under 512 KB.', 'err'); input.value = ''; return; }
+  const r = new FileReader();
+  r.onload = () => { $('emPhoto').value = r.result; const p = $('emPhotoPrev'); p.src = r.result; p.classList.remove('hidden'); };
+  r.readAsDataURL(f);
+}
+
+async function saveEmployee(id) {
+  const payload = {
+    action: id === 'new' ? 'add' : 'update',
+    fullName: $('emName').value.trim(),
+    photo: $('emPhoto').value,
+    profession: $('emProf').value.trim(),
+    level: $('emLevel').value,
+    department: $('emDept').value,
+    region: $('emRegion').value.trim(),
+    email: $('emEmail').value.trim(),
+    phone: $('emPhone').value.trim(),
+    languages: $('emLangs').value.trim(),
+    experienceYears: Number($('emExp').value) || 0,
+    skills: $('emSkills').value.split(',').map(s => s.trim()).filter(Boolean),
+    services: [...document.querySelectorAll('.emSvc:checked')].map(x => x.value),
+    tools: [...document.querySelectorAll('.emTool:checked')].map(x => x.value),
+    salary: Number($('emSalary').value) || 0,
+    currency: $('emCurrency').value,
+    status: $('emStatus').value,
+    bio: $('emBio').value.trim(),
+  };
+  if (!payload.fullName) { toast('The name is required.', 'err'); return; }
+  if (!payload.profession) { toast('The profession (taaluma) is required.', 'err'); return; }
+  if (!payload.services.length) { toast('Choose at least one service this worker handles.', 'err'); return; }
+  if (id !== 'new') payload.id = id;
+  try { await apiPost('api/wafanyakazi.php', payload); } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); adminTab('wafanyakazi'); toast(id === 'new' ? 'Employee hired ✓' : 'Employee updated ✓', 'ok');
+}
+
+async function toggleEmployee(id) {
+  try { await apiPost('api/wafanyakazi.php', { action: 'toggle', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('wafanyakazi'); toast('Status changed.', 'info');
+}
+async function delEmployee(id) {
+  if (!confirm('Remove this employee permanently?')) return;
+  try { await apiPost('api/wafanyakazi.php', { action: 'delete', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('wafanyakazi'); toast('Employee removed.', 'info');
+}
+
+/* ---- tool granter (shared by employees and agents) ---- */
+async function openToolGranter(id, kind) {
+  adminToolHolder = { id, kind };
+  let held = [];
+  try {
+    const r = await apiGet('api/tools.php', { action: kind === 'agent' ? 'for_agent' : 'for_employee', id });
+    held = r.codes || [];
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  if (!TOOLS.length) { try { TOOLS = (await apiGet('api/tools.php', { action: 'catalogue' })).tools || []; } catch (e) { /* ignore */ } }
+  const famColor = { software: 'cyan', security: 'rose', ai: 'fuchsia', design: 'violet', business: 'amber', comms: 'sky', platform: 'emerald', agent: 'teal', media: 'orange' };
+  const byFam = {};
+  TOOLS.forEach(t => { (byFam[t.family] = byFam[t.family] || []).push(t); });
+  openGen(`Assign Tools — ${kind === 'agent' ? 'Agent' : 'Employee'}`, `
+    <div class="text-[12.5px] text-white/60 mb-3"><i class="fa-solid fa-circle-info text-cyan-300 mr-1.5"></i>Every tool lives in the platform. A holder may use only what is ticked here; anything else is refused at the endpoint.</div>
+    <div class="grid sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+    ${Object.keys(byFam).map(f => `<div class="rounded-xl border border-white/10 bg-white/[.02] p-2.5">
+      <div class="text-[10.5px] font-bold text-${famColor[f] || 'cyan'}-300 uppercase tracking-wider mb-1.5">${esc(f)} (${byFam[f].length})</div>
+      ${byFam[f].map(t => `<label class="flex items-start gap-2 text-[12px] p-1 rounded-lg hover:bg-white/5"><input type="checkbox" class="tgTool" value="${t.code}" ${held.includes(t.code) ? 'checked' : ''}><span>${esc(t.name)}${t.agentic ? ' <i class="fa-solid fa-bolt text-amber-300 text-[9px]" title="Agentic"></i>' : ''}${t.tanzaniaOnly ? ' <span class="text-[9px] text-amber-300 font-bold">TZ</span>' : ''}<br><span class="text-white/40 text-[11px]">${esc(t.desc)}</span></span></label>`).join('')}
+    </div>`).join('')}
+    </div>
+    <div class="flex gap-2 mt-4"><button onclick="saveToolGrant()" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">Save Tool Assignment</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+
+async function saveToolGrant() {
+  if (!adminToolHolder) return;
+  const codes = [...document.querySelectorAll('.tgTool:checked')].map(x => x.value);
+  const { id, kind } = adminToolHolder;
+  try {
+    if (kind === 'agent') {
+      await apiPost('api/agents.php', { action: 'set_tools', id, tools: codes });
+    } else {
+      const r = await apiGet('api/wafanyakazi.php', { action: 'get', id });
+      const m = r.employee;
+      await apiPost('api/wafanyakazi.php', {
+        action: 'update', id,
+        fullName: m.fullName, photo: m.photo, profession: m.profession, level: m.level,
+        department: m.department, email: m.email, phone: m.phone, region: m.region,
+        languages: m.languages, experienceYears: m.experienceYears, skills: m.skills,
+        services: m.services, salary: m.salary, currency: m.currency, bio: m.bio, status: m.status,
+        tools: codes,
+      });
+    }
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen();
+  adminTab(kind === 'agent' ? 'agents' : 'wafanyakazi');
+  toast(`${codes.length} tool(s) assigned ✓`, 'ok');
+}
+
+/* ============================================================
+   AJIRA — vacancies, applications, assessment
+   ============================================================ */
+async function openJobEditor(id) {
+  let j = { id: 'new', title: '', department: 'employee', service: '', level: 'mid', location: 'Tanzania', kind: 'Full-time', salary: '', description: '', requirements: [], theoreticalWeight: 50, practicalWeight: 50, positions: 1, isOpen: true };
+  if (id !== 'new') {
+    try { j = ((await apiGet('api/ajira.php', { action: 'admin_openings' })).openings || []).find(x => x.id === id) || j; } catch (e) { toast(esc(e.message), 'err'); return; }
+  }
+  if (!DEPARTMENTS.length) { try { DEPARTMENTS = (await apiGet('api/wafanyakazi.php', { action: 'departments' })).departments || []; } catch (e) { /* ignore */ } }
+  const services = VISIBLE_SERVICES.map(s => s.t);
+  openGen(id === 'new' ? 'Post a Vacancy' : `Edit Vacancy — ${j.title}`, `
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">JOB TITLE *</label><input id="jbTitle" class="input mt-1" value="${esc(j.title)}" placeholder="e.g. AI Engineer"></div>
+      <div><label class="text-[12px] font-bold text-white/60">DEPARTMENT</label><select id="jbDept" class="input mt-1">${DEPARTMENTS.map(d => `<option value="${d.key}" ${j.department === d.key ? 'selected' : ''}>${d.name}</option>`).join('')}</select></div>
+      <div><label class="text-[12px] font-bold text-white/60">SERVICE THE HIRE WILL HANDLE</label><select id="jbService" class="input mt-1"><option value="">— none —</option>${services.map(s => `<option ${j.service === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+      <div><label class="text-[12px] font-bold text-white/60">LEVEL</label><select id="jbLevel" class="input mt-1">${LEVELS.map(l => `<option ${j.level === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div><label class="text-[12px] font-bold text-white/60">LOCATION</label><input id="jbLocation" class="input mt-1" value="${esc(j.location)}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">TYPE</label><input id="jbKind" class="input mt-1" value="${esc(j.kind)}" placeholder="Full-time / Contract / Internship"></div>
+      <div><label class="text-[12px] font-bold text-white/60">SALARY</label><input id="jbSalary" class="input mt-1" value="${esc(j.salary)}" placeholder="e.g. TZS 2,000,000 / month"></div>
+      <div><label class="text-[12px] font-bold text-white/60">THEORY WEIGHT %</label><input id="jbTW" type="number" class="input mt-1" value="${j.theoreticalWeight}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">PRACTICAL WEIGHT %</label><input id="jbPW" type="number" class="input mt-1" value="${j.practicalWeight}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">POSITIONS</label><input id="jbPos" type="number" class="input mt-1" value="${j.positions}"></div>
+      <div><label class="text-[12px] font-bold text-white/60">VISIBLE TO APPLICANTS</label><select id="jbOpen" class="input mt-1"><option value="1" ${j.isOpen ? 'selected' : ''}>Open</option><option value="0" ${!j.isOpen ? 'selected' : ''}>Closed</option></select></div>
+    </div>
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">DESCRIPTION</label>
+    <textarea id="jbDesc" rows="3" class="input mt-1">${esc(j.description)}</textarea>
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">REQUIREMENTS (one per line)</label>
+    <textarea id="jbReqs" rows="3" class="input mt-1">${esc((j.requirements || []).join('\n'))}</textarea>
+    <div class="flex gap-2 mt-5"><button onclick="saveJob('${id}')" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">${id === 'new' ? 'Post Vacancy' : 'Save Vacancy'}</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+
+async function saveJob(id) {
+  const payload = {
+    action: 'opening_save', title: $('jbTitle').value.trim(), department: $('jbDept').value,
+    service: $('jbService').value, level: $('jbLevel').value, location: $('jbLocation').value.trim(),
+    kind: $('jbKind').value.trim(), salary: $('jbSalary').value.trim(), description: $('jbDesc').value.trim(),
+    requirements: $('jbReqs').value.split('\n').map(s => s.trim()).filter(Boolean),
+    theoreticalWeight: Number($('jbTW').value) || 50, practicalWeight: Number($('jbPW').value) || 50,
+    positions: Number($('jbPos').value) || 1, isOpen: Number($('jbOpen').value),
+  };
+  if (!payload.title) { toast('The vacancy needs a title.', 'err'); return; }
+  if (id !== 'new') payload.id = id;
+  try { await apiPost('api/ajira.php', payload); } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); adminTab('ajira'); toast(id === 'new' ? 'Vacancy posted ✓' : 'Vacancy updated ✓', 'ok');
+}
+
+async function delJob(id) {
+  if (!confirm('Delete this vacancy? Applications already received are kept.')) return;
+  try { await apiPost('api/ajira.php', { action: 'opening_delete', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ajira'); toast('Vacancy deleted.', 'info');
+}
+
+function openAssess(id, name, theory, practical) {
+  openGen(`Assessment — ${name}`, `
+    <div class="text-[12.5px] text-white/60 mb-3"><i class="fa-solid fa-clipboard-check text-cyan-300 mr-1.5"></i>Record both scores out of 100. The total is computed from the vacancy's weights, so it can never disagree with its parts.</div>
+    <label class="text-[12px] font-bold text-white/60">THEORETICAL SCORE (0–100)</label><input id="asTheory" type="number" min="0" max="100" class="input mt-1" value="${Number(theory) || 0}">
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">PRACTICAL SCORE (0–100)</label><input id="asPractical" type="number" min="0" max="100" class="input mt-1" value="${Number(practical) || 0}">
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">ASSESSOR NOTES</label><textarea id="asNotes" rows="3" class="input mt-1" placeholder="What did the applicant do well or badly?"></textarea>
+    <div class="flex gap-2 mt-5"><button onclick="saveAssess('${id}')" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">Save Assessment</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+
+async function saveAssess(id) {
+  const t = Number($('asTheory').value), p = Number($('asPractical').value);
+  if (t < 0 || t > 100 || p < 0 || p > 100) { toast('Both scores must be between 0 and 100.', 'err'); return; }
+  try {
+    await apiPost('api/ajira.php', { action: 'assess', id, theoreticalScore: t, practicalScore: p, assessmentNotes: $('asNotes').value.trim() });
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); adminTab('ajira'); toast('Assessment saved ✓', 'ok');
+}
+
+async function hireApplicant(id) {
+  if (!confirm('Hire this applicant? An employee record is created for them.')) return;
+  try {
+    const r = await apiPost('api/ajira.php', { action: 'hire', id });
+    toast(`${r.employee} hired into ${r.department} ✓`, 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ajira');
+}
+
+async function delApplication(id) {
+  if (!confirm('Delete this application?')) return;
+  try { await apiPost('api/ajira.php', { action: 'delete_application', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ajira'); toast('Application deleted.', 'info');
+}
+
+/* ============================================================
+   AGENTS + ONLINE OFFICE + SECURITY
+   ============================================================ */
+async function toggleAgent(id) {
+  try { await apiPost('api/agents.php', { action: 'toggle', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('agents'); toast('Agent status changed.', 'info');
+}
+
+function openRoomEditor() {
+  const kinds = ['meeting', 'video_call', 'voice_call', 'screen_share', 'webinar'];
+  openGen('New Online Room', `
+    <label class="text-[12px] font-bold text-white/60">ROOM NAME *</label><input id="rmName" class="input mt-1" placeholder="e.g. Client kick-off — Pharmacy System">
+    <div class="grid sm:grid-cols-2 gap-3 mt-3">
+      <div><label class="text-[12px] font-bold text-white/60">KIND</label><select id="rmKind" class="input mt-1">${kinds.map(k => `<option value="${k}">${k.replace('_', ' ')}</option>`).join('')}</select></div>
+      <div><label class="text-[12px] font-bold text-white/60">DURATION (MIN)</label><input id="rmDur" type="number" class="input mt-1" value="30"></div>
+      <div><label class="text-[12px] font-bold text-white/60">HOST</label><input id="rmHost" class="input mt-1" placeholder="Who runs the meeting?"></div>
+      <div><label class="text-[12px] font-bold text-white/60">AI SCRIBE</label><select id="rmScribe" class="input mt-1"><option value="1">On — write the minutes</option><option value="0">Off</option></select></div>
+    </div>
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">INVITEES (comma separated emails or names)</label>
+    <input id="rmInvitees" class="input mt-1" placeholder="client@example.com, neema@mbilinyitech.co.tz">
+    <div class="flex gap-2 mt-5"><button onclick="createRoom()" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">Create Room</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+
+async function createRoom() {
+  const payload = {
+    action: 'room_create', name: $('rmName').value.trim(), kind: $('rmKind').value,
+    durationMin: Number($('rmDur').value) || 30, host: $('rmHost').value.trim(),
+    scribe: Number($('rmScribe').value),
+    invitees: $('rmInvitees').value.split(',').map(s => s.trim()).filter(Boolean),
+  };
+  if (!payload.name) { toast('The room needs a name.', 'err'); return; }
+  try { await apiPost('api/ofisi.php', payload); } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); adminTab('ofisi'); toast('Room created ✓', 'ok');
+}
+
+async function setRoomStatus(id, status) {
+  try { await apiPost('api/ofisi.php', { action: 'room_status', id, status }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ofisi'); toast(`Room ${status}.`, 'info');
+}
+
+async function saveCompanyAccount() {
+  try {
+    await apiPost('api/security.php', {
+      action: 'company_account_set', name: $('caName').value.trim(), bank: $('caBank').value.trim(),
+      accountNo: $('caNo').value.trim(), swift: $('caSwift').value.trim(), mobile: $('caMobile').value.trim(),
+    });
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  toast('Company account saved ✓', 'ok');
+}
+
+/* ---- logo upload (CEO) ---- */
+async function openLogoEditor() {
+  let cur = { logo: '', name: '', tagline: '' };
+  try { cur = await apiGet('api/security.php', { action: 'logo_get' }); } catch (e) { /* defaults */ }
+  openGen('Company Logo & Name', `
+    <div class="text-[12.5px] text-white/60 mb-3"><i class="fa-solid fa-image text-cyan-300 mr-1.5"></i>Upload the company logo. It replaces the default everywhere in the platform.</div>
+    <div class="flex items-center gap-3">
+      <img id="lgPrev" src="${esc(cur.logo)}" class="w-16 h-16 rounded-xl object-contain bg-white/5 border border-white/15 p-1">
+      <input id="lgFile" type="file" accept="image/*" onchange="readLogo(this)" class="input flex-1 text-[12px]">
+    </div>
+    <input type="hidden" id="lgLogo" value="${esc(cur.logo)}">
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">COMPANY NAME</label>
+    <input id="lgName" class="input mt-1" value="${esc(cur.name)}">
+    <label class="text-[12px] font-bold text-white/60 mt-3 block">TAGLINE (kauli mbiu)</label>
+    <input id="lgTagline" class="input mt-1" value="${esc(cur.tagline)}" placeholder="No-one enters a section that is not theirs.">
+    <div class="flex gap-2 mt-5"><button onclick="saveLogo()" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">Save Logo</button><button onclick="resetLogo()" class="px-4 py-3 rounded-xl border border-white/15 font-bold text-sm">Reset to Default</button><button onclick="closeGen()" class="px-4 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>
+  `);
+}
+
+function readLogo(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 512 * 1024) { toast('Logo must be under 512 KB.', 'err'); input.value = ''; return; }
+  const r = new FileReader();
+  r.onload = () => { $('lgLogo').value = r.result; $('lgPrev').src = r.result; };
+  r.readAsDataURL(f);
+}
+
+async function saveLogo() {
+  const logo = $('lgLogo').value;
+  if (!logo) { toast('Choose a logo image.', 'err'); return; }
+  try {
+    await apiPost('api/security.php', { action: 'logo_set', logo, name: $('lgName').value.trim(), tagline: $('lgTagline').value.trim() });
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); toast('Logo updated ✓ — reloading.', 'ok');
+  setTimeout(() => location.reload(), 900);
+}
+
+async function resetLogo() {
+  try { await apiPost('api/security.php', { action: 'logo_reset' }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  closeGen(); toast('Logo reset to default.', 'info');
+  setTimeout(() => location.reload(), 900);
+}
+

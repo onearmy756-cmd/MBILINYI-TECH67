@@ -13,15 +13,21 @@
 //!   api       the JSON endpoints
 //!   pages     the HTML pages
 
+mod agents;
+mod ajira;
 mod api;
 mod db;
+mod ofisi;
 mod pages;
 mod payments;
 mod schema_sql;
+mod security;
 mod seed;
 mod session;
 mod settings;
+mod tools;
 mod util;
+mod wafanyakazi;
 
 use axum::body::Body;
 use axum::http::{header, HeaderValue, Request, StatusCode};
@@ -155,9 +161,21 @@ pub fn bootstrap() {
     }
     session::init_table();
     payments::init_tables();
+    // A column added to the schema after a database was first created needs an
+    // explicit ALTER; CREATE TABLE IF NOT EXISTS will not add it.
+    if let Err(e) = db::ensure_column("invoices", "currency", "VARCHAR(8) NOT NULL DEFAULT ''") {
+        eprintln!("[warn] invoices.currency migration: {e}");
+    }
     crate::api::oauth::init_tables();
+    wafanyakazi::init_tables();
+    ajira::init_tables();
+    agents::init_tables();
+    ofisi::init_tables();
+    security::init_tables();
     settings::seed_defaults();
     seed::run();
+    agents::seed();
+    ofisi::seed();
     session::sweep();
 }
 

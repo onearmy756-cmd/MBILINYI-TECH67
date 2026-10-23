@@ -112,6 +112,27 @@ pub fn run(sql: &str, args: &[rusqlite::types::Value]) -> rusqlite::Result<usize
     with_db(|c| c.execute(sql, params_from_iter(args.iter())))
 }
 
+/// Add a column to an existing table when it is missing. `CREATE TABLE IF NOT
+/// EXISTS` does nothing to a table that already exists, so a column added to the
+/// schema after a database was first created needs this to reach old files.
+pub fn ensure_column(table: &str, column: &str, decl: &str) -> rusqlite::Result<()> {
+    let exists = with_db(|c| -> rusqlite::Result<bool> {
+        let mut st = c.prepare(&format!("PRAGMA table_info({table})"))?;
+        let mut rows = st.query([])?;
+        let mut found = false;
+        while let Some(r) = rows.next()? {
+            if r.get::<_, String>(1)? == column {
+                found = true;
+            }
+        }
+        Ok(found)
+    })?;
+    if exists {
+        return Ok(());
+    }
+    with_db(|c| c.execute_batch(&format!("ALTER TABLE {table} ADD COLUMN {column} {decl}")))
+}
+
 /// A row as a JSON object. SQLite is dynamically typed and the frontend expects
 /// numbers where numbers were stored, so integers and floats are distinguished
 /// rather than flattened to strings.

@@ -138,12 +138,19 @@ pub fn contract(r: &db::Row) -> J {
 }
 
 pub fn invoice(r: &db::Row) -> J {
+    // A row saved before the currency column existed carries ""; it means the
+    // platform's own currency at the time, which is the current default.
+    let cur = {
+        let stored = gs(r, "currency");
+        if stored.is_empty() { crate::settings::get("pay_currency", "TZS") } else { stored }
+    };
     json!({
         "id": gs(r, "id"),
         "trackingId": gs(r, "tracking_id"),
         "userId": gs(r, "user_id"),
         "title": gs(r, "title"),
         "amount": gf(r, "amount"),
+        "currency": cur,
         "status": gs(r, "status"),
         "method": gs(r, "method"),
         "dueDate": iso_of(r, "due_date"),
@@ -315,6 +322,160 @@ pub fn by_name(kind: &str, r: &db::Row) -> J {
         "feedback" => feedback(r),
         "payment" => payment(r),
         "plan" => plan(r),
+        "employee" => employee(r),
+        "job" => job(r),
+        "application" => application(r),
+        "agent" => agent(r),
+        "region" => region(r),
         _ => J::Object(r.clone()),
     }
 }
+
+/// An employee, as the admin screens read them.
+pub fn employee(r: &db::Row) -> J {
+    json!({
+        "id": gs(r, "id"),
+        "userId": gs(r, "user_id"),
+        "fullName": gs(r, "full_name"),
+        "name": gs(r, "full_name"),
+        "photo": gs(r, "photo"),
+        "profession": gs(r, "profession"),
+        "level": gs(r, "level"),
+        "department": gs(r, "department"),
+        "email": gs(r, "email"),
+        "phone": gs(r, "phone"),
+        "region": gs(r, "region"),
+        "country": gs(r, "country"),
+        "languages": gs(r, "languages"),
+        "experienceYears": gi(r, "experience_years"),
+        "skills": json_list(r, "skills"),
+        "services": json_list(r, "services"),
+        "tools": json_list(r, "tools"),
+        "salary": gf(r, "salary"),
+        "currency": gs(r, "currency"),
+        "bio": gs(r, "bio"),
+        "status": gs(r, "status"),
+        "isActive": gs(r, "status") == "active",
+        "hiredAt": iso_of(r, "hired_at"),
+        "createdAt": iso_of(r, "created_at"),
+        "updatedAt": iso_of(r, "updated_at"),
+    })
+}
+
+/// The public view of an employee: what a visitor may see, and nothing more.
+/// The photo, profession and level are the whole point; contact details and
+/// salary are deliberately absent.
+pub fn employee_public(r: &db::Row) -> J {
+    json!({
+        "id": gs(r, "id"),
+        "fullName": gs(r, "full_name"),
+        "name": gs(r, "full_name"),
+        "photo": gs(r, "photo"),
+        "profession": gs(r, "profession"),
+        "level": gs(r, "level"),
+        "department": gs(r, "department"),
+        "region": gs(r, "region"),
+        "languages": gs(r, "languages"),
+        "experienceYears": gi(r, "experience_years"),
+        "skills": json_list(r, "skills"),
+        "bio": gs(r, "bio"),
+    })
+}
+
+/// A request-to-employee assignment.
+pub fn assignment(r: &db::Row) -> J {
+    json!({
+        "id": gs(r, "id"),
+        "requestId": gs(r, "request_id"),
+        "employeeId": gs(r, "employee_id"),
+        "employeeName": gs(r, "employee_name"),
+        "service": gs(r, "service"),
+        "tools": json_list(r, "tools"),
+        "assignedBy": gs(r, "assigned_by"),
+        "note": gs(r, "note"),
+        "createdAt": iso_of(r, "created_at"),
+    })
+}
+
+/// A job opening.
+pub fn job(r: &db::Row) -> J {
+    json!({
+        "id": gs(r, "id"),
+        "title": gs(r, "title"),
+        "department": gs(r, "department"),
+        "service": gs(r, "service"),
+        "level": gs(r, "level"),
+        "location": gs(r, "location"),
+        "kind": gs(r, "kind"),
+        "salary": gs(r, "salary"),
+        "description": gs(r, "description"),
+        "requirements": json_list(r, "requirements"),
+        "theoreticalWeight": gi(r, "theoretical_weight"),
+        "practicalWeight": gi(r, "practical_weight"),
+        "positions": gi(r, "positions"),
+        "isOpen": gb(r, "is_open"),
+        "createdAt": iso_of(r, "created_at"),
+        "updatedAt": iso_of(r, "updated_at"),
+    })
+}
+
+/// A job application, with its two-part assessment.
+pub fn application(r: &db::Row) -> J {
+    json!({
+        "id": gs(r, "id"),
+        "jobId": gs(r, "job_id"),
+        "jobTitle": gs(r, "job_title"),
+        "fullName": gs(r, "full_name"),
+        "name": gs(r, "full_name"),
+        "email": gs(r, "email"),
+        "phone": gs(r, "phone"),
+        "photo": gs(r, "photo"),
+        "profession": gs(r, "profession"),
+        "level": gs(r, "level"),
+        "region": gs(r, "region"),
+        "experienceYears": gi(r, "experience_years"),
+        "skills": json_list(r, "skills"),
+        "cvUrl": gs(r, "cv_url"),
+        "coverLetter": gs(r, "cover_letter"),
+        "theoreticalScore": gi(r, "theoretical_score"),
+        "practicalScore": gi(r, "practical_score"),
+        "totalScore": gi(r, "total_score"),
+        "assessmentNotes": gs(r, "assessment_notes"),
+        "status": gs(r, "status"),
+        "createdAt": iso_of(r, "created_at"),
+        "updatedAt": iso_of(r, "updated_at"),
+    })
+}
+
+/// An agent of the agent company.
+pub fn agent(r: &db::Row) -> J {
+    json!({
+        "id": gs(r, "id"),
+        "name": gs(r, "name"),
+        "role": gs(r, "role"),
+        "department": gs(r, "department"),
+        "speciality": gs(r, "speciality"),
+        "tools": json_list(r, "tools"),
+        "model": gs(r, "model"),
+        "autonomy": gs(r, "autonomy"),
+        "managerId": gs(r, "manager_id"),
+        "status": gs(r, "status"),
+        "tasksDone": gi(r, "tasks_done"),
+        "createdAt": iso_of(r, "created_at"),
+    })
+}
+
+/// A country or region the services reach.
+pub fn region(r: &db::Row) -> J {
+    json!({
+        "id": gs(r, "id"),
+        "country": gs(r, "country"),
+        "region": gs(r, "region"),
+        "code": gs(r, "code"),
+        "kind": gs(r, "kind"),
+        "isActive": gb(r, "is_active"),
+        "requests": gi(r, "requests"),
+        "createdAt": iso_of(r, "created_at"),
+    })
+}
+

@@ -217,6 +217,25 @@ fn req_create(c: &Ctx) -> Response {
         ],
     );
 
+    // Route the request to the worker who serves this service, so the client is
+    // served by a named person from the moment they submit. With no worker for
+    // the service yet, the request simply waits in the admin inbox.
+    let mut assigned_to = String::new();
+    if let Some(emp) = crate::wafanyakazi::pick_for_service(&service) {
+        let emp_id = util::s(emp.get("id").unwrap_or(&J::Null));
+        let emp_name = util::s(emp.get("full_name").unwrap_or(&J::Null));
+        let tools_raw = util::s(emp.get("tools").unwrap_or(&J::Null));
+        let _ = db::run(
+            "INSERT INTO request_assignment (id, request_id, employee_id, employee_name, service, tools, assigned_by, note, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?)",
+            &[
+                arg(json!(util::new_id("RA-"))), arg(json!(id)), arg(json!(emp_id)), arg(json!(emp_name)),
+                arg(json!(service)), arg(json!(tools_raw)), arg(json!("auto")), arg(json!("")), arg(json!(util::now())),
+            ],
+        );
+        assigned_to = emp_name;
+    }
+
     let request = db::row("SELECT * FROM requests WHERE id = ?", &[arg(json!(id))])
         .map(|r| map::request(&r))
         .unwrap_or(J::Null);
@@ -228,6 +247,7 @@ fn req_create(c: &Ctx) -> Response {
         "request": request,
         "user": user,
         "autoPassword": auto_password,
+        "assignedTo": assigned_to,
     }));
     if let Some(sid) = new_session {
         if let Ok(v) = axum::http::HeaderValue::from_str(&crate::session::set_cookie(&sid)) {
@@ -710,24 +730,31 @@ pub async fn invoices(c: &Ctx) -> Response {
             }
             let id = c.p("id");
             let new_id = if id.is_empty() || id == "new" { util::new_id("INV-") } else { id.clone() };
+            // An invoice records the currency it was written in, so a later
+            // change to the platform default never reinterprets an old figure.
+            let cur = {
+                let want = c.p("currency");
+                if want.is_empty() { settings::get("pay_currency", "TZS") } else { want }
+            };
             if id.is_empty() || id == "new" {
                 let _ = db::run(
-                    "INSERT INTO invoices (id, tracking_id, user_id, title, amount, status, method, due_date, created_at)
-                     VALUES (?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO invoices (id, tracking_id, user_id, title, amount, currency, status, method, due_date, created_at)
+                     VALUES (?,?,?,?,?,?,?,?,?,?)",
                     &[
                         arg(json!(new_id)), arg(json!(c.p("trackingId"))), arg(json!(c.p("userId"))),
                         arg(json!(c.p("title"))), arg(json!(c.p("amount").parse::<f64>().unwrap_or(0.0))),
+                        arg(json!(cur)),
                         arg(json!(if c.p("status").is_empty() { "Unpaid".into() } else { c.p("status") })),
                         arg(json!(c.p("method"))), arg(json!(c.p("dueDate"))), arg(json!(util::now())),
                     ],
                 );
             } else {
                 let _ = db::run(
-                    "UPDATE invoices SET title=?, amount=?, status=?, method=?, due_date=?, tracking_id=? WHERE id=?",
+                    "UPDATE invoices SET title=?, amount=?, currency=?, status=?, method=?, due_date=?, tracking_id=? WHERE id=?",
                     &[
                         arg(json!(c.p("title"))), arg(json!(c.p("amount").parse::<f64>().unwrap_or(0.0))),
-                        arg(json!(c.p("status"))), arg(json!(c.p("method"))), arg(json!(c.p("dueDate"))),
-                        arg(json!(c.p("trackingId"))), arg(json!(new_id)),
+                        arg(json!(cur)), arg(json!(c.p("status"))), arg(json!(c.p("method"))),
+                        arg(json!(c.p("dueDate"))), arg(json!(c.p("trackingId"))), arg(json!(new_id)),
                     ],
                 );
             }

@@ -179,7 +179,7 @@ pub fn service_price_list() -> Vec<J> {
 
 /// Fill only blanks, so an admin edit is never overwritten on boot.
 pub fn seed_defaults() {
-    let defaults: [(&str, &str); 12] = [
+    let defaults: [(&str, &str); 13] = [
         ("pay_bank_name", "NMB Bank"),
         ("pay_bank_account", "51710099563"),
         ("pay_bank_holder", "JACKSON MBILINYI"),
@@ -190,6 +190,8 @@ pub fn seed_defaults() {
         ("pay_mobile_holder", "JACKSON MBILINYI"),
         ("pay_contact_person", "Jackson Mbilinyi (CEO)"),
         ("pay_currency", "TZS"),
+        // Shillings per US dollar, used when a payer chooses the other currency.
+        ("fx_usd_tzs", "2600"),
         ("platform_name", "MbilinyiTech Platform"),
         ("webauthn_rp_name", "Mbilinyi Tech Solutions"),
     ];

@@ -41,6 +41,14 @@ pub async fn dispatch(name: &str, req: Request<Body>) -> Response {
         "oauth" => oauth::handle(&c).await,
         "reports" => reports::handle(&c).await,
         "ollama" => data::ollama(&c).await,
+        // The modules added for the MTECHOS merge: staff, hiring, the agent
+        // company, the online office and the security posture.
+        "wafanyakazi" | "employees" => crate::wafanyakazi::handle(&c).await,
+        "ajira" | "jobs" => crate::ajira::handle(&c).await,
+        "agents" => crate::agents::handle(&c).await,
+        "tools" => crate::tools::handle(&c).await,
+        "ofisi" | "office" => crate::ofisi::handle(&c).await,
+        "security" => crate::security::handle(&c).await,
         _ => return not_found("Unknown endpoint."),
     };
     result

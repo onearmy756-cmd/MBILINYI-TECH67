@@ -51,6 +51,8 @@ fn title_for(name: &str) -> String {
         "feedback" => "Feedback | Mbilinyi Tech Solutions".into(),
         "reports" => "Reports | Mbilinyi Tech Solutions".into(),
         "community" => "Community | Mbilinyi Tech Solutions".into(),
+        "careers" => "Careers (Ajira) — Apply & Be Assessed | Mbilinyi Tech Solutions".into(),
+        "staff" => "Our Experts — The People Who Serve You | Mbilinyi Tech Solutions".into(),
         _ => "Mbilinyi Tech Solutions".into(),
     }
 }
@@ -65,6 +67,8 @@ fn globals(page: &str, csrf: &str, me: &Option<db::Row>) -> String {
     let platform = serde_json::json!({
         "url": settings::get("platform_url", ""),
         "name": settings::get("platform_name", "MbilinyiTech Platform"),
+        "logo": settings::get("platform_logo", "/assets/icons/icon-512.png"),
+        "tagline": settings::get("platform_tagline", "No-one enters a section that is not theirs."),
     });
     format!(
         "<script>\nwindow.__CSRF__ = {csrf};\nwindow.__ME__   = {me};\nwindow.__PAGE__ = {page};\nwindow.__SERVICES_ON__ = {svc};\nwindow.__PLATFORM__ = {plat};\nwindow.__PAY_GATEWAYS__ = {gw};\nwindow.__OAUTH__ = {oauth};\n</script>",
@@ -185,6 +189,21 @@ const STYLE: &str = r#"<style>
   .grad-btn{background:linear-gradient(135deg,#06b6d4,#3b82f6 50%,#8b5cf6);box-shadow:0 10px 30px -8px rgba(59,130,246,.6)}
   .grad-btn:hover{transform:translateY(-2px);box-shadow:0 18px 40px -8px rgba(59,130,246,.7)}
   .gold-btn{background:linear-gradient(135deg,#F5B301,#ff7847);box-shadow:0 10px 30px -8px rgba(245,179,1,.5)}
+  /* 3D cards: a raised surface that lifts and tilts on hover. The tilt is a
+     transform only, so it costs no layout and stays smooth on a phone. */
+  .card3d{background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);border-radius:20px;transform-style:preserve-3d;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s ease,border-color .35s ease;box-shadow:0 18px 40px -22px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.09)}
+  .card3d:hover{transform:translateY(-6px) rotateX(4deg) rotateY(-4deg) scale(1.015);box-shadow:0 34px 60px -26px rgba(0,0,0,.95),0 0 0 1px rgba(34,211,238,.28),inset 0 1px 0 rgba(255,255,255,.16);border-color:rgba(34,211,238,.35)}
+  .card3d.pop-cyan{background-image:linear-gradient(160deg,rgba(34,211,238,.16),rgba(255,255,255,.02))}
+  .card3d.pop-violet{background-image:linear-gradient(160deg,rgba(139,92,246,.18),rgba(255,255,255,.02))}
+  .card3d.pop-emerald{background-image:linear-gradient(160deg,rgba(16,185,129,.16),rgba(255,255,255,.02))}
+  .card3d.pop-amber{background-image:linear-gradient(160deg,rgba(245,179,1,.16),rgba(255,255,255,.02))}
+  .card3d.pop-rose{background-image:linear-gradient(160deg,rgba(244,63,94,.16),rgba(255,255,255,.02))}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.03em;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05)}
+  .progress-rail{height:9px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#06b6d4,#3b82f6,#8b5cf6);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  /* The agent company grid: a dense wall of seats that reads at a glance. */
+  .agent-seat{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);transition:border-color .25s,transform .25s,background .25s}
+  .agent-seat:hover{border-color:rgba(232,121,249,.45);transform:translateY(-2px);background:rgba(232,121,249,.07)}
   .grid-bg{background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,black 60%,transparent 100%)}
   .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;pointer-events:none}
   .marquee-track{display:flex;gap:14px;width:max-content;animation:marquee 28s linear infinite}
@@ -352,7 +371,7 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
     let known = [
         "index", "services", "stack", "ai", "pricing", "process", "work", "track", "contact",
         "auth", "client", "admin", "news", "team", "deploy", "setup", "terms", "privacy",
-        "refund", "feedback", "reports", "community", "faq", "careers",
+        "refund", "feedback", "reports", "community", "faq", "careers", "staff",
     ];
     if !known.contains(&name) {
         return (StatusCode::NOT_FOUND, "404 Not Found").into_response();

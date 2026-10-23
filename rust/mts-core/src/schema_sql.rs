@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   user_id     VARCHAR(64)   NOT NULL DEFAULT '',
   title       VARCHAR(255)  NOT NULL DEFAULT '',
   amount      DECIMAL(14,2) NOT NULL DEFAULT 0,
+  currency    VARCHAR(8)    NOT NULL DEFAULT '',
   status      VARCHAR(30)   NOT NULL DEFAULT 'Unpaid',
   method      VARCHAR(160)  NOT NULL DEFAULT 'M-Pesa / Bank',
   due_date    DATETIME      NULL,
