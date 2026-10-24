@@ -191,3 +191,43 @@ Bugs found while testing (both fixed, 110 tests pass, redeployed):
   `/app/rust/mts-core` is "not a directory". Running the project's own suite from
   inside the image is therefore not possible; that is a path issue, not a broken
   runtime.
+
+## Why MTECHOS "has many more cyber tools" — and what was actually done (2026-10-24)
+The CEO asked why MTECHOS shows so many more cyber tools than this platform.
+Investigated `mtechos` (a different Fly app; `mtech.mbilinyitech.co.tz` ->
+`mtechos.fly.dev` -> 66.241.124.38). It IS reachable and its container was
+read over `flyctl ssh console`:
+* `/app/data/skills/skills.json` — **1040 skills**, but the 30 `trade:"security"`
+  ones (nmap, sqlmap, nikto, hydra, metasploit, burpsuite, volatility, autopsy,
+  yara, snort, suricata, osquery, openssl, gpg, ...) are all
+  `action:"plan"`, `runtime:""`, `script:""`, `tools:[]` — **checklists, not
+  runnable tools**. 34 skills are security-relevant across all trades; none has
+  a runtime or a script.
+* `/app/data/knowledge/zed_tools_catalog.json` — 108 entries, but they are
+  **Rust frameworks** (ADK-Rust, Rig, Fulcrum, Bamboo, ...), not cyber tools.
+* `/app/data/knowledge/zed_tool_calls.json` — 235 function-call schemas; the
+  `auth_security` group holds 10 (hash_password, generate_jwt, encrypt_data,
+  scan_vulnerabilities, ...).
+* Binaries actually in the mtechos image: nmap, masscan, openssl, gpg, tshark,
+  tcpdump. sqlmap/nikto/hydra/msfconsole/burp/yara/snort/suricata/volatility/
+  autopsy/hashcat/john/nuclei/trivy/semgrep are all **MISSING**.
+So MTECHOS is broad in *labels*, shallow in *capability*. This platform is the
+opposite: fewer labels, each backed by code. Do not confuse the two products.
+
+Still, the count was raised honestly, with 10 new **real** scanners (16 -> 26 in
+the `security` family, total catalogue 90 -> 100). All are in
+`src/sandbox.rs`, dispatched from `src/security.rs` (`scan` kinds) and
+`src/runtime.rs` (agent tool codes), and listed in `src/tools.rs`:
+`method_audit`, `cors_audit`, `cookie_audit`, `cert_inspect` (openssl s_client),
+`subdomain_enum` (DoH), `secret_scan`, `password_audit`, `jwt_inspect`,
+`file_integrity`, `log_audit`. Also widened `COMMON_PORTS` 18 -> 38.
+Traps found while testing:
+* The secret scan flagged **its own rule table** (a bare `AKIA`/`ghp_` prefix).
+  Fixed with a minimum credible token length per rule (and the PEM literal is
+  `concat!`-split). A bare prefix is not a secret.
+* `hash_file` must accept a **single file**, not only a directory — `walk_files`
+  over a file path yields nothing.
+* A stale release binary silently keeps old behaviour: rebuild before testing.
+120 Rust tests pass (was 117); smoke 4 refusals / rest ok (baseline).
+Deployed: `flyctl deploy --remote-only -a mbilinyitech-tz` (remote build ~4 min;
+run it in the background and poll — a foreground 1800s timeout is refused).
