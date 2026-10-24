@@ -53,6 +53,13 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   unless the domain is authorised AND the caller names who approved it.
 
 ## Facts worth keeping
+- **MTECHOS is a DIFFERENT product, and it is broad in labels, not capability.**
+  Its 1040 "skills" include 30 security ones (nmap, sqlmap, metasploit, ...) but
+  every one is `action:"plan"` with no runtime and no script — a checklist. Its
+  `zed_tools_catalog.json` is a list of Rust *frameworks*, not cyber tools. Only
+  nmap/masscan/openssl/gpg/tshark/tcpdump are actually installed in its image.
+  This platform has fewer labels but each is backed by real code. Compare counts
+  only after checking that the other side actually runs something.
 - Repo `onearmy756-cmd/MBILINYI-TECH67`, default branch **master** (a stale
   `main` ref also exists). **It is public, not private.** The CEO's PAT has
   push+admin; use it in a one-off URL, never in `.git/config`.
@@ -64,6 +71,14 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   sandbox (installs Rust/R/Go/Elixir, rebuilds when sources are newer).
 - `scripts/smoke.sh` is the acceptance test; all 26 steps pass, repeatably (the
   four `ok:false` lines are intentional refusal tests).
+- **Security tools: 26 in the family, all real.** 16 original + 10 added on
+  2026-10-24 (`method_audit`, `cors_audit`, `cookie_audit`, `cert_inspect`,
+  `subdomain_enum`, `secret_scan`, `password_audit`, `jwt_inspect`,
+  `file_integrity`, `log_audit`). All in `sandbox.rs`; reachable via
+  `security.php?action=scan&kind=<k>` and as agent tool codes in `runtime.rs`.
+  Total catalogue 100 tools, 66+ agentic. A bare credential *prefix* is not a
+  secret — rules carry a minimum credible token length or the scanner flags its
+  own rule table.
 - **Runtimes**: `langrun.rs` advertises a language only when it can run it. A
   compiled language (Rust, C) is built then executed — driven by `compiled: bool`
   — and children receive only toolchain-location env (`RUSTUP_HOME`, `CARGO_HOME`,
