@@ -427,7 +427,29 @@ pub fn seed_defaults() {
             set(k, v);
         }
     }
+    seed_platform_url_from_env();
     let _ = util::new_id("");
+}
+
+/// Fill `platform_url` from the deployment's own environment when it is still
+/// empty. The posture endpoint and Stripe's redirect URLs read this setting to
+/// decide whether the site is on TLS; without it a live HTTPS deployment
+/// reports `https: false` and `Strict-Transport-Security: false` while the
+/// middleware is in fact sending HSTS. An explicit value in the settings table
+/// always wins, so the CEO can still override it from the admin page.
+fn seed_platform_url_from_env() {
+    if !get("platform_url", "").trim().is_empty() {
+        return;
+    }
+    for key in ["MTS_PUBLIC_URL", "SITE_URL"] {
+        if let Ok(v) = std::env::var(key) {
+            let v = v.trim();
+            if v.starts_with("https://") || v.starts_with("http://") {
+                set("platform_url", v.trim_end_matches('/'));
+                return;
+            }
+        }
+    }
 }
 
 #[allow(dead_code)]
