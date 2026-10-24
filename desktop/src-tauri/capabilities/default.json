@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the Mbilinyi Tech desktop window may do. The app is a shell around the live platform, so it needs nothing beyond the core defaults: no filesystem, no shell, no device access.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

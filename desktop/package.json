@@ -2,7 +2,7 @@
   "name": "mbilinyi-tech-desktop",
   "version": "1.0.0",
   "private": true,
-  "description": "Mbilinyi Tech Solutions desktop app — Windows, macOS and Linux installers for the live platform.",
+  "description": "Mbilinyi Tech Solutions desktop app \u2014 Windows, macOS and Linux installers for the live platform.",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
@@ -10,6 +10,10 @@
     "build:mac": "tauri build --bundles dmg,app",
     "build:linux": "tauri build --bundles deb,appimage"
   },
-  "devDependencies": { "@tauri-apps/cli": "^1.6.3" },
-  "dependencies": { "@tauri-apps/api": "^1.6.0" }
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  }
 }

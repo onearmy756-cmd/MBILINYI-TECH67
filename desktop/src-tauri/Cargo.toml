@@ -3,17 +3,19 @@ name = "mbilinyi-tech-desktop"
 version = "1.0.0"
 description = "Mbilinyi Tech Solutions desktop client"
 edition = "2021"
+authors = ["Mbilinyi Tech Solutions <mbilinyitech@gmail.com>"]
 rust-version = "1.77"
 
 [build-dependencies]
-tauri-build = { version = "1.5", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "1.6", features = ["shell-open", "window-all", "notification-all"] }
+tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [features]
+# Tauri 2 serves the bundled assets through a custom protocol in release builds.
 custom-protocol = ["tauri/custom-protocol"]
 
 [profile.release]

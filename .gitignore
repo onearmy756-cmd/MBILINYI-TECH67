@@ -31,3 +31,9 @@ rust/mts-core/target/
 storage/mts.sqlite
 storage/mts.sqlite-wal
 storage/mts.sqlite-shm
+
+# Node dependencies and lockfile noise from the mobile and desktop shells.
+node_modules/
+# Tauri build output and the schema it generates on every build.
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
