@@ -5,6 +5,18 @@ Mbilinyi Tech Solutions: a PHP site (pages + `/api/*.php`) that is being
 replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 (`assets/app.js`, `templates/`) is shared by both and must not need changes.
 
+## What is now implemented (2026-10-23)
+- **Payroll**: `payroll.rs` — payslip per escrow release, banded PAYE + NSSF +
+  WCF, TRA return. Admin Payroll tab; worker "Pay & Contract" tab.
+- **Stripe (USD)**: `payments/gateways.rs`; `gw_stripe_api_base` is overridable
+  (point it at a mock or sandbox to test). Webhooks are HMAC-verified.
+  Requires `gw_stripe_publishable` AND `gw_stripe_secret`.
+- **100 agents + manager**: `agents.rs` seeds "Magma Commander" (dept `ceo`)
+  then 100 role seats → `agents.php?action=list` returns 101.
+- **Real video call**: backend `call.rs` relays SDP/ICE on `/ws/call/:room`;
+  browser `assets/call.js` (real RTCPeerConnection). Verified 2 peers connect.
+- Details and the traps: `2026-10-23-payroll-hiring-call.md`.
+
 ## Facts worth keeping
 - Repo `onearmy756-cmd/MBILINYI-TECH67`, default branch **master** (a stale
   `main` ref also exists). **It is public, not private.** The CEO's PAT has
