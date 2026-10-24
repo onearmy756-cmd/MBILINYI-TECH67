@@ -289,6 +289,17 @@ fn current_employee(c: &Ctx) -> Result<db::Row, Response> {
     })
 }
 
+/// The employee id linked to a signed-in account, or empty when the account is
+/// not a worker. Used by payroll so a worker reads only their own payslips.
+pub fn employee_for_account(user_id: &str) -> Option<String> {
+    db::row(
+        "SELECT id FROM employees WHERE user_id = ?",
+        &[arg(json!(user_id))],
+    )
+    .map(|r| util::s(r.get("id").unwrap_or(&J::Null)))
+    .filter(|id| !id.is_empty())
+}
+
 fn employee_me(c: &Ctx) -> Response {
     match current_employee(c) {
         Ok(e) => {

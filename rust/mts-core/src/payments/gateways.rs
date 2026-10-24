@@ -258,6 +258,44 @@ const MPESA: Provider = Provider {
     verify_uses_query: false,
 };
 
+/// Tigo Pesa (Mixx by Yas). The public API is a JSON collect endpoint; the base
+/// is a setting because Tigo issues each merchant its own host.
+const TIGOPESA: Provider = Provider {
+    url_key: "gw_tigopesa_url",
+    default_url: "https://api.tigo.co.tz/v1",
+    key_setting: "gw_tigopesa_key",
+    initiate_path: "/payments/collect",
+    verify_path: "/payments/{reference}",
+    initiate_ref: &["transactionId", "data.transactionId", "reference"],
+    verify_status: &["status", "data.status"],
+    verify_uses_query: false,
+};
+
+/// Airtel Money. Same shape; Airtel issues a per-country host and a client id
+/// and secret, which are held together in the key setting.
+const AIRTEL: Provider = Provider {
+    url_key: "gw_airtel_url",
+    default_url: "https://openapi.airtel.africa",
+    key_setting: "gw_airtel_key",
+    initiate_path: "/merchant/v1/payments/",
+    verify_path: "/standard/v1/payments/{reference}",
+    initiate_ref: &["data.transaction.id", "transaction.id", "data.transactionId"],
+    verify_status: &["data.transaction.status", "status"],
+    verify_uses_query: false,
+};
+
+/// HaloPesa (Halotel). Served through the same collect shape.
+const HALOPESA: Provider = Provider {
+    url_key: "gw_halopesa_url",
+    default_url: "https://api.halopesa.co.tz/v1",
+    key_setting: "gw_halopesa_key",
+    initiate_path: "/payments/collect",
+    verify_path: "/payments/{reference}",
+    initiate_ref: &["transactionId", "data.transactionId", "reference"],
+    verify_status: &["status", "data.status"],
+    verify_uses_query: false,
+};
+
 fn base_of(p: &Provider) -> String {
     settings::get(p.url_key, p.default_url)
         .trim_end_matches('/')
@@ -323,10 +361,13 @@ pub async fn initiate(
 ) -> Outcome {
     let _ = (payer_email, payer_name);
     match gateway {
-        "clickpesa" | "selcom" | "mpesa" => {
+        "clickpesa" | "selcom" | "mpesa" | "tigopesa" | "airtel" | "halopesa" => {
             let p = match gateway {
                 "clickpesa" => &CLICKPESA,
                 "selcom" => &SELCOM,
+                "tigopesa" => &TIGOPESA,
+                "airtel" => &AIRTEL,
+                "halopesa" => &HALOPESA,
                 _ => &MPESA,
             };
             let key = settings::get(p.key_setting, "");
@@ -344,6 +385,19 @@ pub async fn initiate(
                     "input_TransactionReference": reference,
                     "input_ThirdPartyConversationID": reference,
                     "input_PurchasedItemsDesc": "Mbilinyi Tech Solutions",
+                })
+            } else if gateway == "airtel" {
+                // Airtel wants the amount nested and the currency in its own
+                // object, unlike the flat collect body the others take.
+                json!({
+                    "reference": reference,
+                    "subscriber": { "country": "TZ", "currency": "TZS", "msisdn": payer_phone },
+                    "transaction": {
+                        "amount": whole(amount),
+                        "country": "TZ",
+                        "currency": "TZS",
+                        "id": reference,
+                    },
                 })
             } else {
                 collect_body(amount, currency, payer_phone, reference, &account)
@@ -393,8 +447,14 @@ pub async fn initiate(
 /// `verify` — ask the provider whether the charge settled.
 pub async fn verify(gateway: &str, reference: &str) -> Outcome {
     match gateway {
-        "clickpesa" | "selcom" => {
-            let p = if gateway == "clickpesa" { &CLICKPESA } else { &SELCOM };
+        "clickpesa" | "selcom" | "tigopesa" | "airtel" | "halopesa" => {
+            let p = match gateway {
+                "clickpesa" => &CLICKPESA,
+                "selcom" => &SELCOM,
+                "tigopesa" => &TIGOPESA,
+                "airtel" => &AIRTEL,
+                _ => &HALOPESA,
+            };
             let key = settings::get(p.key_setting, "");
             if key.is_empty() {
                 return fail(format!("{} is not configured.", gateway));
@@ -420,8 +480,7 @@ pub async fn verify(gateway: &str, reference: &str) -> Outcome {
         "beem" => verify_beem(reference).await,
         "stripe" => verify_stripe(reference).await,
         "paypal" => verify_paypal(reference).await,
-        "bank_local" | "swift" | "wise" | "payoneer" | "mpesa" | "tigopesa" | "airtel"
-        | "halopesa" => Outcome {
+        "bank_local" | "swift" | "wise" | "payoneer" | "mpesa" => Outcome {
             ok: false,
             reference: reference.to_string(),
             message: "This gateway is confirmed manually: the admin matches the reference against the statement.".into(),

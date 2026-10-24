@@ -341,7 +341,7 @@ pub fn service_price_list() -> Vec<J> {
 
 /// Fill only blanks, so an admin edit is never overwritten on boot.
 pub fn seed_defaults() {
-    let defaults: [(&str, &str); 43] = [
+    let defaults: [(&str, &str); 52] = [
         ("pay_bank_name", "NMB Bank"),
         ("pay_bank_account", "51710099563"),
         ("pay_bank_holder", "JACKSON MBILINYI"),
@@ -354,6 +354,19 @@ pub fn seed_defaults() {
         ("pay_currency", "TZS"),
         // Shillings per US dollar, used when a payer chooses the other currency.
         ("fx_usd_tzs", "2600"),
+        // The other currencies the platform quotes, each as shillings per unit.
+        // Wise can refresh these; the figures here are the fallback.
+        ("fx_eur_tzs", "2800"),
+        ("fx_gbp_tzs", "3300"),
+        ("fx_kes_tzs", "20"),
+        ("fx_source", "manual"),
+        ("fx_updated_at", ""),
+        // Payroll. The worker's share of a released contract, then the statutory
+        // deductions. Bands are "ceiling:rate" pairs; the last is the top band.
+        ("payroll_worker_share", "0.70"),
+        ("payroll_nssf_rate", "0.10"),
+        ("payroll_wcf_rate", "0.006"),
+        ("payroll_paye_bands", "270000:0,520000:0.08,760000:0.20,1000000:0.25,9999999999:0.30"),
         ("platform_name", "MbilinyiTech Platform"),
         ("webauthn_rp_name", "Mbilinyi Tech Solutions"),
         // The AI provider the agent engine calls. Empty provider means "work it

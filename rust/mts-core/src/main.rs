@@ -28,6 +28,7 @@ mod mail;
 mod notify;
 mod ofisi;
 mod pages;
+mod payroll;
 mod payments;
 mod pdf;
 mod pqc;
@@ -344,6 +345,7 @@ pub fn bootstrap() {
     scheduler::init_tables();
     ofisi::init_tables();
     security::init_tables();
+    payroll::ensure_schema();
     mail::init_tables();
     pqc::init_tables();
     pdf_init_ok();

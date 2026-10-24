@@ -23,6 +23,8 @@ fn arg(v: J) -> Value {
 pub async fn handle(c: &Ctx) -> Response {
     match c.action().as_str() {
         "gateways" => gateways_list(c),
+        "rates" => rates(c),
+        "rates_refresh" => rates_refresh(c).await,
         "pay" => start(c).await,
         "verify" => verify(c).await,
         "mine" => mine(c),
@@ -30,7 +32,12 @@ pub async fn handle(c: &Ctx) -> Response {
         "escrow" => escrow_info(c),
         "escrow_release" => escrow_release(c),
         "escrow_refund" => escrow_refund(c),
+        "payslips" => payslips(c),
+        "payslip_pay" => payslip_pay(c),
+        "payroll_preview" => payroll_preview(c),
+        "tax_return" => tax_return(c),
         "accept_delivery" => accept_delivery(c),
+        "settle_manual" => settle_manual(c),
         "webhook" => webhook(c).await,
         "stripe_webhook" => stripe_webhook(c).await,
         "code_check" => code_check(c),
@@ -45,6 +52,39 @@ fn gateways_list(_c: &Ctx) -> Response {
         "currency": settings::get("pay_currency", "TZS"),
         "fx": { "usd_tzs": crate::payments::usd_rate() },
     }))
+}
+
+/// The current exchange rates and where they came from, so the admin can see
+/// whether they are live or hand-set.
+fn rates(_c: &Ctx) -> Response {
+    let mut out = Vec::new();
+    for cur in crate::payments::QUOTE_CURRENCIES {
+        out.push(json!({
+            "currency": cur,
+            "tzsPerUnit": crate::payments::rate_for(cur),
+        }));
+    }
+    ok(json!({
+        "base": "TZS",
+        "rates": out,
+        "source": settings::get("fx_source", "manual"),
+        "updatedAt": settings::get("fx_updated_at", ""),
+    }))
+}
+
+/// Pull live mid-market rates from Wise and store them. Admin-only: it writes
+/// the figures every invoice is priced against.
+async fn rates_refresh(c: &Ctx) -> Response {
+    if let Err(e) = c.require_csrf() {
+        return e;
+    }
+    if let Err(e) = c.require_admin() {
+        return e;
+    }
+    match crate::payments::refresh_rates_from_wise().await {
+        Ok(updated) => ok(json!({ "refreshed": true, "updated": updated })),
+        Err(e) => err(&e, 502),
+    }
 }
 
 /// Start a payment for an invoice.
@@ -141,11 +181,13 @@ async fn start(c: &Ctx) -> Response {
     let charge = if currency.eq_ignore_ascii_case(&invoice_currency) {
         amount
     } else {
-        match crate::payments::convert(amount, &invoice_currency, &currency) {
+        // Any quoted pair, pivoting through the shilling, so a USD invoice can
+        // be settled in EUR or KES as well as TZS.
+        match crate::payments::convert_any(amount, &invoice_currency, &currency) {
             Some(v) => crate::payments::round2(v),
             None => {
                 return bad(&format!(
-                    "Paying a {invoice_currency} invoice in {currency} needs an exchange rate. Ask the CEO to set it in Admin → Settings."
+                    "Paying a {invoice_currency} invoice in {currency} needs an exchange rate. Ask the CEO to set it in Admin → Settings, or refresh the rates from Wise."
                 ))
             }
         }
@@ -406,6 +448,11 @@ fn accept_delivery(c: &Ctx) -> Response {
     // moved. Both are real sends when a gateway is configured.
     notify_client_accepted(tracking, held, &currency, &u);
 
+    // Pay the worker who carried out the job. The gross is the worker's share
+    // of what was released; PAYE, NSSF and WCF are deducted and the net is what
+    // the worker takes home. The company keeps the remainder as its margin.
+    let payslip = crate::payroll::raise_for_contract(&cid, held, "Client accepted delivery");
+
     ok(json!({
         "accepted": true,
         "entryId": entry,
@@ -413,6 +460,7 @@ fn accept_delivery(c: &Ctx) -> Response {
         "currency": currency,
         "balance": escrow::balance(&cid),
         "companyAccount": crate::security::company_account(),
+        "payslip": payslip,
         "message": "Asante. Umechukua kazi; malipo yametolewa kutoka escrow kwenda kwenye akaunti ya kampuni.",
     }))
 }
@@ -573,7 +621,16 @@ fn escrow_release(c: &Ctx) -> Response {
     };
     match escrow::release(&cid, amount, &currency, &c.p("note")) {
         Some(id) => {
-            ok(json!({ "released": true, "entryId": id, "balance": escrow::balance(&cid) }))
+            // The worker who did the job is paid from what was released, with
+            // the statutory deductions taken out. A payslip is raised for every
+            // release, so the money-out trail is complete.
+            let payslip = crate::payroll::raise_for_contract(&cid, amount, "Escrow release");
+            ok(json!({
+                "released": true,
+                "entryId": id,
+                "balance": escrow::balance(&cid),
+                "payslip": payslip,
+            }))
         }
         None => bad("That amount is more than is held for this contract."),
     }
@@ -603,6 +660,129 @@ fn escrow_refund(c: &Ctx) -> Response {
         None => bad("That amount is more than is held for this contract."),
     }
 }
+
+/// Record that a payment arrived out-of-band — a bank transfer or a mobile-money
+/// deposit the provider did not call back about. The admin names the reference
+/// they matched against the statement. This is the honest way to settle the
+/// gateways that are confirmed by hand: the money still lands in escrow, so the
+/// client's protection is the same as for a card payment.
+fn settle_manual(c: &Ctx) -> Response {
+    if let Err(e) = c.require_csrf() {
+        return e;
+    }
+    if let Err(e) = c.require_admin() {
+        return e;
+    }
+    let payment_id = c.p("paymentId");
+    if payment_id.is_empty() {
+        return bad("Name the payment you are confirming.");
+    }
+    let Some(p) = crate::payments::get_payment(&payment_id) else {
+        return err("Payment not found.", 404);
+    };
+    if p.get("status").and_then(|v| v.as_str()) == Some("Settled") {
+        return bad("This payment is already settled.");
+    }
+    let reference = {
+        let r = c.p("reference");
+        if r.is_empty() {
+            p.get("reference").and_then(|v| v.as_str()).unwrap_or("").to_string()
+        } else {
+            r
+        }
+    };
+    let gateway = p
+        .get("gateway")
+        .and_then(|v| v.as_str())
+        .unwrap_or("manual")
+        .to_string();
+    // `settle` marks the invoice paid and holds the money in escrow, exactly as
+    // a webhook would. Reusing it keeps one money path, not two.
+    settle(&payment_id, &gateway, &reference);
+    let after = crate::payments::get_payment(&payment_id).unwrap_or_default();
+    ok(json!({
+        "settled": true,
+        "paymentId": payment_id,
+        "reference": reference,
+        "status": after.get("status").and_then(|v| v.as_str()).unwrap_or("Settled"),
+        "note": "Recorded against the statement. The funds are held in escrow until the client accepts.",
+    }))
+}
+
+/* ------------------------------ payroll ------------------------------ */
+
+/// Every payslip, or the ones belonging to one worker. The admin reads them
+/// here to know who is owed what; a worker reads only their own.
+fn payslips(c: &Ctx) -> Response {
+    let Ok(u) = c.require_user() else {
+        return util::unauth();
+    };
+    let role = u.get("role").and_then(|v| v.as_str()).unwrap_or("");
+    let employee_id = if role == "admin" {
+        c.p("employeeId")
+    } else {
+        // A worker sees only their own payslips, keyed by the account they
+        // signed in with. Anything else would leak a colleague's pay.
+        let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        crate::wafanyakazi::employee_for_account(uid).unwrap_or_default()
+    };
+    let rows = crate::payroll::list_for(&employee_id);
+    ok(json!({
+        "payslips": rows,
+        "outstanding": crate::payroll::outstanding(),
+        "taxWithheld": crate::payroll::tax_withheld(),
+        "workerShare": crate::settings::num("payroll_worker_share", 0.70),
+    }))
+}
+
+/// Mark a payslip as paid. The money itself moves outside the system (bank or
+/// mobile money), but the record of the payment is what makes the payroll
+/// auditable, so the action is admin-only and leaves a timestamp.
+fn payslip_pay(c: &Ctx) -> Response {
+    if let Err(e) = c.require_csrf() {
+        return e;
+    }
+    if let Err(e) = c.require_admin() {
+        return e;
+    }
+    let id = c.p("id");
+    if id.is_empty() {
+        return bad("Name the payslip to mark as paid.");
+    }
+    if crate::payroll::mark_paid(&id) {
+        ok(json!({ "paid": true, "id": id }))
+    } else {
+        err("Payslip not found.", 404)
+    }
+}
+
+/// What a gross figure pays out, so the admin can see the deductions before
+/// committing to a figure.
+fn payroll_preview(c: &Ctx) -> Response {
+    if let Err(e) = c.require_admin() {
+        return e;
+    }
+    let gross = c.p("gross").parse::<f64>().unwrap_or(0.0);
+    ok(json!({ "payslip": crate::payroll::compute(gross) }))
+}
+
+/// The monthly return to TRA: what the company withheld and must remit.
+fn tax_return(c: &Ctx) -> Response {
+    if let Err(e) = c.require_admin() {
+        return e;
+    }
+    let withheld = crate::payroll::tax_withheld();
+    let total = withheld["paye"].as_f64().unwrap_or(0.0)
+        + withheld["nssf"].as_f64().unwrap_or(0.0)
+        + withheld["wcf"].as_f64().unwrap_or(0.0);
+    ok(json!({
+        "withheld": withheld,
+        "totalRemittable": total,
+        "currency": settings::get("pay_currency", "TZS"),
+        "note": "PAYE and WCF are remitted to TRA; NSSF to the social security fund.",
+    }))
+}
+
 
 /// The provider's callback. The payload is stored before it is acted on, so a
 /// disputed settlement can be re-checked against exactly what was sent.

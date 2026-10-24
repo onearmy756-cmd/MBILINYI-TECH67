@@ -145,7 +145,7 @@ pub const CATALOGUE: &[GatewayDef] = &[
         icon: "fa-solid fa-globe",
         brand: "#9FE870",
         currencies: &["USD", "EUR", "GBP"],
-        required: &["gw_wise_iban", "gw_wise_holder"],
+        required: &["gw_wise_iban", "gw_wise_holder", "gw_wise_token"],
     },
     GatewayDef {
         key: "swift",
@@ -243,6 +243,80 @@ pub fn convert_at(amount: f64, from: &str, to: &str, rate: f64) -> Option<f64> {
 /// `convert_at` at the rate the CEO configured.
 pub fn convert(amount: f64, from: &str, to: &str) -> Option<f64> {
     convert_at(amount, from, to, usd_rate())
+}
+
+/// The currencies the platform quotes besides the shilling. Each has a rate
+/// against TZS in settings, so a USD invoice can be paid in EUR without a
+/// separate setting for every pair.
+pub const QUOTE_CURRENCIES: [&str; 4] = ["USD", "EUR", "GBP", "KES"];
+
+/// Shillings per one unit of `currency`. USD keeps its original setting name so
+/// an existing installation needs no migration.
+pub fn rate_for(currency: &str) -> f64 {
+    match currency.to_uppercase().as_str() {
+        "TZS" => 1.0,
+        "USD" => settings::num("fx_usd_tzs", 0.0),
+        other => settings::num(&format!("fx_{}_tzs", other.to_lowercase()), 0.0),
+    }
+}
+
+/// Convert between any two currencies the platform quotes, pivoting through the
+/// shilling. `None` means a rate is missing, and the caller must refuse rather
+/// than charge a guessed figure. This is the pair-wise generalisation of
+/// `convert_at`, which only knows the single dollar rate.
+pub fn convert_any(amount: f64, from: &str, to: &str) -> Option<f64> {
+    convert_any_at(amount, from, to, rate_for(from), rate_for(to))
+}
+
+/// Fetch live mid-market rates from the Wise API and store them as the TZS
+/// rates. Requires a Wise API token (`gw_wise_token`); without one the manual
+/// rates stand. Returns the number of currencies updated.
+pub async fn refresh_rates_from_wise() -> Result<Vec<J>, String> {
+    let token = settings::get("gw_wise_token", "");
+    if token.trim().is_empty() {
+        return Err("No Wise API token is set (gw_wise_token), so live rates cannot be fetched.".into());
+    }
+    let targets = ["USD", "EUR", "GBP", "KES"];
+    let source = "TZS";
+    let url = format!(
+        "https://api.transferwise.com/v1/rates?source={source}&target={}",
+        targets.join(",")
+    );
+    let res = reqwest::Client::new()
+        .get(&url)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {e}"))?;
+    let code = res.status().as_u16();
+    let text = res.text().await.unwrap_or_default();
+    if !(200..300).contains(&code) {
+        return Err(format!("Wise refused the request (HTTP {code}): {text}"));
+    }
+    let parsed: J = serde_json::from_str(&text).map_err(|e| format!("Unreadable rate reply: {e}"))?;
+    let mut updated = Vec::new();
+    if let Some(arr) = parsed.as_array() {
+        for entry in arr {
+            let target = entry.get("target").and_then(|v| v.as_str()).unwrap_or("");
+            let rate = entry.get("rate").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            if target.is_empty() || rate <= 0.0 {
+                continue;
+            }
+            let key = if target.eq_ignore_ascii_case("USD") {
+                "fx_usd_tzs".to_string()
+            } else {
+                format!("fx_{}_tzs", target.to_lowercase())
+            };
+            settings::set(&key, &format!("{rate:.6}"));
+            updated.push(json!({ "currency": target, "tzsPerUnit": rate }));
+        }
+    }
+    if updated.is_empty() {
+        return Err("Wise returned no usable rates.".into());
+    }
+    settings::set("fx_source", "wise");
+    settings::set("fx_updated_at", &util::now());
+    Ok(updated)
 }
 
 /// Round money to two decimals, so a converted figure is a payable amount.
@@ -505,4 +579,31 @@ mod tests {
         assert_eq!(convert_at(100.0, "TZS", "EUR", 2600.0), None);
         assert_eq!(convert_at(100.0, "GBP", "USD", 2600.0), None);
     }
+
+    /// The general converter pivots through the shilling, so a pair with no
+    /// direct rate still converts when both legs are known.
+    #[test]
+    fn convert_any_pivots_through_the_shilling() {
+        // Both legs known: 1,000 USD -> 2,600,000 TZS -> 2,600,000/2,900 EUR.
+        let eur = convert_any_at(1000.0, "USD", "EUR", 2600.0, 2900.0).unwrap();
+        assert!((eur - 896.55).abs() < 0.01);
+        // Same currency is returned unchanged, whatever the rates.
+        assert_eq!(convert_any_at(500.0, "USD", "usd", 0.0, 0.0), Some(500.0));
+        // A missing leg refuses rather than guesses.
+        assert_eq!(convert_any_at(100.0, "USD", "EUR", 2600.0, 0.0), None);
+        assert_eq!(convert_any_at(100.0, "GBP", "USD", 0.0, 2600.0), None);
+    }
+}
+
+/// The pure half of `convert_any`, with both legs passed in so it can be tested
+/// without a database.
+fn convert_any_at(amount: f64, from: &str, to: &str, from_rate: f64, to_rate: f64) -> Option<f64> {
+    let (from, to) = (from.to_uppercase(), to.to_uppercase());
+    if from == to {
+        return Some(amount);
+    }
+    if from_rate <= 0.0 || to_rate <= 0.0 {
+        return None;
+    }
+    Some(round2(amount * from_rate / to_rate))
 }

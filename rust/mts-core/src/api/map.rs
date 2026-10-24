@@ -444,6 +444,8 @@ pub fn application(r: &db::Row) -> J {
         "theoreticalScore": gi(r, "theoretical_score"),
         "practicalScore": gi(r, "practical_score"),
         "totalScore": gi(r, "total_score"),
+        "aiScore": gi(r, "ai_score"),
+        "aiNote": gs(r, "ai_note"),
         "assessmentNotes": gs(r, "assessment_notes"),
         "status": gs(r, "status"),
         "createdAt": iso_of(r, "created_at"),
