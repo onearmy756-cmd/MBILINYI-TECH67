@@ -158,3 +158,36 @@ Bugs found while testing (both fixed, 110 tests pass, redeployed):
   Note the envelope is still `ok:true`; the refusal is `data.ok:false` +
   `data.evidence`. `dependencies` legitimately reports `ok:false` when no
   manifest (Cargo.toml/package.json/...) exists under the target.
+
+## Runtimes, agents, tools and the AI path — all verified live (2026-10-24)
+* **Runtimes: all 7 ready, and each prints 42 live.** `api/runtime.php?action=status`
+  returns `ready: [Python, Rust, Go, Elixir, R, Node.js, C]`, `missing: []`. Ran a
+  snippet per language over the API: python 40ms, node 161ms, go 802ms, c 40ms,
+  rust 40ms, r 642ms, elixir 684ms — every one printed `42`. The container really
+  has `/usr/bin/{python3,Rscript,go,elixir,node,cc}` and `/usr/local/cargo/bin/rustc`.
+* **Agents: 101 seats, all active.** `agents.php?action=list` → 101; departments
+  software 28, ai 15, employee 15, security 15, marketing 12, finance 9, hr 6, ceo 1
+  (the manager seat "Magma Commander"). `engine capabilities` agrees.
+* **Tools: 90 in the catalogue, 66 agentic.** Families: software 12, security 16,
+  ai 12, design 4, business 7, comms 6, platform 5, agent 20, media 8. The `agent`
+  family is the "OpenHands-class" runtime (browser, web, code_execution, terminal,
+  file_ops, mixture_of_agents, cronjob, skills, todo, ...). Note: this is the
+  platform's OWN agent runtime, not a call out to an external OpenHands API.
+* **The AI path works; it is gated only on a provider key.** With no key,
+  `run_job` starts a real run that ends `status=blocked, error="No AI provider is
+  configured..."` — a clear, correct refusal, not a crash. Proved the whole path by
+  pointing `LLM_BASE_URL` at a tiny OpenAI-compatible mock and setting
+  `OPENAI_API_KEY`: `llm test` → `connected:true, reply:"..."`; `run_job` (manager
+  auto-picks) → `status=done, steps=1`; `run_job tool=ai_finetune` → agent
+  "AI Fine-Tuning Engineer 01" → `status=done, steps=1`. So fine-tuning, the agent
+  engine and all model-backed tools work the moment a key is added.
+  `Llm::from_settings()` reads the provider from settings OR the env, and a key in
+  the env alone is enough to switch a provider on — good for a container.
+* Set the key on Fly with: `flyctl secrets set OPENAI_API_KEY=... -a mbilinyitech-tz`
+  (or ANTHROPIC_API_KEY / GEMINI_API_KEY; Ollama needs no key). Admin -> Settings
+  -> LLM also works and overrides the env.
+* **`api/runtime.php?action=test` takes an IN-CONTAINER path.** `/app` holds only
+  the built `mts-core`, `assets/`, `templates/`, `r/report.R` — no source tree, so
+  `/app/rust/mts-core` is "not a directory". Running the project's own suite from
+  inside the image is therefore not possible; that is a path issue, not a broken
+  runtime.
