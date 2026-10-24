@@ -115,12 +115,60 @@ pub fn payment_details() -> J {
     })
 }
 
-pub const CATALOGUE_KEYS: [&str; 16] = [
+pub const CATALOGUE_KEYS: [&str; 21] = [
     "custom_software", "system_analysis", "it_consultancy", "maintenance",
     "cybersecurity", "forensics", "ai_chatbots", "ai_finetune", "cloud_devops",
     "brela", "tra_tax", "troubleshooting", "windows_os", "email_setup",
     "gov_eservices", "software_install",
+    "graphics_design", "cv_writing", "mobile_desktop_app", "iot_gaming",
+    "industry_solutions",
 ];
+
+/// Services that only exist in Tanzania. Everyone else must not see or order
+/// them. Held in settings so the CEO can move a service in or out without a
+/// redeploy; the default covers BRELA, TRA and the government e-services.
+pub fn tz_only_keys() -> Vec<String> {
+    get("services_tz_only", "brela,tra_tax,gov_eservices")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// Is this service restricted to Tanzania? Matched on letters and digits only,
+/// so "BRELA & Business Registration" is recognised as the `brela` key.
+pub fn is_tz_only(label: &str) -> bool {
+    is_tz_only_in(label, &tz_only_keys())
+}
+
+/// Label fragments that identify a restricted service whose human label does
+/// not contain its catalogue key. "Government e-Services" has no `eservices`
+/// in it once the hyphen is dropped, so it is spelled out here. A key the CEO
+/// adds themselves still matches on the key itself.
+fn tz_aliases(key: &str) -> &'static [&'static str] {
+    match key {
+        "gov_eservices" => &["government", "nida", "nhif", "nssf", "ecitizen", "huduma"],
+        _ => &[],
+    }
+}
+
+fn squash(s: &str) -> String {
+    s.chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
+/// The pure half of `is_tz_only`, so it can be tested without a database.
+fn is_tz_only_in(label: &str, keys: &[String]) -> bool {
+    let key = squash(label);
+    if key.is_empty() {
+        return false;
+    }
+    keys.iter().any(|k| {
+        key.contains(&squash(k)) || tz_aliases(k).iter().any(|a| key.contains(a))
+    })
+}
 
 pub fn service_hidden() -> Vec<String> {
     let raw = get("services_hidden", "");
@@ -206,3 +254,50 @@ pub fn seed_defaults() {
 
 #[allow(dead_code)]
 fn _unused(_v: Value) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn keys() -> Vec<String> {
+        vec!["brela".into(), "tra_tax".into(), "gov_eservices".into()]
+    }
+
+    #[test]
+    fn tz_only_matches_by_label_not_exact_spelling() {
+        // The grid sends a long human label, not the catalogue key.
+        assert!(is_tz_only_in("BRELA & Business Registration", &keys()));
+        assert!(is_tz_only_in("TRA & Tax Services", &keys()));
+        assert!(is_tz_only_in("Government e-Services", &keys()));
+    }
+
+    #[test]
+    fn international_services_are_never_tz_only() {
+        for label in [
+            "Custom Software Development",
+            "Graphics Design",
+            "CV & Profile Writing",
+            "AI Fine-Tuning",
+            "Cybersecurity Services",
+        ] {
+            assert!(!is_tz_only_in(label, &keys()), "{label} must be available worldwide");
+        }
+    }
+
+    #[test]
+    fn empty_list_restricts_nothing() {
+        assert!(!is_tz_only_in("BRELA & Business Registration", &[]));
+        assert!(!is_tz_only_in("", &keys()));
+    }
+
+    #[test]
+    fn catalogue_covers_every_service_the_ui_offers() {
+        // A service missing from the catalogue cannot be switched off by the CEO.
+        for k in [
+            "graphics_design", "cv_writing", "mobile_desktop_app", "iot_gaming",
+            "industry_solutions",
+        ] {
+            assert!(CATALOGUE_KEYS.contains(&k), "{k} is missing from CATALOGUE_KEYS");
+        }
+    }
+}

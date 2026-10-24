@@ -208,6 +208,10 @@ fn save(c: &Ctx) -> Response {
     if !photo.is_empty() && !photo.starts_with("data:image/") {
         return bad("The photo must be an uploaded image (data:image/…).");
     }
+    // SVG is an image but can carry a script, so it is not accepted here.
+    if photo.starts_with("data:image/svg") {
+        return bad("Upload a PNG, JPG or WebP photo — SVG is not accepted.");
+    }
     let tools_in: Vec<String> = c
         .pv("tools")
         .as_array()

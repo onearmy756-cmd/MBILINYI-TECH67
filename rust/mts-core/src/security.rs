@@ -184,6 +184,11 @@ pub async fn handle(c: &Ctx) -> Response {
             if !looks_like_image {
                 return bad("The logo must be an uploaded image or an http(s) URL.");
             }
+            // An SVG can carry a script, so it is refused as a data URI. A plain
+            // http(s) URL to an SVG is fine — it is served from another origin.
+            if logo.starts_with("data:image/svg") {
+                return bad("Upload a PNG, JPG or WebP logo — SVG is not accepted.");
+            }
             settings::set("platform_logo", &logo);
             if !c.p("name").is_empty() {
                 settings::set("platform_name", &c.p("name"));

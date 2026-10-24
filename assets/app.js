@@ -70,6 +70,11 @@ const SERVICES = [
   { k: 'maintenance', kind: 'software', icon: 'fa-screwdriver-wrench', c: 'emerald', t: 'Software Maintenance', tSw: 'Matengenezo ya Software', d: 'Software maintenance & support with MBILINYITECH — bug fixes, updates, backups, uptime monitoring & SLA support — your system never sleeps.', dSw: 'Matengenezo na msaada wa software na MBILINYITECH — kurekebisha hitilafu, masasisho, nakala rudufu, ufuatiliaji wa muda wa kufanya kazi na msaada wa SLA — mfumo wako haukulala.', tags: ['SLA options', 'Monitoring', 'AMC'] },
   { k: 'cybersecurity', kind: 'service', icon: 'fa-shield-halved', c: 'red', t: 'Cybersecurity Services', tSw: 'Huduma za Usalama wa Mtandao', d: 'Penetration testing, OWASP audits, malware removal, SSL, firewall & staff security training.', dSw: 'Upimaji wa uvamizi, ukaguzi wa OWASP, kuondoa programu hasidi, SSL, firewall na mafunzo ya usalama kwa wafanyakazi.', tags: ['Pentest', 'OWASP'] },
   { k: 'forensics', kind: 'service', icon: 'fa-fingerprint', c: 'red', t: 'Digital Forensics', tSw: 'Uchunguzi wa Kidijitali (Forensics)', d: 'Digital forensics & cyber-crime investigation — forensic acquisition, disk/mobile/memory analysis, deleted-file recovery, timeline & chain-of-custody reports usable in legal proceedings.', dSw: 'Uchunguzi wa kidijitali na uhalifu wa mtandao — ukusanyaji wa ushahidi, uchambuzi wa diski/simu/kumbukumbu, kurejesha faili zilizofutwa, ripoti za muda na mnyororo wa ushahidi zinazoweza kutumika mahakamani.', tags: ['Forensics', 'Evidence', 'Incident Response'] },
+  { k: 'graphics_design', kind: 'software', icon: 'fa-palette', c: 'pink', t: 'Graphics Design', tSw: 'Ubunifu wa Picha (Graphics)', d: 'Brand identity, logos, posters, flyers, banners, packaging, social media kits, UI mockups & print-ready artwork — designed to make your brand unmistakable.', dSw: 'Utambulisho wa chapa, nembo, mabango, vipeperushi, mabango ya wavuti, vifungashio, seti za mitandao ya kijamii, michoro ya UI na sanaa tayari kuchapishwa — ili chapa yako itambulike mara moja.', tags: ['Branding', 'Logos', 'Print'] },
+  { k: 'cv_writing', kind: 'service', icon: 'fa-file-lines', c: 'amber', t: 'CV & Profile Writing', tSw: 'Kuandaa CV na Wasifu', d: 'Professional CV, cover letter, LinkedIn profile & portfolio — ATS-friendly wording that gets shortlisted, written for your target role and country.', dSw: 'CV ya kitaalamu, barua ya maombi, wasifu wa LinkedIn na portfolio — maneno yanayopita kwenye mifumo ya ATS ili uorodheshwe, yakiandikwa kwa nafasi na nchi unayolenga.', tags: ['CV', 'Cover Letter', 'LinkedIn'] },
+  { k: 'mobile_desktop_app', kind: 'software', icon: 'fa-mobile-screen-button', c: 'indigo', t: 'Mobile & Desktop Apps', tSw: 'Programu za Simu na Kompyuta', d: 'Android, iOS, Windows, macOS & Linux applications — from Flutter cross-platform apps to installable desktop software with a proper setup installer.', dSw: 'Programu za Android, iOS, Windows, macOS na Linux — kutoka programu za Flutter zinazofanya kazi zote hadi software ya kompyuta inayosakinishwa na setup kamili.', tags: ['Android', 'iOS', 'Desktop Setup'] },
+  { k: 'iot_gaming', kind: 'software', icon: 'fa-microchip', c: 'orange', t: 'IoT & Gaming', tSw: 'IoT na Michezo (Gaming)', d: 'IoT device software, sensor dashboards, embedded firmware, plus game and gamified-training builds for web and mobile.', dSw: 'Software ya vifaa vya IoT, dashibodi za sensor, firmware ya vifaa, pamoja na michezo na mafunzo ya kigemu kwa wavuti na simu.', tags: ['IoT', 'Sensors', 'Games'] },
+  { k: 'industry_solutions', kind: 'software', icon: 'fa-industry', c: 'teal', t: 'Industry Solutions', tSw: 'Mifumo ya Sekta Mbalimbali', d: 'Ready-to-build systems for agriculture, transport, finance, education, health & government — records, payments, tracking, reporting and offline-first operation.', dSw: 'Mifumo tayari kujengwa kwa kilimo, usafiri, fedha, elimu, afya na serikali — kumbukumbu, malipo, ufuatiliaji, ripoti na kufanya kazi bila intaneti.', tags: ['Agriculture', 'Transport', 'Finance', 'Education'] },
   { k: 'ai_chatbots', kind: 'software', icon: 'fa-robot', c: 'fuchsia', t: 'AI Chatbots', tSw: 'Chatbots za AI', d: 'Build your own AI & Chatbot with MBILINYITECH — website & WhatsApp bots in English & Kiswahili that answer, sell & book — 24/7.', dSw: 'Jenga AI na Chatbot yako na MBILINYITECH — bots za wavuti na WhatsApp kwa Kiingereza na Kiswahili zinazojibu, zinazouza na zinazopanga — saa 24.', tags: ['WhatsApp', 'Web', 'Build Your Own'] },
   { k: 'ai_finetune', kind: 'software', icon: 'fa-brain', c: 'blue', t: 'AI Fine-Tuning', tSw: 'Urekebishaji wa AI', d: 'Build your own AI & Chatbot with MBILINYITECH — we fine-tune LLMs on YOUR data (price lists, policies, FAQs) for accurate, on-brand answers.', dSw: 'Jenga AI na Chatbot yako na MBILINYITECH — tunarekebisha LLM kwa data YAKO (orodha za bei, sera, maswali) kwa majibu sahihi na yenye utambulisho wako.', tags: ['LoRA', 'RAG', 'Your Own AI'] },
   { k: 'cloud_devops', kind: 'software', icon: 'fa-cloud', c: 'teal', t: 'Cloud & DevOps', tSw: 'Cloud na DevOps', d: 'Deployment on AWS/VPS, CI/CD, Docker, domains, business emails & blazing performance.', dSw: 'Usambazaji kwenye AWS/VPS, CI/CD, Docker, domain, email za biashara na utendaji wa kasi.', tags: ['AWS', 'Docker'] },
@@ -85,7 +90,19 @@ const SERVICES = [
 /* Admin can switch any service OFF in Settings → Service Visibility. Disabled
  * services disappear from the grid, the quote wizard and admin dropdowns. */
 const SERVICES_ON = window.__SERVICES_ON__ || {};
-const VISIBLE_SERVICES = SERVICES.filter(s => SERVICES_ON[s.k] !== false);
+
+/* BRELA, TRA, NIDA and the rest only exist in Tanzania, so they are hidden from
+   everyone else. The CEO decides which services those are in Admin → Settings.
+   A visitor can switch country themselves — a Tanzanian abroad still needs
+   BRELA, and a wrong guess from an IP header must be correctable. */
+const TZ_ONLY = window.__TZ_ONLY__ || [];
+let VISITOR_COUNTRY = window.__COUNTRY__ || 'INTL';
+function isTanzania() { return VISITOR_COUNTRY === 'TZ'; }
+function setVisitorCountry(c) {
+  document.cookie = `mts_country=${c};path=/;max-age=31536000;samesite=lax`;
+  location.reload();
+}
+const VISIBLE_SERVICES = SERVICES.filter(s => SERVICES_ON[s.k] !== false && (isTanzania() || !TZ_ONLY.includes(s.k)));
 const STACK = {
   'Python': { level: 98, desc: 'Backend APIs (Django/FastAPI), AI/ML, chatbots, automation & data pipelines. Our #1 backend.', use: 'APIs • AI • Automation' },
   'React': { level: 97, desc: 'Blazing dashboards, portals & mobile-friendly SPAs with modern UI/UX and reusable components.', use: 'Web Apps • Dashboards' },
@@ -93,6 +110,8 @@ const STACK = {
   'PHP': { level: 96, desc: 'Server-side rendering, portals, CMS, WordPress, payment gateways & robust REST APIs.', use: 'Websites • Portals' },
   'Laravel': { level: 94, desc: 'Enterprise-grade PHP framework: auth, queues, billing, ORM, admin panels & secure APIs.', use: 'Enterprise Apps' },
   'R': { level: 88, desc: 'Statistical engines, research dashboards, reports & data visualization for institutions & NGOs.', use: 'Analytics • Research' },
+  'Go': { level: 91, desc: 'Fast, concurrent services, CLIs, network daemons and cloud infrastructure where throughput matters.', use: 'Cloud • Networks' },
+  'Elixir': { level: 89, desc: 'Fault-tolerant, always-on systems on the BEAM — realtime messaging, telecoms, live chat and high-concurrency APIs that heal themselves.', use: 'Realtime • Fault-tolerant' },
   'HTML/CSS/JS': { level: 99, desc: 'Pixel-perfect, responsive, SEO-ready websites with Tailwind, animations & accessibility.', use: 'Websites • Landing' },
   'Node.js': { level: 92, desc: 'Realtime apps, M-Pesa integrations, websockets & scalable REST/GraphQL backends.', use: 'Realtime • M-Pesa' },
   'Flutter': { level: 85, desc: 'One codebase Android + iOS apps — perfect for shops, schools & delivery businesses.', use: 'Mobile Apps' },
@@ -2369,6 +2388,15 @@ async function adminTab(t) {
         <div class="card3d pop-violet p-4"><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">Quantum readiness</div><div class="font-display font-bold text-lg mt-1">${esc(sec.quantum.signatureScheme)}</div><div class="text-[11.5px] text-white/50 mt-1">${esc(sec.quantum.plan)}</div></div>
         <div class="card3d pop-emerald p-4"><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">Escrow held</div><div class="font-display font-bold text-lg mt-1">${fmtTZS(sec.escrow.held || 0)}</div><div class="text-[11.5px] text-white/50 mt-1">Gateways: ${sec.gateways.enabled}/${sec.gateways.catalogue} on • Stripe: ${sec.gateways.stripeReady ? 'ready' : 'needs key'}</div></div>
       </div>
+      <div class="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/[.04] p-4 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="font-bold text-[13.5px]"><i class="fa-solid fa-image text-fuchsia-300 mr-1.5"></i>Company Logo &amp; Brand Name</div>
+            <div class="text-[12.5px] text-white/55 mt-1">Upload the logo shown across the whole platform. The current default is used until you replace it.</div>
+          </div>
+          <button onclick="openLogoEditor()" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-upload mr-1"></i>Change Logo</button>
+        </div>
+      </div>
       <div class="rounded-2xl border border-emerald-400/25 bg-emerald-500/[.04] p-4 mb-4">
         <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-building-columns text-emerald-300 mr-1.5"></i>Company Account — where the money settles after escrow</div>
         <div class="grid sm:grid-cols-2 gap-3">
@@ -2542,16 +2570,31 @@ async function adminTab(t) {
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5" id="svcVisGrid">
           ${SERVICES.map(s => {
             const on = (window.__SERVICES_ON__ || {})[s.k] !== false;
+            const tz = TZ_ONLY.includes(s.k);
             return `<label class="flex items-center gap-3 rounded-xl bg-black/20 border border-white/10 p-3 cursor-pointer hover:border-amber-400/40">
               <input type="checkbox" class="w-4 h-4 accent-amber-400" data-svckey="${esc(s.k)}" ${on ? 'checked' : ''}>
               <span class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0"><i class="fa-solid ${s.icon} text-[13px] text-white/70"></i></span>
-              <span class="text-[12.5px] font-bold leading-snug">${esc(s.t)}</span>
+              <span class="flex-1"><span class="text-[12.5px] font-bold leading-snug block">${esc(s.t)}</span>
+              ${tz ? '<span class="chip text-cyan-300 mt-1">Tanzania only</span>' : ''}</span>
             </label>`;
           }).join('')}
         </div>
         <div class="mt-4 flex flex-wrap items-center gap-3">
           <button onclick="saveServiceVisibility()" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-floppy-disk mr-2"></i>Save Service Visibility</button>
           <span class="text-[12px] text-white/45">Takes effect on the next page load.</span>
+        </div>
+        <div class="mt-5 pt-5 border-t border-white/10">
+          <div class="font-bold text-[13.5px] mb-1"><i class="fa-solid fa-earth-africa text-cyan-300 mr-2"></i>Tanzania-only services</div>
+          <div class="text-[12.5px] text-white/55 mb-3">
+            Tick a service to keep it for Tanzania only — visitors from other countries will not see it or be able to order it, but everyone can still buy your international services.
+          </div>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            ${SERVICES.map(s => `<label class="flex items-center gap-3 rounded-xl bg-black/20 border border-white/10 p-3 cursor-pointer hover:border-cyan-400/40">
+              <input type="checkbox" class="w-4 h-4 accent-cyan-400" data-tzkey="${esc(s.k)}" ${TZ_ONLY.includes(s.k) ? 'checked' : ''}>
+              <span class="text-[12.5px] font-bold leading-snug">${esc(s.t)}</span>
+            </label>`).join('')}
+          </div>
+          <div class="mt-4"><button onclick="saveTzOnly()" class="px-6 py-3 rounded-xl font-bold text-sm border border-cyan-400/40 text-cyan-200 hover:bg-cyan-500/10"><i class="fa-solid fa-floppy-disk mr-2"></i>Save Tanzania-only list</button></div>
         </div>
       </div>
 
@@ -2684,6 +2727,16 @@ async function saveServiceVisibility() {
   try {
     await apiPost('api/settings.php', { action: 'save', key: 'services_hidden', value: hidden.join(',') });
     toast('Service visibility saved ✓ — reload the page to see it applied.', 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function saveTzOnly() {
+  const tz = [...document.querySelectorAll('[data-tzkey]')]
+    .filter(c => c.checked)
+    .map(c => c.dataset.tzkey);
+  try {
+    await apiPost('api/settings.php', { action: 'save', key: 'services_tz_only', value: tz.join(',') });
+    toast('Tanzania-only services saved ✓ — visitors abroad will not see them.', 'ok');
+    TZ_ONLY.length = 0; tz.forEach(k => TZ_ONLY.push(k));
   } catch (e) { toast(esc(e.message), 'err'); }
 }
 async function savePlanPrice(id) {

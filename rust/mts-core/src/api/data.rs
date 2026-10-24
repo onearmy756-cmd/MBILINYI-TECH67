@@ -133,6 +133,11 @@ fn req_create(c: &Ctx) -> Response {
     if service.is_empty() {
         return bad("Select a service. / Chagua huduma.");
     }
+    // BRELA, TRA and government e-services exist only in Tanzania. The grid
+    // hides them abroad, but a crafted request must be refused too.
+    if settings::is_tz_only(&service) && crate::pages::country_from_headers(&c.headers) != "TZ" {
+        return bad("This service is available in Tanzania only. / Huduma hii inapatikana Tanzania tu.");
+    }
     if title.is_empty() || desc.chars().count() < 15 {
         return bad("Add project title + detailed requirements (15+ chars).");
     }

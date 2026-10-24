@@ -57,9 +57,68 @@ fn title_for(name: &str) -> String {
     }
 }
 
+/// Resolve which country the visitor is in, so services that only make sense in
+/// Tanzania (BRELA, TRA, NIDA…) can be hidden from everyone else.
+///
+/// Order matters: an explicit choice by the visitor wins, because a Tanzanian
+/// working abroad still needs BRELA, and a visitor on a VPN should be able to
+/// correct a wrong guess. Only then do we fall back to a geo header or the
+/// browser's language, and finally to "international" — never the reverse,
+/// so we never show a Tanzania-only service by accident.
+fn visitor_country(headers: &axum::http::HeaderMap) -> String {
+    let cookie = headers
+        .get(header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    for part in cookie.split(';') {
+        let part = part.trim();
+        if let Some(v) = part.strip_prefix("mts_country=") {
+            let v = v.trim().to_uppercase();
+            if !v.is_empty() && v.len() <= 3 && v.chars().all(|c| c.is_ascii_alphabetic()) {
+                return v;
+            }
+        }
+    }
+    for h in ["cf-ipcountry", "x-country-code", "x-vercel-ip-country"] {
+        if let Some(v) = headers.get(h).and_then(|v| v.to_str().ok()) {
+            let v = v.trim().to_uppercase();
+            if v.len() == 2 && v != "XX" && v.chars().all(|c| c.is_ascii_alphabetic()) {
+                return v;
+            }
+        }
+    }
+    // Kiswahili in Accept-Language is the strongest hint a plain request carries.
+    let lang = headers
+        .get(header::ACCEPT_LANGUAGE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_lowercase();
+    if lang.split(',').any(|l| l.trim().starts_with("sw")) {
+        return "TZ".to_string();
+    }
+    "INTL".to_string()
+}
+
+pub fn country_from_headers(headers: &axum::http::HeaderMap) -> String {
+    visitor_country(headers)
+}
+
+/// Services the CEO has flagged as Tanzania-only, as a comma-separated list in
+/// settings. Empty means none are restricted.
+fn tz_only_services() -> serde_json::Value {
+    let raw = settings::get("services_tz_only", "brela,tra_tax,gov_eservices");
+    let keys: Vec<serde_json::Value> = raw
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| serde_json::Value::String(s.to_string()))
+        .collect();
+    serde_json::Value::Array(keys)
+}
+
 /// The `window.*` globals the frontend reads. Kept identical to the PHP
 /// `partials/footer.php` block.
-fn globals(page: &str, csrf: &str, me: &Option<db::Row>) -> String {
+fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> String {
     let me_json = match me {
         Some(u) => crate::api::map::user(u).to_string(),
         None => "null".to_string(),
@@ -71,11 +130,13 @@ fn globals(page: &str, csrf: &str, me: &Option<db::Row>) -> String {
         "tagline": settings::get("platform_tagline", "No-one enters a section that is not theirs."),
     });
     format!(
-        "<script>\nwindow.__CSRF__ = {csrf};\nwindow.__ME__   = {me};\nwindow.__PAGE__ = {page};\nwindow.__SERVICES_ON__ = {svc};\nwindow.__PLATFORM__ = {plat};\nwindow.__PAY_GATEWAYS__ = {gw};\nwindow.__OAUTH__ = {oauth};\n</script>",
+        "<script>\nwindow.__CSRF__ = {csrf};\nwindow.__ME__   = {me};\nwindow.__PAGE__ = {page};\nwindow.__SERVICES_ON__ = {svc};\nwindow.__TZ_ONLY__ = {tzonly};\nwindow.__COUNTRY__ = {country};\nwindow.__PLATFORM__ = {plat};\nwindow.__PAY_GATEWAYS__ = {gw};\nwindow.__OAUTH__ = {oauth};\n</script>",
         csrf = serde_json::Value::String(csrf.to_string()),
         me = me_json,
         page = serde_json::Value::String(page.to_string()),
         svc = settings::service_visibility(),
+        tzonly = tz_only_services(),
+        country = serde_json::Value::String(country.to_string()),
         plat = platform,
         gw = serde_json::Value::Array(crate::payments::available()),
         oauth = serde_json::Value::Array(crate::api::oauth::available()),
@@ -268,7 +329,7 @@ const STYLE: &str = r#"<style>
 
 /// The footer, matching `partials/footer.php`: the legal links, the WhatsApp
 /// button, the chat widget, the wizard modal and the script tag.
-fn footer(globals_html: &str) -> String {
+fn footer(globals_html: &str, country: &str) -> String {
     format!(
         r##"</main>
 <footer class="border-t border-white/10 bg-[#04070F] mt-6">
@@ -298,6 +359,13 @@ fn footer(globals_html: &str) -> String {
       <a href="feedback" class="hover:text-cyan-300 transition" data-en="Feedback" data-sw="Maoni">Feedback</a>
     </div>
     <div class="text-[12px] text-white/35">&copy; {year} <span data-en="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified" data-sw="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Imejengwa kwa viwango vya uzalishaji • Imethibitishwa BRELA na TIN">Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified</span></div>
+    <div class="mt-3 flex items-center justify-center gap-2 text-[11.5px] text-white/45">
+      <i class="fa-solid fa-earth-africa text-cyan-300"></i>
+      <span data-en="You are browsing as" data-sw="Unatazama kama">You are browsing as</span>
+      <button onclick="setVisitorCountry('TZ')" class="{tzcls}">Tanzania</button>
+      <span class="text-white/20">|</span>
+      <button onclick="setVisitorCountry('INTL')" class="{intlcls}">International</button>
+    </div>
   </div>
 </footer>
 <a href="https://wa.me/255796752645?text=Hello%20Mbilinyi%20Tech%20Solutions!%20I%20need%20a%20service." target="_blank" class="fixed bottom-24 right-4 z-[200] w-14 h-14 rounded-full bg-[#25D366] flex items-center justify-center shadow-2xl hover:scale-110 transition" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp text-2xl text-white"></i><span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-[#050914] animate-pulse"></span></a>
@@ -347,6 +415,8 @@ fn footer(globals_html: &str) -> String {
             ""
         },
         globals = globals_html,
+        tzcls = if country == "TZ" { "font-bold text-cyan-300" } else { "hover:text-cyan-300" },
+        intlcls = if country == "TZ" { "hover:text-cyan-300" } else { "font-bold text-cyan-300" },
     )
 }
 
@@ -419,7 +489,7 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
         head = head(&page, &title_for(&page)),
         header = header,
         body = body,
-        footer = footer(&globals(&page, &session.csrf, &me)),
+        footer = footer(&globals(&page, &session.csrf, &me, &visitor_country(headers)), &visitor_country(headers)),
     );
 
     let mut res = Response::new(Body::from(html));
