@@ -409,7 +409,10 @@ pub fn run_snippet_within(lang_key: &str, code: &str, limit: Duration) -> Ran {
             let _ = std::fs::remove_dir_all(&dir);
             return Ran {
                 ok: false,
-                output: format!("The {} compiler rejected the code:\n{}", lang.name, b.output),
+                output: format!(
+                    "The {} compiler rejected the code:\n{}",
+                    lang.name, b.output
+                ),
                 ms: b.ms,
             };
         }

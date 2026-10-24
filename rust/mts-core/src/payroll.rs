@@ -30,7 +30,10 @@ fn paye_bands() -> Vec<(f64, f64)> {
     raw.split(',')
         .filter_map(|pair| {
             let (ceiling, rate) = pair.split_once(':')?;
-            Some((ceiling.trim().parse::<f64>().ok()?, rate.trim().parse::<f64>().ok()?))
+            Some((
+                ceiling.trim().parse::<f64>().ok()?,
+                rate.trim().parse::<f64>().ok()?,
+            ))
         })
         .collect()
 }
@@ -74,7 +77,13 @@ pub fn compute(gross: f64) -> J {
 
 /// The pure half of `compute`: the arithmetic with the rates passed in, so a
 /// payslip can be explained from its own inputs and tested without a database.
-pub fn compute_at(gross: f64, nssf_rate: f64, wcf_rate: f64, bands: &[(f64, f64)], currency: &str) -> J {
+pub fn compute_at(
+    gross: f64,
+    nssf_rate: f64,
+    wcf_rate: f64,
+    bands: &[(f64, f64)],
+    currency: &str,
+) -> J {
     let gross = util_round2(gross.max(0.0));
     let nssf = util_round2(gross * nssf_rate);
     // PAYE is charged on gross less the worker's NSSF contribution.

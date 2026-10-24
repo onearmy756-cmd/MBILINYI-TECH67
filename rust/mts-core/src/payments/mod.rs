@@ -274,7 +274,9 @@ pub fn convert_any(amount: f64, from: &str, to: &str) -> Option<f64> {
 pub async fn refresh_rates_from_wise() -> Result<Vec<J>, String> {
     let token = settings::get("gw_wise_token", "");
     if token.trim().is_empty() {
-        return Err("No Wise API token is set (gw_wise_token), so live rates cannot be fetched.".into());
+        return Err(
+            "No Wise API token is set (gw_wise_token), so live rates cannot be fetched.".into(),
+        );
     }
     let targets = ["USD", "EUR", "GBP", "KES"];
     let source = "TZS";
@@ -293,7 +295,8 @@ pub async fn refresh_rates_from_wise() -> Result<Vec<J>, String> {
     if !(200..300).contains(&code) {
         return Err(format!("Wise refused the request (HTTP {code}): {text}"));
     }
-    let parsed: J = serde_json::from_str(&text).map_err(|e| format!("Unreadable rate reply: {e}"))?;
+    let parsed: J =
+        serde_json::from_str(&text).map_err(|e| format!("Unreadable rate reply: {e}"))?;
     let mut updated = Vec::new();
     if let Some(arr) = parsed.as_array() {
         for entry in arr {

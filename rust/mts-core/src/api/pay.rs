@@ -686,7 +686,10 @@ fn settle_manual(c: &Ctx) -> Response {
     let reference = {
         let r = c.p("reference");
         if r.is_empty() {
-            p.get("reference").and_then(|v| v.as_str()).unwrap_or("").to_string()
+            p.get("reference")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
         } else {
             r
         }
@@ -782,7 +785,6 @@ fn tax_return(c: &Ctx) -> Response {
         "note": "PAYE and WCF are remitted to TRA; NSSF to the social security fund.",
     }))
 }
-
 
 /// The provider's callback. The payload is stored before it is acted on, so a
 /// disputed settlement can be re-checked against exactly what was sent.

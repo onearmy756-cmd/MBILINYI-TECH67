@@ -355,13 +355,18 @@ async fn ai_rank(c: &Ctx) -> Response {
         return e;
     }
     if !crate::llm::ready() {
-        return bad("No AI provider is configured, so ranking cannot run. Add a key under AI Engine.");
+        return bad(
+            "No AI provider is configured, so ranking cannot run. Add a key under AI Engine.",
+        );
     }
     let job_id = c.p("jobId");
     let job = if job_id.is_empty() {
         None
     } else {
-        db::row("SELECT * FROM job_openings WHERE id = ?", &[arg(json!(job_id))])
+        db::row(
+            "SELECT * FROM job_openings WHERE id = ?",
+            &[arg(json!(job_id))],
+        )
     };
     let apps = db::rows(
         "SELECT * FROM job_applications WHERE (?1 = '' OR job_id = ?1) ORDER BY created_at DESC LIMIT 40",
@@ -419,7 +424,10 @@ async fn ai_rank(c: &Ctx) -> Response {
             continue;
         };
         let score = score.clamp(0, 100);
-        let reason = parts.get(2).map(|s| s.trim().to_string()).unwrap_or_default();
+        let reason = parts
+            .get(2)
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
         let known = apps
             .iter()
             .any(|a| util::s(a.get("id").unwrap_or(&J::Null)) == id);
@@ -428,12 +436,20 @@ async fn ai_rank(c: &Ctx) -> Response {
         }
         let _ = db::run(
             "UPDATE job_applications SET ai_score=?, ai_note=?, updated_at=? WHERE id=?",
-            &[arg(json!(score)), arg(json!(reason)), arg(json!(util::now())), arg(json!(id))],
+            &[
+                arg(json!(score)),
+                arg(json!(reason)),
+                arg(json!(util::now())),
+                arg(json!(id)),
+            ],
         );
         ranked.push(json!({ "id": id, "aiScore": score, "aiNote": reason }));
     }
     ranked.sort_by(|a, b| {
-        b["aiScore"].as_i64().unwrap_or(0).cmp(&a["aiScore"].as_i64().unwrap_or(0))
+        b["aiScore"]
+            .as_i64()
+            .unwrap_or(0)
+            .cmp(&a["aiScore"].as_i64().unwrap_or(0))
     });
     ok(json!({
         "ranked": ranked,
@@ -450,7 +466,10 @@ fn question_bank(c: &Ctx) -> Response {
         return e;
     }
     let job_id = c.p("jobId");
-    let job = db::row("SELECT * FROM job_openings WHERE id = ?", &[arg(json!(job_id))]);
+    let job = db::row(
+        "SELECT * FROM job_openings WHERE id = ?",
+        &[arg(json!(job_id))],
+    );
     let service = job
         .as_ref()
         .map(|j| util::s(j.get("service").unwrap_or(&J::Null)))
@@ -502,9 +521,7 @@ fn questions_for(service: &str, department: &str) -> Vec<J> {
             "What makes a colour palette accessible, not just attractive?",
         ]);
     }
-    out.into_iter()
-        .map(|q| json!({ "question": q }))
-        .collect()
+    out.into_iter().map(|q| json!({ "question": q })).collect()
 }
 
 /// The practical half: a brief the applicant works, so they are judged on doing,
@@ -648,16 +665,16 @@ fn draft_employment_contract(
     service: &str,
 ) -> String {
     let id = util::new_id("EC-");
-    let g = |k: &str| {
-        job.and_then(|j| j.get(k))
-            .map(util::s)
-            .unwrap_or_default()
-    };
+    let g = |k: &str| job.and_then(|j| j.get(k)).map(util::s).unwrap_or_default();
     let title = g("title");
     let salary = g("salary");
     let location = {
         let l = g("location");
-        if l.is_empty() { "Tanzania".to_string() } else { l }
+        if l.is_empty() {
+            "Tanzania".to_string()
+        } else {
+            l
+        }
     };
     let terms = format!(
         "EMPLOYMENT CONTRACT\n\

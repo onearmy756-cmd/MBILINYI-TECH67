@@ -34,6 +34,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3 r-base elixir nodejs gcc golang-go
 
+      # The real security and forensics binaries. Installing them here means the
+      # wrapper tests exercise the actual tools (nmap, tcpdump, sleuthkit,
+      # foremost, yara, binwalk, sqlite3) instead of skipping. e2fsprogs provides
+      # mke2fs, which the disk-forensics test uses to build a real ext4 image.
+      - name: Install security and forensics tools
+        run: |
+          sudo apt-get install -y nmap dnsutils whois tcpdump sqlite3 binutils \
+            file sleuthkit foremost yara binwalk e2fsprogs
+
       - name: Cache the cargo registry and target
         uses: actions/cache@v4
         with:
@@ -103,8 +112,12 @@ jobs:
           python3 - <<'PY'
           import glob, os, re
           src = open('rust/mts-core/src/pages.rs', encoding='utf-8').read()
-          block = re.search(r'let known = \[(.*?)\];', src, re.S).group(1)
-          known = set(re.findall(r'"([a-z_]+)"', block))
+          # The routes live in one const array. Parse that array, not an old
+          # `let known = [...]` line that no longer exists.
+          m = re.search(r'KNOWN_PAGES:\s*\[&str;\s*\d+\]\s*=\s*\[(.*?)\];', src, re.S)
+          if not m:
+              raise SystemExit('could not find KNOWN_PAGES in pages.rs')
+          known = set(re.findall(r'"([a-z_]+)"', m.group(1)))
           # Every template on disk must be reachable, or it is dead markup.
           orphans = [
               os.path.basename(p)[:-5]

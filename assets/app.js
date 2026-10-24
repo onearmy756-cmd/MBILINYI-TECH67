@@ -1960,7 +1960,7 @@ async function adminTab(t, quiet) {
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
     wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', payroll: 'Payroll — Payslips, PAYE, NSSF & WCF', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
     queue: 'Work Queue — What the Company Is Doing and What Waits for Approval',
-    runs: 'Agent Runs — Every Job the Company Carries Out', runtimes: 'Runtimes — Languages the Platform Really Runs', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery' };
+    runs: 'Agent Runs — Every Job the Company Carries Out', runtimes: 'Runtimes — Languages the Platform Really Runs', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery', hamisha: 'Hamisha — Move the Platform to Another Cloud or VPS' };
   $('adminTabTitle').textContent = titles[t];
   if (!quiet) $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
 
@@ -2743,6 +2743,53 @@ async function adminTab(t, quiet) {
         <span class="text-[11px] text-white/35">${esc(m.createdAt)}</span>
       </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No messages yet.</div>'}
       </div>`;
+    }
+
+    /* ---- Hamisha: move the platform to another cloud or VPS ---- */
+    if (t === 'hamisha') {
+      const st = await apiGet('api/migrate.php', { action: 'status' });
+      const S = st.status || {};
+      const plan = st.plan || {};
+      h = `<div class="rounded-2xl border border-cyan-400/25 bg-cyan-500/[.05] p-4 text-[13px] text-white/75 mb-4">
+        <i class="fa-solid fa-truck-fast text-cyan-300 mr-2"></i>
+        Move this whole platform — database, evidence files and settings — to another cloud or VPS with one bundle.
+        <strong>${S.tables}</strong> tables, <strong>${S.users}</strong> accounts and <strong>${S.evidenceFiles}</strong> evidence file(s) are on this host right now.
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        ${[['Tables', S.tables, 'fa-table', 'cyan'], ['Accounts', S.users, 'fa-users', 'violet'], ['Requests', S.requests, 'fa-inbox', 'emerald'], ['Database size', fmtBytes(S.dbBytes), 'fa-database', 'amber']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-xl">${v}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
+      </div>
+
+      <div class="rounded-2xl border border-emerald-400/25 bg-emerald-500/[.04] p-5 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="font-bold text-[14px]"><i class="fa-solid fa-box-archive text-emerald-300 mr-1.5"></i>1. Export a bundle</div>
+            <div class="text-[12.5px] text-white/55 mt-1">One .tar.gz holding a consistent snapshot of the database, the evidence files and a manifest. The snapshot is taken with SQLite's own <span class="font-mono">VACUUM INTO</span>, so the site keeps serving while it runs.</div>
+          </div>
+          <button onclick="exportBundle()" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-file-export mr-1"></i>Export now</button>
+        </div>
+        <div id="migExport" class="mt-3"></div>
+      </div>
+
+      <div class="rounded-2xl border border-cyan-400/25 bg-cyan-500/[.04] p-5 mb-4">
+        <div class="font-bold text-[14px] mb-1"><i class="fa-solid fa-box-open text-cyan-300 mr-1.5"></i>2. Import on the new host</div>
+        <div class="text-[12.5px] text-white/55 mb-3">Copy a bundle into <span class="font-mono">storage/backups/</span> on the new host, then pick it here and import. The database and evidence are replaced; the running server switches to the restored database on its next query.</div>
+        <div id="migBundles" class="grid gap-2"></div>
+      </div>
+
+      <div class="rounded-2xl border border-violet-400/25 bg-violet-500/[.04] p-5 mb-4">
+        <div class="font-bold text-[14px] mb-3"><i class="fa-solid fa-route text-violet-300 mr-1.5"></i>3. The move plan</div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          ${(plan.targets || ['fly', 'vps', 'cpanel']).map(tg => `<button onclick="loadMigPlan('${tg}')" class="px-4 py-2 rounded-xl text-[12.5px] font-bold border border-white/15 hover:border-violet-400/50 hover:bg-violet-500/10">${tg === 'fly' ? 'Fly.io' : tg === 'vps' ? 'A VPS (Docker)' : 'cPanel (PHP)'}</button>`).join('')}
+        </div>
+        <div id="migPlan"></div>
+      </div>
+
+      <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4 text-[12.5px] text-white/60">
+        <div class="font-bold text-white/80 mb-1.5"><i class="fa-solid fa-lock text-emerald-300 mr-1.5"></i>A bundle holds secrets</div>
+        A bundle carries the settings table, which holds the AI provider key and the SMTP password. It is stored under <span class="font-mono">storage/backups/</span> — a directory the web server does not serve — and both export and import are admin-only. Move it over a trusted channel, and delete it from the old host once the new one is live.
+      </div>`;
+      setTimeout(() => { loadMigBundles(); loadMigPlan('fly'); }, 60);
     }
 
     if (t === 'settings') {
@@ -4441,6 +4488,92 @@ async function testSms() {
     : `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${esc(r.detail)}</div>`;
 }
 
+/* ============================================================
+   HAMISHA — move the platform to another cloud or VPS
+   ============================================================ */
+function fmtBytes(n) {
+  n = Number(n || 0);
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+  return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+}
+
+async function exportBundle() {
+  const box = $('migExport');
+  box.innerHTML = '<div class="text-[12.5px] text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Taking a consistent snapshot and building the bundle…</div>';
+  let r;
+  try { r = await apiPost('api/migrate.php', { action: 'export' }); } catch (e) {
+    box.innerHTML = `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200">${esc(e.message)}</div>`; return;
+  }
+  const b = r.bundle || {};
+  box.innerHTML = `<div class="rounded-xl bg-emerald-500/10 border border-emerald-400/30 p-3 text-[12.5px] text-emerald-100">
+    <div class="font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Bundle ready: <span class="font-mono">${esc(b.name)}</span> (${fmtBytes(b.bytes)})</div>
+    <div class="font-mono text-[11px] text-white/60 mt-1 break-all">SHA-256: ${esc(b.sha256)}</div>
+    <button onclick="downloadBundle('${esc(b.name)}')" class="grad-btn mt-2 px-4 py-2 rounded-lg font-bold text-[12px]"><i class="fa-solid fa-download mr-1"></i>Download</button>
+  </div>`;
+  loadMigBundles();
+  toast('Bundle exported ✓', 'ok');
+}
+
+function downloadBundle(name) {
+  window.location = '/' + cleanPath('api/migrate.php') + '?action=download&name=' + encodeURIComponent(name);
+}
+
+async function loadMigBundles() {
+  const box = $('migBundles');
+  if (!box) return;
+  let r;
+  try { r = await apiGet('api/migrate.php', { action: 'list' }); } catch (e) { return; }
+  const bundles = r.bundles || [];
+  box.innerHTML = bundles.map(b => `<div class="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[.02] border border-white/10 text-[12.5px]">
+    <span class="font-mono text-cyan-300">${esc(b.name)}</span>
+    <span class="text-white/50">${fmtBytes(b.bytes)}</span>
+    <span class="text-white/35 text-[11px]">${esc(b.created || '')}</span>
+    <span class="flex-1"></span>
+    <button onclick="verifyBundle('${esc(b.name)}')" class="text-cyan-300 font-bold text-[12px]">Verify</button>
+    <button onclick="downloadBundle('${esc(b.name)}')" class="text-emerald-300 font-bold text-[12px]">Download</button>
+    <button onclick="importBundle('${esc(b.name)}')" class="text-amber-300 font-bold text-[12px]">Import</button>
+  </div>`).join('') || '<div class="text-white/40 text-[12.5px]">No bundles on this host yet. Export one above, or copy one into storage/backups/.</div>';
+}
+
+async function verifyBundle(name) {
+  let r;
+  try { r = await apiGet('api/migrate.php', { action: 'verify', name }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  const entries = (r.entries || []).length;
+  toast(`Bundle verified ✓ ${entries} entries, sha256 ${String(r.sha256).slice(0, 12)}…`, 'ok');
+}
+
+async function importBundle(name) {
+  if (!confirm(`Import "${name}"? The database and evidence files on this host will be replaced by what is in the bundle.`)) return;
+  let r;
+  try { r = await apiPost('api/migrate.php', { action: 'import', name }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  toast(`Restored ✓ ${r.users} accounts, ${r.evidenceRestored} evidence file(s). Reload the portal.`, 'ok');
+}
+
+async function loadMigPlan(target) {
+  const box = $('migPlan');
+  if (!box) return;
+  box.innerHTML = '<div class="text-[12.5px] text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Loading the plan…</div>';
+  let r;
+  try { r = await apiGet('api/migrate.php', { action: 'plan', target }); } catch (e) {
+    box.innerHTML = `<div class="text-red-200 text-[12.5px]">${esc(e.message)}</div>`; return;
+  }
+  box.innerHTML = `<div class="rounded-xl bg-white/[.02] border border-white/10 p-3.5">
+    <div class="font-bold text-[13px] mb-2">${esc(r.name)}</div>
+    <ol class="grid gap-1.5 text-[12.5px] text-white/70 list-decimal pl-5">
+      ${(r.steps || []).map(s => `<li>${esc(s)}</li>`).join('')}
+    </ol>
+    <div class="mt-3 pt-3 border-t border-white/10 text-[12.5px]"><span class="font-bold text-emerald-300">After an improvement:</span> ${esc(r.updateAfterImprovement)}</div>
+    <div class="mt-3 pt-3 border-t border-white/10 text-[12px] text-white/55">
+      <div class="font-bold text-white/75 mb-1">What moves</div>
+      <ul class="list-disc pl-5 grid gap-1">${(r.whatMoves || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+      <div class="font-bold text-white/75 mb-1 mt-2">What does not move</div>
+      <ul class="list-disc pl-5 grid gap-1">${(r.whatDoesNotMove || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    </div>
+  </div>`;
+}
+
 async function saveCompanyAccount() {
   try {
     await apiPost('api/security.php', {
@@ -4763,21 +4896,62 @@ async function loadSandbox() {
     <div class="grid gap-1.5 mt-4 text-[12.5px] text-white/60">
       ${(sb.checks || []).map(c => `<div class="flex gap-2"><i class="fa-solid fa-check text-emerald-300 mt-0.5"></i><span>${esc(c)}</span></div>`).join('')}
     </div>
+    ${(() => {
+      const tc = sb.toolchain || {};
+      const tools = tc.tools || [];
+      if (!tools.length) return '';
+      return `<div class="rounded-xl border ${tc.ready ? 'border-emerald-400/25 bg-emerald-500/[.04]' : 'border-amber-400/25 bg-amber-500/[.05]'} p-3.5 mt-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div class="font-bold text-[13px]"><i class="fa-solid fa-screwdriver-wrench text-cyan-300 mr-1.5"></i>Real tool binaries — ${tc.installed}/${tc.total} installed</div>
+          <div class="text-[11.5px] text-white/50">Each tool below shells out to the real binary; a missing one is refused, not faked.</div>
+        </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+          ${tools.map(t => `<div class="flex items-center gap-2 p-2 rounded-lg bg-white/[.02] border border-white/5 text-[12px]">
+            <i class="fa-solid ${t.installed ? 'fa-circle-check text-emerald-300' : 'fa-circle-xmark text-amber-300'}"></i>
+            <span class="font-bold">${esc(t.name)}</span>
+            <span class="text-white/40 font-mono text-[11px]">${esc(t.bin)}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    })()}
     <div class="rounded-xl border border-amber-400/25 bg-amber-500/[.05] p-3 mt-3 text-[12px] text-amber-200">
       <i class="fa-solid fa-scale-balanced mr-1"></i>${esc(sb.rule || '')}
     </div>
-    <div class="grid sm:grid-cols-[170px_1fr_auto] gap-2 mt-4">
+    <div class="grid sm:grid-cols-[210px_1fr_auto] gap-2 mt-4">
       <select id="sbKind" class="input">
-        <option value="headers">Security headers</option>
-        <option value="exposure">Exposure &amp; ports</option>
-        <option value="dns">DNS posture</option>
-        <option value="tls">TLS certificate</option>
-        <option value="dependencies">Dependencies</option>
-        <option value="code">Source code</option>
-        <option value="malware">Malware</option>
+        <optgroup label="Pure checks (built in)">
+          <option value="headers">Security headers</option>
+          <option value="exposure">Exposure &amp; ports</option>
+          <option value="dns">DNS posture</option>
+          <option value="tls">TLS certificate</option>
+          <option value="dependencies">Dependencies</option>
+          <option value="code">Source code</option>
+          <option value="malware">Malware</option>
+          <option value="cert">Certificate (openssl)</option>
+          <option value="logs">Log analysis</option>
+        </optgroup>
+        <optgroup label="Real tools (authorised host)">
+          <option value="nmap">Nmap port scan</option>
+          <option value="domain">Domain record (whois/dig)</option>
+        </optgroup>
+        <optgroup label="Evidence files (forensics)">
+          <option value="partitions">Disk image — partitions (mmls)</option>
+          <option value="filesystem">Disk image — filesystem (fsstat)</option>
+          <option value="fls">Disk image — file list (fls)</option>
+          <option value="carve">File carving (foremost)</option>
+          <option value="yara">YARA rule scan</option>
+          <option value="binwalk">Embedded content (binwalk)</option>
+          <option value="disassemble">Binary analysis (objdump)</option>
+          <option value="database">Database forensics (sqlite3)</option>
+          <option value="pcap">Packet capture (tcpdump)</option>
+        </optgroup>
       </select>
-      <input id="sbTarget" class="input font-mono text-[12.5px]" placeholder="client-domain.co.tz">
+      <input id="sbTarget" class="input font-mono text-[12.5px]" placeholder="client-domain.co.tz — or a path for a forensics tool">
       <button onclick="runScan()" class="px-5 py-3 rounded-xl font-bold text-[13px] border border-cyan-400/40 text-cyan-300 hover:bg-cyan-500/10"><i class="fa-solid fa-magnifying-glass mr-1"></i>Scan</button>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-2 mt-2">
+      <input id="sbAuthorised" class="input text-[12.5px]" placeholder="Who authorised this scan? (required for nmap)">
+      <input id="sbExtra" class="input font-mono text-[12.5px]" placeholder="extra: offset (sectors) · YARA rule path · carve types">
     </div>
     <pre id="sbOut" class="mt-3 p-3 rounded-xl bg-black/40 border border-white/10 text-[12px] text-white/80 max-h-80 overflow-auto hidden"></pre>`;
 }
@@ -4803,13 +4977,19 @@ async function deauthoriseDomain(d) {
 async function runScan() {
   const kind = ($('sbKind') || {}).value || 'headers';
   const target = ($('sbTarget') || {}).value || '';
+  const authorised = (($('sbAuthorised') || {}).value || 'the CEO').trim() || 'the CEO';
+  const extra = (($('sbExtra') || {}).value || '').trim();
   const out = $('sbOut');
   if (!out) return;
-  if (!target.trim()) { toast('Give the domain to scan.', 'err'); return; }
+  if (!target.trim()) { toast('Give the domain or the evidence path.', 'err'); return; }
   out.classList.remove('hidden');
-  out.textContent = 'Scanning… (this makes real network requests)';
+  out.textContent = 'Running… (this drives the real tool; a network tool makes real connections)';
+  const body = { action: 'scan', kind, target, authorised };
+  // One extra field carries whatever the chosen tool needs: a partition offset,
+  // a YARA rule path, or the file types to carve.
+  if (extra) { body.offset = extra; body.rules = extra; body.types = extra; }
   try {
-    const r = await apiPost('api/security.php', { action: 'scan', kind, target, authorised: 'the CEO' });
+    const r = await apiPost('api/security.php', body);
     out.textContent = r.evidence || '(no output)';
   } catch (e) { out.textContent = e.message; }
 }

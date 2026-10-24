@@ -730,7 +730,6 @@ pub fn status() -> J {
     })
 }
 
-
 /* --------------------- the wider scanner: more real checks --------------------- */
 
 /// A hostname that is safe to place in a command line. Anything else is refused
@@ -900,7 +899,12 @@ pub async fn audit_cookies(target: &str) -> (String, bool) {
         .collect();
     let mut findings = Vec::new();
     for c in &raw {
-        let name = c.split('=').next().unwrap_or("(unnamed)").trim().to_string();
+        let name = c
+            .split('=')
+            .next()
+            .unwrap_or("(unnamed)")
+            .trim()
+            .to_string();
         let lower = c.to_lowercase();
         let mut missing = Vec::new();
         if !lower.contains("secure") {
@@ -932,7 +936,13 @@ pub async fn audit_cookies(target: &str) -> (String, bool) {
         } else {
             findings
                 .iter()
-                .map(|f| format!("[{}] {}", util::s(f.get("severity").unwrap_or(&J::Null)), util::s(f.get("title").unwrap_or(&J::Null))))
+                .map(|f| {
+                    format!(
+                        "[{}] {}",
+                        util::s(f.get("severity").unwrap_or(&J::Null)),
+                        util::s(f.get("title").unwrap_or(&J::Null))
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join("\n")
         },
@@ -945,9 +955,24 @@ pub async fn audit_cookies(target: &str) -> (String, bool) {
 /// flagging its own rule table), and why a match matters. A minimum of 0 means
 /// the literal itself is the match, for patterns that are already complete.
 const SECRET_RULES: &[(&str, usize, &str, &str)] = &[
-    ("AKIA", 20, "high", "An AWS access key id is present; rotate it and remove it."),
-    ("sk_live_", 32, "high", "A live Stripe secret key is present."),
-    ("ghp_", 40, "high", "A GitHub personal access token is present."),
+    (
+        "AKIA",
+        20,
+        "high",
+        "An AWS access key id is present; rotate it and remove it.",
+    ),
+    (
+        "sk_live_",
+        32,
+        "high",
+        "A live Stripe secret key is present.",
+    ),
+    (
+        "ghp_",
+        40,
+        "high",
+        "A GitHub personal access token is present.",
+    ),
     ("xoxb-", 20, "high", "A Slack bot token is present."),
     ("AIza", 39, "medium", "A Google API key is present."),
     // Split so the scanner does not match the rule itself.
@@ -980,7 +1005,11 @@ fn token_run(line: &str, start: usize) -> usize {
 /// A dedicated secrets scan of a tree: every file, not only source files, so a
 /// key left in a config or a log is still found.
 pub async fn audit_secrets(path: &str) -> (String, bool) {
-    let root = if path.trim().is_empty() { "." } else { path.trim() };
+    let root = if path.trim().is_empty() {
+        "."
+    } else {
+        path.trim()
+    };
     let mut files = 0usize;
     let mut findings: Vec<String> = Vec::new();
     walk_files(root, |p| {
@@ -990,12 +1019,13 @@ pub async fn audit_secrets(path: &str) -> (String, bool) {
         files += 1;
         let text = String::from_utf8_lossy(&bytes);
         for (needle, min_len, severity, why) in SECRET_RULES {
-            let hit = text.lines().enumerate().find(|(_, line)| {
-                match line.find(needle) {
+            let hit = text
+                .lines()
+                .enumerate()
+                .find(|(_, line)| match line.find(needle) {
                     Some(i) => *min_len == 0 || token_run(line, i) >= *min_len,
                     None => false,
-                }
-            });
+                });
             if let Some((n, line)) = hit {
                 let shown: String = line.trim().chars().take(120).collect();
                 findings.push(format!(
@@ -1034,8 +1064,21 @@ pub async fn audit_password(candidates: &str) -> (String, bool) {
         return ("Give one password per line to measure.".into(), false);
     }
     const COMMON: &[&str] = &[
-        "password", "123456", "12345678", "qwerty", "abc123", "letmein", "admin", "welcome",
-        "monkey", "iloveyou", "1234567890", "password1", "admin123", "root", "toor",
+        "password",
+        "123456",
+        "12345678",
+        "qwerty",
+        "abc123",
+        "letmein",
+        "admin",
+        "welcome",
+        "monkey",
+        "iloveyou",
+        "1234567890",
+        "password1",
+        "admin123",
+        "root",
+        "toor",
     ];
     let mut lines = Vec::new();
     for (i, pw) in list.iter().enumerate() {
@@ -1108,10 +1151,15 @@ pub async fn inspect_jwt(token: &str) -> (String, bool) {
         .and_then(|v| v.get("alg").and_then(|a| a.as_str()).map(str::to_string))
         .unwrap_or_default();
     if alg.eq_ignore_ascii_case("none") || alg.is_empty() {
-        findings.push("The token is unsigned (alg is none or missing): anyone can forge it.".to_string());
+        findings.push(
+            "The token is unsigned (alg is none or missing): anyone can forge it.".to_string(),
+        );
     }
     if alg.eq_ignore_ascii_case("HS256") {
-        findings.push("HS256 with a guessable secret is a common forgery path; prefer RS256/ES256.".to_string());
+        findings.push(
+            "HS256 with a guessable secret is a common forgery path; prefer RS256/ES256."
+                .to_string(),
+        );
     }
     let claims = serde_json::from_str::<J>(&payload).unwrap_or(J::Null);
     if let Some(exp) = claims.get("exp").and_then(|e| e.as_i64()) {
@@ -1179,9 +1227,37 @@ pub async fn subdomain_scan(target: &str) -> (String, bool) {
         return ("Give the domain to enumerate.".into(), false);
     }
     const NAMES: &[&str] = &[
-        "www", "api", "app", "admin", "mail", "smtp", "imap", "pop", "webmail", "ftp", "cpanel",
-        "whm", "webdisk", "dev", "staging", "test", "beta", "demo", "portal", "dashboard", "cdn",
-        "static", "assets", "docs", "status", "monitor", "vpn", "git", "ci", "shop", "store",
+        "www",
+        "api",
+        "app",
+        "admin",
+        "mail",
+        "smtp",
+        "imap",
+        "pop",
+        "webmail",
+        "ftp",
+        "cpanel",
+        "whm",
+        "webdisk",
+        "dev",
+        "staging",
+        "test",
+        "beta",
+        "demo",
+        "portal",
+        "dashboard",
+        "cdn",
+        "static",
+        "assets",
+        "docs",
+        "status",
+        "monitor",
+        "vpn",
+        "git",
+        "ci",
+        "shop",
+        "store",
     ];
     let mut found = Vec::new();
     for name in NAMES {
@@ -1213,7 +1289,11 @@ pub async fn subdomain_scan(target: &str) -> (String, bool) {
 /// Hash every file under a path and report the digests, so a file can be
 /// verified against a published value. Local, so no scope check is needed.
 pub async fn hash_file(path: &str) -> (String, bool) {
-    let root = if path.trim().is_empty() { "." } else { path.trim() };
+    let root = if path.trim().is_empty() {
+        "."
+    } else {
+        path.trim()
+    };
     use sha2::{Digest, Sha256};
     let mut lines = Vec::new();
     let target = std::path::Path::new(root);
@@ -1231,7 +1311,11 @@ pub async fn hash_file(path: &str) -> (String, bool) {
                 return;
             };
             let sha = hex::encode(Sha256::digest(&bytes));
-            lines.push(format!("{sha}  {}  ({} bytes)", p.to_string_lossy(), bytes.len()));
+            lines.push(format!(
+                "{sha}  {}  ({} bytes)",
+                p.to_string_lossy(),
+                bytes.len()
+            ));
         });
     }
     if lines.is_empty() {
@@ -1248,7 +1332,11 @@ pub async fn hash_file(path: &str) -> (String, bool) {
 /// Read a log file and surface the lines that indicate an attack: brute force,
 /// injection attempts, traversal and scanner probes.
 pub async fn audit_logs(path: &str) -> (String, bool) {
-    let file = if path.trim().is_empty() { "." } else { path.trim() };
+    let file = if path.trim().is_empty() {
+        "."
+    } else {
+        path.trim()
+    };
     let text = if std::path::Path::new(file).is_dir() {
         let mut all = String::new();
         walk_files(file, |p| {
@@ -1276,8 +1364,14 @@ pub async fn audit_logs(path: &str) -> (String, bool) {
         ("nmap", "Port-scanner fingerprint in the log"),
         ("nikto", "Vulnerability-scanner fingerprint in the log"),
         ("sqlmap", "SQL-injection tool fingerprint in the log"),
-        ("failed password", "Failed authentication (possible brute force)"),
-        ("authentication failure", "Failed authentication (possible brute force)"),
+        (
+            "failed password",
+            "Failed authentication (possible brute force)",
+        ),
+        (
+            "authentication failure",
+            "Failed authentication (possible brute force)",
+        ),
     ];
     let mut counts: Vec<(String, usize)> = Vec::new();
     let lower = text.to_lowercase();
@@ -1403,8 +1497,14 @@ mod tests {
         let (out, ok) = rt.block_on(audit_password("123456\nTr0ub4dor&3xKp!7z"));
         assert!(ok);
         // The verdict is reported, the candidate itself is not.
-        assert!(out.contains("BREACHED"), "a common password must be called out");
-        assert!(!out.contains("Tr0ub4dor"), "the candidate must not be echoed back");
+        assert!(
+            out.contains("BREACHED"),
+            "a common password must be called out"
+        );
+        assert!(
+            !out.contains("Tr0ub4dor"),
+            "the candidate must not be echoed back"
+        );
     }
 
     #[test]
@@ -1436,7 +1536,10 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let (out, ok) = rt.block_on(audit_secrets(dir.to_str().unwrap()));
         assert!(ok);
-        assert!(out.contains("AKIA"), "a key in a non-source file must be found: {out}");
+        assert!(
+            out.contains("AKIA"),
+            "a key in a non-source file must be found: {out}"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1452,8 +1555,14 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let (out, ok) = rt.block_on(audit_logs(dir.join("access.log").to_str().unwrap()));
         assert!(ok);
-        assert!(out.contains("SQL injection"), "the injection line must be counted");
-        assert!(out.contains("traversal"), "the traversal line must be counted");
+        assert!(
+            out.contains("SQL injection"),
+            "the injection line must be counted"
+        );
+        assert!(
+            out.contains("traversal"),
+            "the traversal line must be counted"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1507,7 +1616,10 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let (out, ok) = rt.block_on(audit_secrets(dir.to_str().unwrap()));
         assert!(ok);
-        assert!(out.contains("Findings: 0"), "a bare prefix is not a secret: {out}");
+        assert!(
+            out.contains("Findings: 0"),
+            "a bare prefix is not a secret: {out}"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1520,7 +1632,10 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let (out, ok) = rt.block_on(audit_secrets(dir.to_str().unwrap()));
         assert!(ok);
-        assert!(out.contains("Findings: 1"), "a full token must be reported: {out}");
+        assert!(
+            out.contains("Findings: 1"),
+            "a full token must be reported: {out}"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

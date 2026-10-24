@@ -3,7 +3,7 @@
 # server, then drop privileges — the platform executes code visitors submit.
 set -e
 
-mkdir -p /data
+mkdir -p /data /data/backups /data/evidence
 chown -R mts:mts /data
 
 exec gosu mts "$@"

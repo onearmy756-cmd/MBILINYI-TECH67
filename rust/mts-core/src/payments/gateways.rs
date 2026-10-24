@@ -279,7 +279,11 @@ const AIRTEL: Provider = Provider {
     key_setting: "gw_airtel_key",
     initiate_path: "/merchant/v1/payments/",
     verify_path: "/standard/v1/payments/{reference}",
-    initiate_ref: &["data.transaction.id", "transaction.id", "data.transactionId"],
+    initiate_ref: &[
+        "data.transaction.id",
+        "transaction.id",
+        "data.transactionId",
+    ],
     verify_status: &["data.transaction.status", "status"],
     verify_uses_query: false,
 };

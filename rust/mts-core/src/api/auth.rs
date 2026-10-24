@@ -800,11 +800,18 @@ mod tests {
         for _ in 0..4000 {
             let c = otp_code();
             assert_eq!(c.len(), 6, "code {c} is not six characters");
-            assert!(c.chars().all(|ch| ch.is_ascii_digit()), "code {c} is not numeric");
+            assert!(
+                c.chars().all(|ch| ch.is_ascii_digit()),
+                "code {c} is not numeric"
+            );
             seen.insert(c);
         }
         // 4000 draws from a million values should be almost entirely distinct.
-        assert!(seen.len() > 3900, "codes repeat too often: {} unique", seen.len());
+        assert!(
+            seen.len() > 3900,
+            "codes repeat too often: {} unique",
+            seen.len()
+        );
     }
 
     /// The stored value must not contain the code itself, and must depend on the

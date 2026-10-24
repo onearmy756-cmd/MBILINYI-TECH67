@@ -22,26 +22,65 @@
 use crate::sandbox;
 use serde_json::{json, Value as J};
 use std::process::Command;
-use std::time::Duration;
 
 /// The tools this module can drive. `bin` is the executable checked for at
 /// runtime; `name` and `what` are shown in the admin panel.
 const TOOLS: &[(&str, &str, &str)] = &[
-    ("nmap", "Nmap", "Port and service scan of an authorised host."),
-    ("tcpdump", "tcpdump", "Read a packet capture file and summarise the flows."),
-    ("mmls", "SleuthKit mmls", "List the partitions in a disk image."),
-    ("fls", "SleuthKit fls", "List the files and deleted entries in an image."),
-    ("fsstat", "SleuthKit fsstat", "Report a filesystem's metadata from an image."),
-    ("foremost", "Foremost", "Carve files out of an image by their signatures."),
+    (
+        "nmap",
+        "Nmap",
+        "Port and service scan of an authorised host.",
+    ),
+    (
+        "tcpdump",
+        "tcpdump",
+        "Read a packet capture file and summarise the flows.",
+    ),
+    (
+        "mmls",
+        "SleuthKit mmls",
+        "List the partitions in a disk image.",
+    ),
+    (
+        "fls",
+        "SleuthKit fls",
+        "List the files and deleted entries in an image.",
+    ),
+    (
+        "fsstat",
+        "SleuthKit fsstat",
+        "Report a filesystem's metadata from an image.",
+    ),
+    (
+        "foremost",
+        "Foremost",
+        "Carve files out of an image by their signatures.",
+    ),
     ("yara", "YARA", "Match a file against a set of rules."),
-    ("binwalk", "binwalk", "Find embedded files and code inside a binary."),
+    (
+        "binwalk",
+        "binwalk",
+        "Find embedded files and code inside a binary.",
+    ),
     ("sqlite3", "SQLite CLI", "Read a database file directly."),
-    ("objdump", "objdump", "Disassemble a binary to inspect its code."),
+    (
+        "objdump",
+        "objdump",
+        "Disassemble a binary to inspect its code.",
+    ),
     ("strings", "strings", "Extract readable text from a binary."),
     ("gpg", "GnuPG", "Verify a detached signature."),
-    ("whois", "whois", "Read the registration record of a domain."),
+    (
+        "whois",
+        "whois",
+        "Read the registration record of a domain.",
+    ),
     ("dig", "dig", "Query DNS records directly."),
-    ("sha256sum", "sha256sum", "Compute file digests with the system tool."),
+    (
+        "sha256sum",
+        "sha256sum",
+        "Compute file digests with the system tool.",
+    ),
 ];
 
 /// Which of the tools above are actually installed. Reported so a capability is
@@ -56,7 +95,11 @@ pub fn toolchain() -> J {
         .collect();
     let present = list
         .iter()
-        .filter(|t| t.get("installed").and_then(|v| v.as_bool()).unwrap_or(false))
+        .filter(|t| {
+            t.get("installed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+        })
         .count();
     json!({
         "tools": list,
@@ -93,7 +136,10 @@ fn run(bin: &str, args: &[String], timeout_secs: u64) -> Result<String, String> 
         .arg(bin)
         .args(args)
         .env_clear()
-        .env("PATH", std::env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin".into()))
+        .env(
+            "PATH",
+            std::env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin".into()),
+        )
         .env("LC_ALL", "C")
         .output()
         .map_err(|e| format!("{bin} could not be started: {e}"))?;
@@ -116,7 +162,10 @@ fn clip(text: &str, max: usize) -> String {
         return text.to_string();
     }
     let head: String = text.chars().take(max).collect();
-    format!("{head}\n… output truncated at {max} characters ({} in total).", text.len())
+    format!(
+        "{head}\n… output truncated at {max} characters ({} in total).",
+        text.len()
+    )
 }
 
 /* ------------------------------ network ------------------------------ */
@@ -133,7 +182,10 @@ pub async fn nmap_scan(target: &str, authorised_by: &str) -> (String, bool) {
         Err(e) => return (e, false),
     };
     if host.is_empty() || host.contains(|c: char| c.is_whitespace()) {
-        return ("Give a single hostname or IP, with no spaces.".into(), false);
+        return (
+            "Give a single hostname or IP, with no spaces.".into(),
+            false,
+        );
     }
     let args: Vec<String> = [
         "-sT",
@@ -202,7 +254,7 @@ pub async fn image_partitions(path: &str) -> (String, bool) {
         Ok(f) => f,
         Err(e) => return (e, false),
     };
-    match run("mmls", &[file.clone()], 60) {
+    match run("mmls", std::slice::from_ref(&file), 60) {
         Ok(t) if !t.is_empty() => (
             format!(
                 "Partition layout of {file}\nThe offset column is where each filesystem begins; pass it to fls/fsstat with -o.\n\n{}",
@@ -233,7 +285,10 @@ pub async fn image_filesystem(path: &str, offset: &str) -> (String, bool) {
             format!("Filesystem metadata of {file}\n\n{}", clip(&t, 20000)),
             true,
         ),
-        Ok(_) => (format!("fsstat could not read a filesystem in {file}."), false),
+        Ok(_) => (
+            format!("fsstat could not read a filesystem in {file}."),
+            false,
+        ),
         Err(e) => (e, false),
     }
 }
@@ -260,7 +315,10 @@ pub async fn image_list_files(path: &str, offset: &str, deleted_only: bool) -> (
     match run("fls", &args, 90) {
         Ok(t) if !t.is_empty() => {
             let lines = t.lines().count();
-            let deleted = t.lines().filter(|l| l.starts_with("r/r *") || l.contains("(deleted")).count();
+            let deleted = t
+                .lines()
+                .filter(|l| l.starts_with("r/r *") || l.contains("(deleted"))
+                .count();
             (
                 format!(
                     "File listing of {file}\nEntries: {lines}\nDeleted entries: {deleted}\nA leading `*` or `(deleted)` marks a removed file that is still recoverable.\n\n{}",
@@ -288,7 +346,11 @@ pub async fn carve_files(path: &str, kinds: &str) -> (String, bool) {
     if let Err(e) = std::fs::create_dir_all(&out_dir) {
         return (format!("Could not create a carve directory: {e}"), false);
     }
-    let types = if kinds.trim().is_empty() { "all" } else { kinds.trim() };
+    let types = if kinds.trim().is_empty() {
+        "all"
+    } else {
+        kinds.trim()
+    };
     let args = vec![
         "-t".to_string(),
         types.to_string(),
@@ -318,7 +380,11 @@ pub async fn carve_files(path: &str, kinds: &str) -> (String, bool) {
         Ok(log) => (
             format!(
                 "File carving of {file} (types: {types})\nRecovered: {}\n\n{}",
-                if recovered.is_empty() { "nothing matched the chosen signatures".to_string() } else { recovered.join(", ") },
+                if recovered.is_empty() {
+                    "nothing matched the chosen signatures".to_string()
+                } else {
+                    recovered.join(", ")
+                },
                 clip(&log, 8000)
             ),
             true,
@@ -337,7 +403,10 @@ pub async fn yara_scan(path: &str, rules: &str) -> (String, bool) {
     };
     let rule_file = rules.trim();
     if rule_file.is_empty() {
-        return ("Give the path to a YARA rule file to match against.".into(), false);
+        return (
+            "Give the path to a YARA rule file to match against.".into(),
+            false,
+        );
     }
     if !std::path::Path::new(rule_file).is_file() {
         return (format!("No YARA rule file at {rule_file}."), false);
@@ -354,7 +423,11 @@ pub async fn yara_scan(path: &str, rules: &str) -> (String, bool) {
             (
                 format!(
                     "YARA scan of {target} against {rule_file}\nMatches: {hits}\n\n{}",
-                    if hits == 0 { "No rule matched.".to_string() } else { clip(&t, 20000) }
+                    if hits == 0 {
+                        "No rule matched.".to_string()
+                    } else {
+                        clip(&t, 20000)
+                    }
                 ),
                 true,
             )
@@ -370,7 +443,7 @@ pub async fn embedded_scan(path: &str) -> (String, bool) {
         Ok(f) => f,
         Err(e) => return (e, false),
     };
-    match run("binwalk", &[file.clone()], 120) {
+    match run("binwalk", std::slice::from_ref(&file), 120) {
         Ok(t) if !t.is_empty() => (
             format!(
                 "Embedded-content scan of {file}\nEach line names a signature binwalk recognised at that offset.\n\n{}",
@@ -392,8 +465,12 @@ pub async fn disassemble(path: &str) -> (String, bool) {
         Err(e) => return (e, false),
     };
     let headers = run("objdump", &["-h".to_string(), file.clone()], 60).unwrap_or_default();
-    let text = run("strings", &["-n".to_string(), "6".to_string(), file.clone()], 60)
-        .unwrap_or_default();
+    let text = run(
+        "strings",
+        &["-n".to_string(), "6".to_string(), file.clone()],
+        60,
+    )
+    .unwrap_or_default();
     if headers.trim().is_empty() && text.trim().is_empty() {
         return (format!("objdump and strings could not read {file}."), false);
     }
@@ -413,16 +490,15 @@ pub async fn inspect_database(path: &str) -> (String, bool) {
         Ok(f) => f,
         Err(e) => return (e, false),
     };
-    let tables = match run(
-        "sqlite3",
-        &[file.clone(), ".tables".to_string()],
-        30,
-    ) {
+    let tables = match run("sqlite3", &[file.clone(), ".tables".to_string()], 30) {
         Ok(t) => t,
         Err(e) => return (e, false),
     };
     if tables.trim().is_empty() {
-        return (format!("{file} is a SQLite database with no tables."), false);
+        return (
+            format!("{file} is a SQLite database with no tables."),
+            false,
+        );
     }
     let mut report = format!("Database file {file}\nTables: {}\n\n", tables.trim());
     for name in tables.split_whitespace().take(50) {
@@ -445,7 +521,7 @@ pub async fn domain_record(target: &str) -> (String, bool) {
         return ("Give the domain to look up.".into(), false);
     }
     let mut report = format!("Registration and DNS record of {host}\n\n");
-    match run("whois", &[host.clone()], 30) {
+    match run("whois", std::slice::from_ref(&host), 30) {
         Ok(t) if !t.is_empty() => {
             // whois output is long; the registrar, dates and status lines are
             // what matter, so keep those and the first block of the rest.
@@ -476,7 +552,11 @@ pub async fn domain_record(target: &str) -> (String, bool) {
         Err(e) => report.push_str(&format!("== whois ==\n{e}\n")),
     }
     for kind in ["NS", "MX", "TXT"] {
-        if let Ok(t) = run("dig", &["+short".to_string(), host.clone(), kind.to_string()], 20) {
+        if let Ok(t) = run(
+            "dig",
+            &["+short".to_string(), host.clone(), kind.to_string()],
+            20,
+        ) {
             if !t.trim().is_empty() {
                 report.push_str(&format!("\n== {kind} ==\n{}\n", clip(&t, 2000)));
             }
@@ -514,10 +594,6 @@ fn evidence_or_dir(path: &str) -> Result<String, String> {
     }
     Ok(p.to_string())
 }
-
-/// A hard ceiling on how long any single wrapper may hold a request, exposed so
-/// the API can say what it promises.
-pub const MAX_RUNTIME: Duration = Duration::from_secs(180);
 
 #[cfg(test)]
 mod tests {
@@ -602,12 +678,18 @@ mod tests {
             )
             .unwrap();
         }
-        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
         let (out, ok) = rt.block_on(inspect_database(path.to_str().unwrap()));
         let _ = std::fs::remove_dir_all(&dir);
         assert!(ok, "sqlite3 should have read the file: {out}");
         assert!(out.contains("users"), "the table name must appear: {out}");
-        assert!(out.contains("3 row"), "the real row count must appear: {out}");
+        assert!(
+            out.contains("3 row"),
+            "the real row count must appear: {out}"
+        );
     }
 
     /// A real packet capture, read back by the real `tcpdump`.
@@ -653,12 +735,21 @@ mod tests {
         f.extend_from_slice(&pkt);
         std::fs::write(&path, &f).unwrap();
 
-        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
         let (out, ok) = rt.block_on(pcap_summary(path.to_str().unwrap()));
         let _ = std::fs::remove_dir_all(&dir);
         assert!(ok, "tcpdump should have read the capture: {out}");
-        assert!(out.contains("10.0.0.5"), "the real source address must appear: {out}");
-        assert!(out.contains(".53"), "the real destination port must appear: {out}");
+        assert!(
+            out.contains("10.0.0.5"),
+            "the real source address must appear: {out}"
+        );
+        assert!(
+            out.contains(".53"),
+            "the real destination port must appear: {out}"
+        );
     }
 
     /// YARA matching against a rule we write, on a file we write. A match is
@@ -678,14 +769,17 @@ mod tests {
         .unwrap();
         let target = dir.join("sample.bin");
         std::fs::write(&target, b"MALWARE_TEST_MARKER inside\n").unwrap();
-        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-        let (out, ok) = rt.block_on(yara_scan(
-            target.to_str().unwrap(),
-            rule.to_str().unwrap(),
-        ));
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (out, ok) = rt.block_on(yara_scan(target.to_str().unwrap(), rule.to_str().unwrap()));
         let _ = std::fs::remove_dir_all(&dir);
         assert!(ok, "yara should have run: {out}");
-        assert!(out.contains("Matches: 1"), "the rule must match once: {out}");
+        assert!(
+            out.contains("Matches: 1"),
+            "the rule must match once: {out}"
+        );
     }
 
     /// A real ext4 image built with mke2fs, read back by sleuthkit's mmls/fls.
@@ -717,7 +811,10 @@ mod tests {
             let _ = std::fs::remove_dir_all(&dir);
             return;
         }
-        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
         // A bare filesystem (no partition table) is read with offset 0.
         let (fs, fs_ok) = rt.block_on(image_filesystem(img.to_str().unwrap(), ""));
         let (files, fls_ok) = rt.block_on(image_list_files(img.to_str().unwrap(), "", false));
@@ -728,7 +825,10 @@ mod tests {
             "the filesystem type must be reported: {fs}"
         );
         assert!(fls_ok, "fls should have listed the image: {files}");
-        assert!(files.contains("secret.txt"), "the real file must be listed: {files}");
+        assert!(
+            files.contains("secret.txt"),
+            "the real file must be listed: {files}"
+        );
     }
 
     #[test]
@@ -743,7 +843,10 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let target = dir.join("t.bin");
         std::fs::write(&target, b"x").unwrap();
-        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
         let (msg, ok) = rt.block_on(yara_scan(target.to_str().unwrap(), ""));
         let _ = std::fs::remove_dir_all(&dir);
         assert!(!ok);

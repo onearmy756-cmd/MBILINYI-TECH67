@@ -26,11 +26,12 @@ mod langrun;
 mod llm;
 mod llm_api;
 mod mail;
+mod migrate;
 mod notify;
 mod ofisi;
 mod pages;
-mod payroll;
 mod payments;
+mod payroll;
 mod pdf;
 mod pqc;
 mod runtime;
@@ -405,6 +406,71 @@ fn pdf_init_ok() {
     }
 }
 
+/// The command-line form of the Migration tab. Prints what it did and returns
+/// an exit code, so a deploy script can depend on it.
+fn migrate_cli(args: &[String]) -> i32 {
+    let cmd = args.first().map(|s| s.as_str()).unwrap_or("help");
+    let arg = args.get(1).map(|s| s.as_str()).unwrap_or("");
+    match cmd {
+        "export" => match crate::migrate::export_bundle() {
+            Ok(b) => {
+                println!("{}", serde_json::to_string_pretty(&b).unwrap_or_default());
+                0
+            }
+            Err(e) => {
+                eprintln!("export failed: {e}");
+                1
+            }
+        },
+        "verify" => match crate::migrate::verify_bundle(arg) {
+            Ok(v) => {
+                println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
+                0
+            }
+            Err(e) => {
+                eprintln!("verify failed: {e}");
+                1
+            }
+        },
+        "import" => match crate::migrate::import_bundle(arg) {
+            Ok(v) => {
+                println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
+                0
+            }
+            Err(e) => {
+                eprintln!("import failed: {e}");
+                1
+            }
+        },
+        "list" => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&crate::migrate::list_bundles()).unwrap_or_default()
+            );
+            0
+        }
+        "plan" => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&crate::migrate::plan(arg)).unwrap_or_default()
+            );
+            0
+        }
+        _ => {
+            eprintln!(
+                "usage: mts-core migrate <export|verify|import|list|plan> [name|target]\n\
+                 \n\
+                 export        write a portable bundle into the backups directory\n\
+                 verify NAME   check a bundle is readable and holds a database\n\
+                 import NAME   restore a bundle over the live database and evidence\n\
+                 list          show the bundles on this host\n\
+                 plan TARGET   the steps to move to fly | vps | cpanel"
+            );
+            2
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let db_path = std::env::var("MTS_DB").unwrap_or_else(|_| "storage/mts.sqlite".to_string());
@@ -415,6 +481,14 @@ async fn main() {
         std::process::exit(1);
     }
     bootstrap();
+
+    // `mts-core migrate <export|verify|import|list|plan> [name|target]` runs the
+    // same code the admin panel calls, so a host with no browser can still move
+    // the platform. It exits before the server binds.
+    let argv: Vec<String> = std::env::args().collect();
+    if argv.get(1).map(|s| s.as_str()) == Some("migrate") {
+        std::process::exit(migrate_cli(&argv[2..]));
+    }
 
     // The autonomous scheduler: from here on the company works without being
     // pushed. It claims queued jobs, honours the CEO's approval gate, and keeps
@@ -460,15 +534,30 @@ mod tests {
 
     #[test]
     fn installer_extensions_get_installer_mime_types() {
-        assert_eq!(mime_of("downloads/App.apk"), "application/vnd.android.package-archive");
-        assert_eq!(mime_of("downloads/Setup.exe"), "application/vnd.microsoft.portable-executable");
-        assert_eq!(mime_of("downloads/App.deb"), "application/vnd.debian.binary-package");
-        assert_eq!(mime_of("downloads/App.dmg"), "application/x-apple-diskimage");
+        assert_eq!(
+            mime_of("downloads/App.apk"),
+            "application/vnd.android.package-archive"
+        );
+        assert_eq!(
+            mime_of("downloads/Setup.exe"),
+            "application/vnd.microsoft.portable-executable"
+        );
+        assert_eq!(
+            mime_of("downloads/App.deb"),
+            "application/vnd.debian.binary-package"
+        );
+        assert_eq!(
+            mime_of("downloads/App.dmg"),
+            "application/x-apple-diskimage"
+        );
     }
 
     #[test]
     fn assets_keep_their_own_mime_types() {
-        assert_eq!(mime_of("assets/app.js"), "application/javascript; charset=utf-8");
+        assert_eq!(
+            mime_of("assets/app.js"),
+            "application/javascript; charset=utf-8"
+        );
         assert_eq!(mime_of("assets/icons/icon-192.png"), "image/png");
         assert_eq!(mime_of("manifest.json"), "application/json");
     }
@@ -487,7 +576,11 @@ mod tests {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
         for page in crate::pages::KNOWN_PAGES {
             let f = dir.join(format!("{page}.html"));
-            assert!(f.is_file(), "missing template for the {page} page: {}", f.display());
+            assert!(
+                f.is_file(),
+                "missing template for the {page} page: {}",
+                f.display()
+            );
         }
     }
 

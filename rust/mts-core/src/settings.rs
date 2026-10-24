@@ -366,7 +366,10 @@ pub fn seed_defaults() {
         ("payroll_worker_share", "0.70"),
         ("payroll_nssf_rate", "0.10"),
         ("payroll_wcf_rate", "0.006"),
-        ("payroll_paye_bands", "270000:0,520000:0.08,760000:0.20,1000000:0.25,9999999999:0.30"),
+        (
+            "payroll_paye_bands",
+            "270000:0,520000:0.08,760000:0.20,1000000:0.25,9999999999:0.30",
+        ),
         ("platform_name", "MbilinyiTech Platform"),
         ("webauthn_rp_name", "Mbilinyi Tech Solutions"),
         // The AI provider the agent engine calls. Empty provider means "work it

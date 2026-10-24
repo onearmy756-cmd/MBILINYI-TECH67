@@ -54,6 +54,8 @@ pub async fn dispatch(name: &str, req: Request<Body>) -> Response {
         // The runtimes the platform can actually compile and run code in, and
         // the sandbox posture. Reported so capability is never assumed.
         "runtime" => crate::runtime_api::handle(&c).await,
+        // Moving the platform between hosts: export, import and the plan.
+        "migrate" => crate::migrate::handle(&c).await,
         _ => return not_found("Unknown endpoint."),
     };
     result
