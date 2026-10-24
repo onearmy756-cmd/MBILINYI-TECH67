@@ -24,14 +24,17 @@ FLY="${FLYCTL:-flyctl}"
 command -v "$FLY" >/dev/null 2>&1 || FLY="$HOME/.fly/bin/flyctl"
 
 echo "== 1. does the app exist? =="
-if "$FLY" apps list 2>/dev/null | awk 'NR>1 {print $1}' | grep -qx "$APP"; then
+if "$FLY" status -a "$APP" >/dev/null 2>&1; then
   echo "   app '$APP' already exists"
 else
   echo "   creating app '$APP' in org '$ORG'"
   "$FLY" apps create "$APP" --org "$ORG" || {
     echo >&2
-    echo "Could not create the app. If the token is scoped to an existing app" >&2
-    echo "it cannot create a new one — use an organisation-level token." >&2
+    echo "Could not create the app. A token scoped to one existing app can" >&2
+    echo "deploy that app but cannot create a new one. Use an org token:" >&2
+    echo "    fly tokens create org -o $ORG" >&2
+    echo "or create the app in the dashboard and mint a token for it:" >&2
+    echo "    fly tokens create deploy -a $APP" >&2
     exit 1
   }
 fi
