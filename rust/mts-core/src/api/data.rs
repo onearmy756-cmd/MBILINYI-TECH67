@@ -800,11 +800,7 @@ fn deposit_info(c: &Ctx) -> Response {
         return err("Contract not found.", 404);
     };
     let trk = ct.get("tracking_id").and_then(|v| v.as_str()).unwrap_or("");
-    let inv = db::row(
-        "SELECT * FROM invoices WHERE tracking_id = ? AND lower(title) LIKE '%deposit%' ORDER BY created_at DESC",
-        &[arg(json!(trk))],
-    );
-    match inv {
+    match deposit_invoice_row(trk) {
         Some(i) => ok(json!({
             "deposit": {
                 "paid": i.get("status").and_then(|v| v.as_str()) == Some("Paid"),
@@ -1335,14 +1331,22 @@ fn testimonials_save(c: &Ctx) -> Response {
     }
 }
 
+/// The contract's deposit invoice, mirroring `deposit_invoice_row()` in the PHP:
+/// the EARLIEST invoice whose title carries the 50% deposit marker. The gate and
+/// the signing panel must both read this one row, or the panel can show an
+/// invoice the gate is not judging.
+fn deposit_invoice_row(tracking: &str) -> Option<db::Row> {
+    db::row(
+        "SELECT * FROM invoices WHERE tracking_id = ? AND title LIKE '%50%Deposit%' ORDER BY created_at ASC LIMIT 1",
+        &[arg(json!(tracking))],
+    )
+}
+
 /// The 50/50 rule as one message: `None` when work may start, otherwise what to
 /// tell the admin. Mirrors `deposit_block_message()` in the PHP, including its
 /// choice of the *earliest* deposit invoice — the one the contract created.
 fn deposit_block(tracking: &str) -> Option<String> {
-    let inv = db::row(
-        "SELECT * FROM invoices WHERE tracking_id = ? AND title LIKE '%50%Deposit%' ORDER BY created_at ASC LIMIT 1",
-        &[arg(json!(tracking))],
-    );
+    let inv = deposit_invoice_row(tracking);
     let Some(inv) = inv else {
         return Some(
             "Deposit invoice bado haipo. Tengeneza 50% deposit invoice, mteja alipe, ndipo mradi unaruhusiwa kuanza."

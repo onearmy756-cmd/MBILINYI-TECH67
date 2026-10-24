@@ -81,7 +81,11 @@ echo "== 12b. deposit_info inaonyesha deposit haijalipwa =="
 get $JA "api/contracts.php?action=deposit_info&id=$CID" | jq -c '{ok, paid:.data.deposit.paid, invoiceId:.data.deposit.invoiceId, status:.data.deposit.status}'
 
 echo "== 12c. admin marks THIS contract's 50% deposit invoice PAID =="
-DID=$(get $JA "api/invoices.php?action=admin_list" | jq -r --arg trk "$TRK" '[.data.invoices[] | select(.trackingId==$trk and (.title|contains("Deposit")) and .status=="Unpaid")][0].id')
+# The gate judges the EARLIEST deposit invoice for the tracking id, and
+# deposit_info reports that same row. Read it from there rather than from
+# admin_list, whose newest-first order can name a different invoice when a
+# second deposit-titled invoice exists (step 7 creates one on this tracking id).
+DID=$(get $JA "api/contracts.php?action=deposit_info&id=$CID" | jq -r '.data.deposit.invoiceId')
 echo "deposit invoice: $DID"
 post $JA api/invoices.php "{\"action\":\"mark_paid\",\"id\":\"$DID\"}" "$C" | jq -c '{ok, status:.data.invoice.status}'
 
