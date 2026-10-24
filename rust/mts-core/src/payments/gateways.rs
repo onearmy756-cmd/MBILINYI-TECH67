@@ -41,6 +41,35 @@ fn whole(amount: f64) -> i64 {
     amount.round() as i64
 }
 
+/// The currencies Stripe treats as having no minor unit: the amount is sent
+/// as-is. Everything else is sent in cents, so the figure is multiplied by 100.
+/// Sending TZS as cents would charge a hundred times the invoice.
+const ZERO_DECIMAL: &[&str] = &[
+    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND",
+    "VUV", "XAF", "XOF", "XPF", "TZS",
+];
+
+/// The amount in the smallest unit Stripe expects for this currency.
+fn stripe_minor(amount: f64, currency: &str) -> i64 {
+    let cur = currency.to_uppercase();
+    if ZERO_DECIMAL.contains(&cur.as_str()) {
+        amount.round() as i64
+    } else {
+        (amount * 100.0).round() as i64
+    }
+}
+
+/// Stripe's API root. Overridable so the CEO can point at a Stripe sandbox, or
+/// at a Stripe-compatible processor, without a rebuild.
+fn stripe_api_base() -> String {
+    let b = settings::get("gw_stripe_api_base", "");
+    if b.trim().is_empty() {
+        "https://api.stripe.com".to_string()
+    } else {
+        b.trim_end_matches('/').to_string()
+    }
+}
+
 /// Read the first path that yields a non-empty scalar. Providers differ in how
 /// deeply they nest the same value, and this avoids a per-gateway struct.
 fn pick(v: &J, paths: &[&str]) -> String {
@@ -403,8 +432,8 @@ async fn initiate_stripe(amount: f64, currency: &str, reference: &str) -> Outcom
     if secret.is_empty() {
         return fail("Stripe is not configured.");
     }
-    // Stripe takes the smallest unit, so dollars become cents.
-    let minor = (amount * 100.0).round() as i64;
+    // Stripe takes the smallest unit: cents for dollars, whole shillings for TZS.
+    let minor = stripe_minor(amount, currency);
     let cur = if currency.is_empty() { "USD" } else { currency };
     let site = settings::get("platform_url", "");
     let success = format!("{site}/client?paid={reference}");
@@ -421,7 +450,7 @@ async fn initiate_stripe(amount: f64, currency: &str, reference: &str) -> Outcom
         ("client_reference_id", reference),
     ];
     let mut req = client()
-        .post("https://api.stripe.com/v1/checkout/sessions")
+        .post(format!("{}/v1/checkout/sessions", stripe_api_base()))
         .bearer_auth(&secret)
         .form(&form);
     if !account.is_empty() {
@@ -453,7 +482,7 @@ async fn verify_stripe(reference: &str) -> Outcome {
     if secret.is_empty() {
         return fail("Stripe is not configured.");
     }
-    let url = format!("https://api.stripe.com/v1/checkout/sessions/{reference}");
+    let url = format!("{}/v1/checkout/sessions/{reference}", stripe_api_base());
     match client().get(&url).bearer_auth(&secret).send().await {
         Ok(r) => {
             let v: J = r.json().await.unwrap_or(json!({}));
@@ -556,5 +585,39 @@ async fn verify_paypal(reference: &str) -> Outcome {
             }
         }
         Err(e) => fail(format!("Network error: {e}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_dollar_charge_is_sent_in_cents() {
+        assert_eq!(stripe_minor(1000.0, "USD"), 100_000);
+        assert_eq!(stripe_minor(49.99, "USD"), 4_999);
+        assert_eq!(stripe_minor(1.0, "EUR"), 100);
+    }
+
+    #[test]
+    fn a_shilling_charge_is_sent_whole_never_times_a_hundred() {
+        // Stripe has no minor unit for TZS: 2,600,000 TZS must not become
+        // 260,000,000, which would be a hundredfold overcharge.
+        assert_eq!(stripe_minor(2_600_000.0, "TZS"), 2_600_000);
+        assert_eq!(stripe_minor(50_000.0, "TZS"), 50_000);
+        assert_eq!(stripe_minor(1234.6, "TZS"), 1235);
+    }
+
+    #[test]
+    fn the_currency_case_does_not_change_the_unit() {
+        assert_eq!(stripe_minor(500.0, "tzs"), 500);
+        assert_eq!(stripe_minor(5.0, "usd"), 500);
+    }
+
+    #[test]
+    fn other_zero_decimal_currencies_are_not_multiplied() {
+        assert_eq!(stripe_minor(1000.0, "JPY"), 1000);
+        assert_eq!(stripe_minor(1000.0, "UGX"), 1000);
+        assert_eq!(stripe_minor(1000.0, "KRW"), 1000);
     }
 }

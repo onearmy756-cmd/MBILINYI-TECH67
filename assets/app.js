@@ -1897,7 +1897,8 @@ async function adminTab(t) {
   aTab = t;
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
-    wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account' };
+    wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
+    runs: 'Agent Runs — Every Job the Company Carries Out', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery' };
   $('adminTabTitle').textContent = titles[t];
   $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
 
@@ -2335,8 +2336,9 @@ async function adminTab(t) {
         <div class="text-[11.5px] text-white/45 mt-1">Host: ${esc(r.host || '—')} • ${esc(r.startsAt || 'now')}</div>
         <div class="flex flex-wrap gap-1.5 mt-2">${r.scribe ? '<span class="chip text-cyan-300"><i class="fa-solid fa-pen-nib"></i>AI Scribe</span>' : ''}${r.recording ? '<span class="chip text-amber-300"><i class="fa-solid fa-circle-dot"></i>Recording</span>' : ''}<span class="chip text-white/50">${(r.invitees || []).length} invitees</span></div>
         <div class="flex gap-1.5 mt-3">
+          <button onclick="openCall('${r.id}')" class="flex-1 py-2 rounded-lg grad-btn text-[12px] font-bold"><i class="fa-solid fa-video mr-1"></i>Join Call</button>
           <button onclick="setRoomStatus('${r.id}','live')" class="flex-1 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/30 text-[12px] font-bold text-emerald-300"><i class="fa-solid fa-play mr-1"></i>Go Live</button>
-          <button onclick="setRoomStatus('${r.id}','ended')" class="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-[12px] font-bold">End</button>
+          <button onclick="setRoomStatus('${r.id}','ended')" class="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-[12px] font-bold">End</button>
         </div>
       </div>`).join('') || '<div class="sm:col-span-2 xl:col-span-3 glass rounded-3xl p-6 text-center text-white/40">No rooms yet. Create one to meet a client online.</div>'}</div>
       <div class="font-bold text-[14px] mb-2"><i class="fa-solid fa-comment-sms text-sky-300 mr-1.5"></i>SMS Log (${sms.count})</div>
@@ -2419,6 +2421,131 @@ async function adminTab(t) {
           <span class="text-[11px] text-white/35">${esc(e.createdAt)}</span>
         </div>`).join('') || '<div class="text-white/40 text-[12.5px]">No signatures yet. Sign a contract from the Contracts tab.</div>'}
         </div>
+      </div>`;
+    }
+
+    /* ---- Agent Runs: watch every job the company carries out ---- */
+    if (t === 'runs') {
+      const [runs, st, cap] = await Promise.all([
+        apiGet('api/engine.php', { action: 'runs' }),
+        apiGet('api/engine.php', { action: 'stats' }),
+        apiGet('api/engine.php', { action: 'capabilities' }),
+      ]);
+      const R = runs.runs || [];
+      const statusColor = s => s === 'done' ? 'emerald' : s === 'running' ? 'sky' : s === 'error' ? 'red' : s === 'blocked' ? 'amber' : 'white';
+      h = `<div class="rounded-2xl border ${cap.ready ? 'border-emerald-400/25 bg-emerald-500/[.05]' : 'border-amber-400/30 bg-amber-500/[.06]'} p-4 text-[13px] text-white/75 mb-4">
+        <i class="fa-solid ${cap.ready ? 'fa-circle-check text-emerald-300' : 'fa-triangle-exclamation text-amber-300'} mr-2"></i>
+        ${cap.ready
+          ? `The engine is live on <strong>${esc(cap.provider)} / ${esc(cap.model)}</strong>. Hand an agent a job below and watch every step it takes — which tool it used and what came back.`
+          : `No AI provider is configured yet, so jobs cannot start. Add a provider key on the <strong>AI Engine</strong> tab and the whole company starts working.`}
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        ${[['Total runs', st.total, 'fa-list', 'violet'], ['Running', st.running, 'fa-spinner', 'sky'], ['Finished', st.done, 'fa-circle-check', 'emerald'], ['Tools', cap.toolCount, 'fa-toolbox', 'cyan']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-xl">${v}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
+      </div>
+      <div class="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/[.04] p-4 mb-4">
+        <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-play text-fuchsia-300 mr-1.5"></i>Give the company a job</div>
+        <div class="grid sm:grid-cols-3 gap-2">
+          <input id="runTask" class="input sm:col-span-3" placeholder="Describe the job — e.g. 'Audit example.com for OWASP Top-10 issues and write the report'">
+          <input id="runService" class="input" placeholder="Service (optional) — e.g. Cybersecurity">
+          <input id="runTool" class="input" placeholder="Tool (optional) — e.g. owasp_audit">
+          <button onclick="runAgentJob()" class="grad-btn py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-bolt mr-1"></i>Start job</button>
+        </div>
+        <div class="text-[11.5px] text-white/45 mt-2">Leave the agent blank and the manager (Magma Commander) picks the right agent for the job.</div>
+      </div>
+      <div class="font-bold text-[14px] mb-2"><i class="fa-solid fa-clock-rotate-left text-emerald-300 mr-1.5"></i>Run history (${R.length})</div>
+      <div class="grid gap-2">
+      ${R.map(r => `<div class="rounded-xl bg-white/[.02] border border-white/10 p-3.5">
+        <div class="flex flex-wrap items-center gap-3 text-[12.5px]">
+          <span class="chip text-${statusColor(r.status)}-300">${esc(r.status)}</span>
+          <span class="font-mono text-[11px] text-white/50">${esc(r.id)}</span>
+          <span class="flex-1 min-w-[180px] font-bold">${esc(r.agentName)}</span>
+          <span class="text-[11px] text-white/40">${r.steps} steps • ${esc(r.provider)}/${esc(r.model)}</span>
+          <button onclick="viewRun('${r.id}')" class="text-cyan-300 font-bold text-[12px]">Inspect →</button>
+        </div>
+        <div class="text-[12px] text-white/55 mt-1.5 truncate">${esc((r.task || '').slice(0, 140))}</div>
+      </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No runs yet. Start one above and it appears here immediately.</div>'}
+      </div>`;
+    }
+
+    /* ---- AI Engine: the provider the whole platform thinks with ---- */
+    if (t === 'ai') {
+      const s = await apiGet('api/llm.php', { action: 'status' });
+      h = `<div class="rounded-2xl border ${s.ready ? 'border-emerald-400/25 bg-emerald-500/[.05]' : 'border-amber-400/30 bg-amber-500/[.06]'} p-4 text-[13px] text-white/75 mb-4">
+        <i class="fa-solid ${s.ready ? 'fa-circle-check text-emerald-300' : 'fa-triangle-exclamation text-amber-300'} mr-2"></i>
+        ${s.ready ? 'The AI engine is connected. Every agent and every AI tool works through it.' : 'No key yet. Paste a provider key below and the whole company switches on — agents, tools, reports, chatbots and fine-tuning.'}
+        ${s.keySet ? ` <span class="chip text-emerald-300 ml-2">key ${esc(s.keyHint)}</span>` : ''}
+      </div>
+      <div class="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/[.04] p-5">
+        <div class="font-bold text-[14px] mb-3"><i class="fa-solid fa-microchip text-fuchsia-300 mr-1.5"></i>Provider</div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Provider</label>
+            <select id="llmProvider" class="input mt-1">
+              ${(s.providers || []).map(p => `<option value="${p.key}" ${s.provider === p.key ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+            </select></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Model</label>
+            <input id="llmModel" class="input mt-1 font-mono" value="${esc(s.model || '')}" placeholder="leave blank for the provider default"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">API key ${s.keySet ? '(leave blank to keep the current one)' : ''}</label>
+            <input id="llmKey" type="password" class="input mt-1 font-mono" placeholder="${s.keySet ? '•••••••• stored' : 'paste the key'}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Base URL (advanced)</label>
+            <input id="llmBase" class="input mt-1 font-mono" value="${esc(s.baseUrl || '')}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Max tokens</label>
+            <input id="llmMax" class="input mt-1" value="${s.maxTokens || 4096}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Temperature</label>
+            <input id="llmTemp" class="input mt-1" value="${s.temperature}"></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <button onclick="saveLlm()" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-floppy-disk mr-1"></i>Save</button>
+          <button onclick="testLlm()" class="px-5 py-3 rounded-xl font-bold text-sm border border-cyan-400/40 text-cyan-200 hover:bg-cyan-500/10"><i class="fa-solid fa-plug-circle-check mr-1"></i>Test connection</button>
+          ${s.keySet ? `<button onclick="clearLlmKey()" class="px-5 py-3 rounded-xl font-bold text-sm border border-red-400/30 text-red-300 hover:bg-red-500/10">Remove key</button>` : ''}
+        </div>
+        <div id="llmResult" class="mt-3"></div>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4 mt-4 text-[12.5px] text-white/60">
+        <div class="font-bold text-white/80 mb-1.5"><i class="fa-solid fa-lock text-emerald-300 mr-1.5"></i>How the key is kept</div>
+        The key is stored in the settings table and is <strong>never</strong> sent back to a page — the form shows only the last four characters. Every provider error is scrubbed of anything key-shaped before it is logged or shown.
+      </div>`;
+    }
+
+    /* ---- SMS Gateway: make messages actually leave the platform ---- */
+    if (t === 'sms') {
+      const s = await apiGet('api/ofisi.php', { action: 'sms_config' });
+      const log = await apiGet('api/ofisi.php', { action: 'sms_log' });
+      h = `<div class="rounded-2xl border ${s.configured ? 'border-emerald-400/25 bg-emerald-500/[.05]' : 'border-amber-400/30 bg-amber-500/[.06]'} p-4 text-[13px] text-white/75 mb-4">
+        <i class="fa-solid ${s.configured ? 'fa-circle-check text-emerald-300' : 'fa-triangle-exclamation text-amber-300'} mr-2"></i>
+        ${s.configured ? `Messages are sent through <strong>${esc(s.gateway)}</strong>. Every send records what the gateway actually replied.` : 'No gateway configured, so messages are logged but never sent. Fill this in and every SMS the platform produces goes out for real.'}
+      </div>
+      <div class="rounded-2xl border border-sky-400/25 bg-sky-500/[.04] p-5">
+        <div class="font-bold text-[14px] mb-3"><i class="fa-solid fa-comment-sms text-sky-300 mr-1.5"></i>Gateway</div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Gateway</label>
+            <select id="smsGw" class="input mt-1">
+              <option value="">— none —</option>
+              ${(s.gateways || []).map(g => `<option value="${g.key}" ${s.gateway === g.key ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}
+            </select></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Sender ID / username</label>
+            <input id="smsSender" class="input mt-1" value="${esc(s.senderId || '')}" placeholder="MBILINYI"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">API key ${s.keySet ? '(blank keeps the current one)' : ''}</label>
+            <input id="smsKey" type="password" class="input mt-1 font-mono" placeholder="${s.keySet ? '•••••••• stored' : 'paste the key'}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">API secret</label>
+            <input id="smsSecret" type="password" class="input mt-1 font-mono" placeholder="Beem and Twilio need this"></div>
+          <div class="sm:col-span-2"><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Endpoint URL</label>
+            <input id="smsBase" class="input mt-1 font-mono" value="${esc(s.baseUrl || '')}" placeholder="https://apisms.beem.africa"></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <button onclick="saveSms()" class="grad-btn px-5 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-floppy-disk mr-1"></i>Save</button>
+          <input id="smsTestPhone" class="input !w-auto flex-1 min-w-[180px]" placeholder="number for a test message">
+          <button onclick="testSms()" class="px-5 py-3 rounded-xl font-bold text-sm border border-cyan-400/40 text-cyan-200 hover:bg-cyan-500/10"><i class="fa-solid fa-paper-plane mr-1"></i>Send test</button>
+        </div>
+        <div id="smsResult" class="mt-3"></div>
+      </div>
+      <div class="font-bold text-[14px] mb-2 mt-5"><i class="fa-solid fa-list text-sky-300 mr-1.5"></i>Message log (${log.count})</div>
+      <div class="grid gap-2">
+      ${(log.messages || []).map(m => `<div class="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[.02] border border-white/10 text-[12.5px]">
+        <span class="chip text-sky-300"><i class="fa-solid fa-phone"></i>${esc(m.phone)}</span>
+        <span class="flex-1 min-w-[200px] text-white/75">${esc(m.message)}</span>
+        <span class="chip ${m.status.startsWith('sent') ? 'text-emerald-300' : m.status.startsWith('failed') ? 'text-red-300' : 'text-amber-300'}">${esc(m.status.slice(0, 60))}</span>
+        <span class="text-[11px] text-white/35">${esc(m.createdAt)}</span>
+      </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No messages yet.</div>'}
       </div>`;
     }
 
@@ -3869,6 +3996,154 @@ async function createRoom() {
 async function setRoomStatus(id, status) {
   try { await apiPost('api/ofisi.php', { action: 'room_status', id, status }); } catch (e) { toast(esc(e.message), 'err'); return; }
   adminTab('ofisi'); toast(`Room ${status}.`, 'info');
+}
+
+/* ============================================================
+   LIVE CALLS — the WebRTC room inside the platform
+   ============================================================ */
+function openCall(roomId) {
+  const who = (currentUser()?.name || 'guest');
+  openGen('Live Call', `
+    <div data-call-room="${esc(roomId)}" data-call-name="${esc(who)}" class="call-root">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div class="font-bold text-[13.5px]"><i class="fa-solid fa-video text-rose-300 mr-1.5"></i>Chumba: <span class="font-mono text-[12px]">${esc(roomId)}</span></div>
+        <div class="flex flex-wrap gap-1.5">
+          <button data-call-action="mute" class="call-btn" title="Zima/Kuwasha sauti"><i class="fa-solid fa-microphone"></i></button>
+          <button data-call-action="camera" class="call-btn" title="Zima/Kuwasha kamera"><i class="fa-solid fa-video"></i></button>
+          <button data-call-action="share" class="call-btn" title="Shiriki skrini"><i class="fa-solid fa-display"></i></button>
+          <button data-call-action="hangup" class="call-btn call-btn-end" title="Ondoka"><i class="fa-solid fa-phone-slash"></i></button>
+        </div>
+      </div>
+      <div data-call-videos class="call-grid"></div>
+      <div data-call-status class="text-[12px] text-white/55 mt-2">Inaandaa kamera na maikrofoni…</div>
+      <div class="text-[11.5px] text-white/40 mt-1">Sauti na picha zinasafiri moja kwa moja kati ya vivinjari (WebRTC, imesimbwa kwa DTLS-SRTP). Server inapitisha tu ishara ya kuunganisha.</div>
+    </div>`);
+  loadScript('/assets/call.js');
+}
+
+/* Load a script once, so opening the call twice does not run it twice. */
+function loadScript(src) {
+  if (document.querySelector(`script[data-src="${src}"]`)) return;
+  const s = document.createElement('script');
+  s.src = src;
+  s.setAttribute('data-src', src);
+  document.body.appendChild(s);
+}
+
+/* ============================================================
+   AGENT ENGINE — run jobs, watch the steps, inspect the result
+   ============================================================ */
+async function runAgentJob() {
+  const task = ($('runTask').value || '').trim();
+  if (!task) { toast('Describe the job first.', 'err'); return; }
+  try {
+    const r = await apiPost('api/engine.php', {
+      action: 'run_job', task,
+      service: ($('runService').value || '').trim(),
+      tool: ($('runTool').value || '').trim(),
+    });
+    toast(`${r.agent} ameanza kazi. Fungua Runs kuona hatua.`, 'ok');
+    setTimeout(() => adminTab('runs'), 1200);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function viewRun(id) {
+  let d;
+  try { d = await apiGet('api/engine.php', { action: 'run', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  const r = d.run, steps = d.steps || [];
+  const kindColor = k => k === 'tool' ? 'cyan' : k === 'refuse' ? 'red' : k === 'say' ? 'emerald' : 'white';
+  openGen(`Run ${r.id}`, `
+    <div class="flex flex-wrap items-center gap-2 mb-3 text-[12.5px]">
+      <span class="chip text-${r.status === 'done' ? 'emerald' : r.status === 'error' ? 'red' : 'sky'}-300">${esc(r.status)}</span>
+      <span class="font-bold">${esc(r.agentName)}</span>
+      <span class="chip text-white/50">${esc(r.provider)}/${esc(r.model)}</span>
+      <span class="text-white/40">${r.steps} steps</span>
+    </div>
+    <div class="rounded-xl bg-white/[.03] border border-white/10 p-3 text-[12.5px] mb-3"><strong>Job:</strong> ${esc(r.task)}</div>
+    ${r.error ? `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200 mb-3"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${esc(r.error)}</div>` : ''}
+    <div class="font-bold text-[13px] mb-2">Steps</div>
+    <div class="grid gap-1.5 max-h-[40vh] overflow-auto">
+    ${steps.map(s => `<div class="rounded-lg bg-white/[.02] border border-white/10 p-2.5 text-[12px]">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="chip text-${kindColor(s.kind)}-300">${esc(s.kind)}</span>
+        <span class="text-white/50">#${s.step}</span>
+        ${s.tool ? `<span class="font-mono text-[11px] text-cyan-300">${esc(s.tool)}</span>` : ''}
+        <span class="chip ${s.ok ? 'text-emerald-300' : 'text-red-300'}">${s.ok ? 'ok' : 'refused'}</span>
+      </div>
+      <div class="text-white/65 whitespace-pre-wrap break-words">${esc((s.output || '').slice(0, 900))}</div>
+    </div>`).join('') || '<div class="text-white/40 text-[12.5px]">No steps recorded.</div>'}
+    </div>
+    <div class="mt-3 rounded-xl bg-emerald-500/[.07] border border-emerald-400/25 p-3">
+      <div class="font-bold text-[12.5px] text-emerald-200 mb-1">Finished deliverable</div>
+      <div class="text-[12.5px] text-white/75 whitespace-pre-wrap">${esc(r.result || '—')}</div>
+    </div>
+    <div class="flex gap-2 mt-4"><button onclick="closeGen()" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">Close</button></div>`);
+}
+
+/* ============================================================
+   AI ENGINE — provider configuration
+   ============================================================ */
+async function saveLlm() {
+  try {
+    await apiPost('api/llm.php', {
+      action: 'save',
+      provider: $('llmProvider').value,
+      model: $('llmModel').value.trim(),
+      apiKey: $('llmKey').value,
+      baseUrl: $('llmBase').value.trim(),
+      maxTokens: $('llmMax').value.trim(),
+      temperature: $('llmTemp').value.trim(),
+    });
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ai'); toast('AI engine settings saved ✓', 'ok');
+}
+
+async function testLlm() {
+  const box = $('llmResult');
+  box.innerHTML = '<div class="text-[12.5px] text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Calling the provider…</div>';
+  let r;
+  try { r = await apiPost('api/llm.php', { action: 'test' }); } catch (e) {
+    box.innerHTML = `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200">${esc(e.message)}</div>`; return;
+  }
+  box.innerHTML = r.connected
+    ? `<div class="rounded-xl bg-emerald-500/10 border border-emerald-400/30 p-3 text-[12.5px] text-emerald-100"><i class="fa-solid fa-circle-check mr-1"></i>Connected to <strong>${esc(r.provider)}/${esc(r.model)}</strong> in ${r.ms} ms.<br>“${esc(r.reply)}”</div>`
+    : `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${esc(r.error)}</div>`;
+}
+
+async function clearLlmKey() {
+  try { await apiPost('api/llm.php', { action: 'clear_key' }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ai'); toast('Key removed. The engine is off until a new key is added.', 'info');
+}
+
+/* ============================================================
+   SMS GATEWAY — real delivery
+   ============================================================ */
+async function saveSms() {
+  try {
+    await apiPost('api/ofisi.php', {
+      action: 'sms_config_save',
+      gateway: $('smsGw').value,
+      senderId: $('smsSender').value.trim(),
+      apiKey: $('smsKey').value,
+      secret: $('smsSecret').value,
+      baseUrl: $('smsBase').value.trim(),
+    });
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('sms'); toast('SMS gateway saved ✓', 'ok');
+}
+
+async function testSms() {
+  const box = $('smsResult');
+  const phone = ($('smsTestPhone').value || '').trim();
+  if (!phone) { toast('Give a number to send the test to.', 'err'); return; }
+  box.innerHTML = '<div class="text-[12.5px] text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Sending…</div>';
+  let r;
+  try { r = await apiPost('api/ofisi.php', { action: 'sms_test', phone }); } catch (e) {
+    box.innerHTML = `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200">${esc(e.message)}</div>`; return;
+  }
+  box.innerHTML = r.sent
+    ? `<div class="rounded-xl bg-emerald-500/10 border border-emerald-400/30 p-3 text-[12.5px] text-emerald-100"><i class="fa-solid fa-circle-check mr-1"></i>${esc(r.detail)}</div>`
+    : `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${esc(r.detail)}</div>`;
 }
 
 async function saveCompanyAccount() {

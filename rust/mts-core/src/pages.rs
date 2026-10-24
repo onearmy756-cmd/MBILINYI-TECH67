@@ -265,6 +265,16 @@ const STYLE: &str = r#"<style>
   /* The agent company grid: a dense wall of seats that reads at a glance. */
   .agent-seat{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);transition:border-color .25s,transform .25s,background .25s}
   .agent-seat:hover{border-color:rgba(232,121,249,.45);transform:translateY(-2px);background:rgba(232,121,249,.07)}
+  /* Live calls: a video wall that fills the dialog and stays readable. */
+  .call-root{display:flex;flex-direction:column;gap:6px}
+  .call-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;max-height:56vh;overflow:auto}
+  .call-tile{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:#050914;border:1px solid rgba(255,255,255,.12)}
+  .call-tile video{width:100%;height:100%;object-fit:cover;display:block}
+  .call-name{position:absolute;left:8px;bottom:8px;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;background:rgba(5,9,20,.72);border:1px solid rgba(255,255,255,.16)}
+  .call-btn{width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);transition:background .2s,border-color .2s}
+  .call-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(34,211,238,.5)}
+  .call-btn.off{background:rgba(244,63,94,.18);border-color:rgba(244,63,94,.5);color:#fda4af}
+  .call-btn-end{background:rgba(244,63,94,.2);border-color:rgba(244,63,94,.45);color:#fda4af}
   .grid-bg{background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,black 60%,transparent 100%)}
   .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;pointer-events:none}
   .marquee-track{display:flex;gap:14px;width:max-content;animation:marquee 28s linear infinite}
