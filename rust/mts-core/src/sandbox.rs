@@ -509,6 +509,41 @@ pub async fn audit_code(path: &str) -> (String, bool) {
 /// Walk a directory, handing each readable text file to `f`. Bounded so a large
 /// tree cannot make a request run forever.
 fn scan_dir(root: &str, count: &mut usize, f: &mut impl FnMut(&str, &str)) {
+    walk_files(root, |path| {
+        let ext = path.extension().and_then(|x| x.to_str()).unwrap_or("");
+        if !matches!(
+            ext,
+            "rs" | "py"
+                | "js"
+                | "ts"
+                | "tsx"
+                | "jsx"
+                | "php"
+                | "go"
+                | "java"
+                | "rb"
+                | "sh"
+                | "env"
+                | "yml"
+                | "yaml"
+                | "toml"
+                | "json"
+        ) {
+            return;
+        }
+        let Ok(text) = std::fs::read_to_string(path) else {
+            return;
+        };
+        *count += 1;
+        f(&path.to_string_lossy(), &text);
+    });
+}
+
+/// Walk every file under `root`, honouring the shared size and count limits and
+/// the directories that are never worth reading. Both the source audit and the
+/// malware scan use this; the malware scan must see every file, because a
+/// payload is not obliged to carry a source-code extension.
+fn walk_files(root: &str, mut f: impl FnMut(&std::path::Path)) {
     const MAX_FILES: usize = 400;
     const MAX_BYTES: u64 = 512 * 1024;
     let skip = [
@@ -520,13 +555,14 @@ fn scan_dir(root: &str, count: &mut usize, f: &mut impl FnMut(&str, &str)) {
         "build",
         ".venv",
     ];
+    let mut seen = 0usize;
     let mut stack = vec![root.to_string()];
     while let Some(dir) = stack.pop() {
         let Ok(entries) = std::fs::read_dir(&dir) else {
             continue;
         };
         for e in entries.flatten() {
-            if *count >= MAX_FILES {
+            if seen >= MAX_FILES {
                 return;
             }
             let path = e.path();
@@ -538,35 +574,11 @@ fn scan_dir(root: &str, count: &mut usize, f: &mut impl FnMut(&str, &str)) {
                 stack.push(path.to_string_lossy().to_string());
                 continue;
             }
-            let ext = path.extension().and_then(|x| x.to_str()).unwrap_or("");
-            if !matches!(
-                ext,
-                "rs" | "py"
-                    | "js"
-                    | "ts"
-                    | "tsx"
-                    | "jsx"
-                    | "php"
-                    | "go"
-                    | "java"
-                    | "rb"
-                    | "sh"
-                    | "env"
-                    | "yml"
-                    | "yaml"
-                    | "toml"
-                    | "json"
-            ) {
-                continue;
-            }
             if e.metadata().map(|m| m.len() > MAX_BYTES).unwrap_or(true) {
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else {
-                continue;
-            };
-            *count += 1;
-            f(&path.to_string_lossy(), &text);
+            seen += 1;
+            f(&path);
         }
     }
 }
@@ -590,20 +602,24 @@ pub async fn scan_malware(path: &str) -> (String, bool) {
             "Known coin-miner binary",
         ),
     ];
-    let mut files = 0usize;
     let mut findings = Vec::new();
     let mut hashes = 0usize;
-    scan_dir(root, &mut files, &mut |file, text| {
+    walk_files(root, |path| {
         use sha2::{Digest, Sha256};
+        let Ok(bytes) = std::fs::read(path) else {
+            return;
+        };
         hashes += 1;
-        let digest = hex::encode(Sha256::digest(text.as_bytes()));
+        let file = path.to_string_lossy().to_string();
+        let digest = hex::encode(Sha256::digest(&bytes));
         for (bad, what) in KNOWN_BAD {
             if digest == *bad {
                 findings.push(format!("{file} matches a known-bad digest: {what}"));
             }
         }
-        // A dropper usually carries a decoder plus a network call.
-        let lower = text.to_lowercase();
+        // A dropper usually carries a decoder plus a network call. Read the bytes
+        // lossily: a payload with a broken encoding must still be inspected.
+        let lower = String::from_utf8_lossy(&bytes).to_lowercase();
         if lower.contains("base64 -d") && (lower.contains("curl ") || lower.contains("wget ")) {
             findings.push(format!(
                 "{file} decodes base64 and then fetches a remote file — a common dropper pattern"
@@ -765,5 +781,32 @@ mod tests {
         scan_dir(".", &mut files, &mut |_f, _t| hits += 1);
         assert!(files > 0, "the scanner must find source files");
         assert_eq!(files, hits);
+    }
+
+    #[test]
+    fn the_malware_scan_hashes_files_of_every_extension() {
+        // The EICAR test file carries a .txt name, and a payload is not obliged
+        // to use a source-code extension. The malware scan must read every file,
+        // unlike the source audit which only reads source.
+        let dir = std::env::temp_dir().join(format!("mts-scan-{}", crate::util::token_hex(6)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        std::fs::write(dir.join("payload.txt"), eicar).unwrap();
+
+        let mut seen = 0usize;
+        walk_files(dir.to_str().unwrap(), |_p| seen += 1);
+        assert_eq!(seen, 1, "a non-source file must still be visited");
+
+        let mut hits = 0usize;
+        walk_files(dir.to_str().unwrap(), |path| {
+            use sha2::Digest;
+            let bytes = std::fs::read(path).unwrap();
+            let digest = hex::encode(sha2::Sha256::digest(&bytes));
+            if digest == "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f" {
+                hits += 1;
+            }
+        });
+        assert_eq!(hits, 1, "the EICAR digest must be recognised");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
