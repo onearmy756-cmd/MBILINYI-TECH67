@@ -26,8 +26,16 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 - Rust toolchain lives in `/workspace/.toolchain` (survives a session reset;
   `~/.cargo` does not). R is at `/usr/bin/Rscript`, base R only.
 - `scripts/serve.sh` starts the Rust core on port 12000 and self-heals a reset
-  sandbox (installs Rust/R, rebuilds when sources are newer).
-- `scripts/smoke.sh` is the acceptance test; all 21 steps pass, repeatably.
+  sandbox (installs Rust/R/Go/Elixir, rebuilds when sources are newer).
+- `scripts/smoke.sh` is the acceptance test; all 26 steps pass, repeatably (the
+  four `ok:false` lines are intentional refusal tests).
+- **Runtimes**: `langrun.rs` advertises a language only when it can run it. A
+  compiled language (Rust, C) is built then executed — driven by `compiled: bool`
+  — and children receive only toolchain-location env (`RUSTUP_HOME`, `CARGO_HOME`,
+  `GOPATH`, `GOCACHE`, `MIX_HOME`, `ERL_LIBS`), never the platform environment.
+  All seven (python/rust/go/elixir/r/node/c) verified printing `42`.
+- **Hire a worker** with `wafanyakazi.php` action **`add`** and `services` as an
+  **array** (singular `service` is ignored → the worker never matches a request).
 - `rust/mts-core/target/` (~1.3 GB) and the runtime DB are git-ignored.
 
 ## Traps that already cost time
