@@ -1,0 +1,12 @@
+.git
+.github
+.trae
+.openhands
+node_modules
+**/node_modules
+rust/mts-core/target
+desktop
+mobile
+storage/*.sqlite*
+storage/sessions
+*.log

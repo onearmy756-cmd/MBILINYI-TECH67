@@ -84,3 +84,57 @@ git pull
 ```
 
 New tables and columns are added on the next request; existing rows are kept.
+
+---
+
+# Deploy — Fly.io (the Rust core)
+
+The Rust core in `rust/mts-core` is a complete server: it answers every page and
+every `/api/*` call that `assets/app.js` makes. On Fly it replaces the PHP
+runtime entirely, so `Dockerfile` builds only the Rust binary.
+
+```bash
+FLY_API_TOKEN=... bash scripts/fly-deploy.sh
+```
+
+`fly.toml` and the `Dockerfile` are checked in, so the script only creates the
+app, deploys, and adds the certificates. The build runs on Fly's builders
+(`--remote-only`); nothing needs to be installed locally.
+
+## What the image contains
+
+The runtime is Debian with the toolchains the platform advertises, because
+`langrun.rs` only offers a language it can actually run. Python, Rust, Go,
+Elixir, R, Node.js and C are all present and verified printing `42`.
+
+The server runs as the unprivileged `mts` account. The entrypoint hands the
+volume at `/data` to that account and then drops privileges, because the
+platform executes code that visitors submit.
+
+## The database
+
+`MTS_DB` is `/data/mts.sqlite`, on the `mts_data` volume, so the database and
+the session table survive a redeploy. A deployment with no volume would reset
+the site on every release.
+
+## The custom domain
+
+`mbilinyitech.co.tz` currently resolves to `91.204.209.30`, the cPanel host. Fly
+cannot take over the domain until that record changes at the registrar:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| A | `mbilinyitech.co.tz` | IPv4 from `fly ips list` |
+| AAAA | `mbilinyitech.co.tz` | IPv6 from `fly ips list` |
+| CNAME | `www` | `<app>.fly.dev` |
+
+Keep `mtech.mbilinyitech.co.tz` pointing at `mtechos.fly.dev`: that is a
+different application.
+
+## A token that cannot create apps
+
+A Fly token scoped to one existing app can deploy *that* app but returns
+`UNAUTHORIZED / "Not authorized to deploy this app"` on `createApp`. If
+`scripts/fly-deploy.sh` stops at step 1, the token needs to be an
+organisation-level token (`fly tokens create org`) rather than an app token.
+

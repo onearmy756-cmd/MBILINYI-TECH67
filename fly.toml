@@ -1,0 +1,46 @@
+# Fly.io configuration for the Mbilinyi Tech Solutions Rust core.
+# Deploy with:  fly deploy
+app = "mbilinyitech"
+primary_region = "jnb"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  MTS_PORT = "8080"
+  # The database lives on the volume so it survives a redeploy.
+  MTS_DB = "/data/mts.sqlite"
+  MTS_TEMPLATES = "/app/templates"
+  MTS_R_DIR = "/app/r"
+  SITE_URL = "https://mbilinyitech.co.tz"
+  MTS_PUBLIC_URL = "https://mbilinyitech.co.tz"
+  MTS_RP_ID = "mbilinyitech.co.tz"
+  MTS_ORIGIN = "https://mbilinyitech.co.tz"
+
+[[mounts]]
+  source = "mts_data"
+  destination = "/data"
+  initial_size = "3gb"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2048mb"
