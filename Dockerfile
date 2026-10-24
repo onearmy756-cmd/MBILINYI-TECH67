@@ -63,7 +63,12 @@ COPY manifest.json sw.js robots.txt sitemap.xml /app/
 # Outside /app on purpose: `static_file` serves any dotted path under the
 # working directory, and this script has no business being downloadable.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh /app/mts-core
+# The server runs as `mts` (uid 1000), so a template copied in with a 0600 mode
+# would be unreadable and every page using it would 404 while looking fine on
+# disk. Normalise the modes here rather than trusting the checkout.
+RUN chmod +x /usr/local/bin/entrypoint.sh /app/mts-core \
+ && chmod -R a+rX /app/templates /app/assets /app/downloads /app/r \
+ && chmod a+r /app/manifest.json /app/sw.js /app/robots.txt /app/sitemap.xml
 
 ENV MTS_PORT=8080 \
     MTS_DB=/data/mts.sqlite \
