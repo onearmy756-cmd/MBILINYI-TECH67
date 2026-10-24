@@ -17,6 +17,23 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   browser `assets/call.js` (real RTCPeerConnection). Verified 2 peers connect.
 - Details and the traps: `2026-10-23-payroll-hiring-call.md`.
 
+## Deploy (Fly.io) — see `2026-10-24-fly-deploy.md`
+- **The Fly token in the task is app-scoped to `mtechos` and CANNOT create an
+  app.** It deploys/creates volumes on `mtechos` but every app-create path
+  (deploy, launch, GraphQL `createApp`, machines volumes) returns
+  `UNAUTHORIZED` / `app not found`. Creating an app needs an ORG token
+  (`fly tokens create org`). **Do not deploy over `mtechos`** — it is a
+  different product (an Agent-Canvas "fundi" IDE at mtech.mbilinyitech.co.tz).
+- DNS for `mbilinyitech.co.tz` is at `ns1/ns2.rodlinehost.com` (cPanel host);
+  apex A → 91.204.209.30, `www` CNAME → apex, `mtech` CNAME → mtechos.fly.dev.
+  Fly cannot take the apex until the registrar A record changes.
+- Deploy artifacts are committed: `Dockerfile`, `fly.toml`,
+  `docker/entrypoint.sh`, `.dockerignore`, `scripts/fly-deploy.sh`, DEPLOY.md.
+  Verified: 109 cargo tests pass, smoke.sh fully green against the container,
+  all 7 languages print 42, /api/health ok with 44 tables.
+- `MTS_OTP_PEPPER` defaults to a hardcoded value — set a real one in Fly.
+  Never set `OTP_SHOW_IN_RESPONSE` on the live site.
+
 ## Facts worth keeping
 - Repo `onearmy756-cmd/MBILINYI-TECH67`, default branch **master** (a stale
   `main` ref also exists). **It is public, not private.** The CEO's PAT has
