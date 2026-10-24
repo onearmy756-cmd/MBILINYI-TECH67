@@ -1958,7 +1958,7 @@ async function adminTab(t, quiet) {
   aTab = t;
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
-    wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
+    wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', payroll: 'Payroll — Payslips, PAYE, NSSF & WCF', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
     queue: 'Work Queue — What the Company Is Doing and What Waits for Approval',
     runs: 'Agent Runs — Every Job the Company Carries Out', runtimes: 'Runtimes — Languages the Platform Really Runs', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery' };
   $('adminTabTitle').textContent = titles[t];
@@ -2250,11 +2250,13 @@ async function adminTab(t, quiet) {
     }
 
     if (t === 'ajira') {
-      const [jobs, apps, st] = await Promise.all([
+      const [jobs, apps, st, ecs] = await Promise.all([
         apiGet('api/ajira.php', { action: 'admin_openings' }),
         apiGet('api/ajira.php', { action: 'admin_applications', jobId: adminJobFilter || '' }),
         apiGet('api/ajira.php', { action: 'status' }),
+        apiGet('api/ajira.php', { action: 'employment_contracts' }).catch(() => ({ contracts: [] })),
       ]);
+      const contracts = ecs.contracts || [];
       const openings = jobs.openings || [];
       const applications = apps.applications || [];
       h = `<div class="rounded-2xl border border-amber-400/25 bg-amber-500/[.05] p-4 text-[13px] text-white/70 mb-4">
@@ -2283,6 +2285,7 @@ async function adminTab(t, quiet) {
       <div class="flex flex-wrap items-center gap-2 mb-3">
         <div class="font-bold text-[14px]"><i class="fa-solid fa-users-viewfinder text-cyan-300 mr-1.5"></i>Applications (${applications.length})</div>
         <select onchange="adminJobFilter=this.value;adminTab('ajira')" class="input !w-auto text-[12.5px]"><option value="">All vacancies</option>${openings.map(j => `<option value="${j.id}" ${adminJobFilter === j.id ? 'selected' : ''}>${esc(j.title)}</option>`).join('')}</select>
+        <button onclick="aiRank(${applications.length})" class="ml-auto px-4 py-2 rounded-xl bg-violet-500/15 border border-violet-400/30 hover:border-violet-400/70 text-[12.5px] font-bold text-violet-200"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>AI Rank Applicants</button>
       </div>
       <div class="grid gap-2.5">
       ${applications.map(a => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
@@ -2303,9 +2306,48 @@ async function adminTab(t, quiet) {
           <span>Practical: <strong class="text-white/80">${a.practicalScore}%</strong></span>
           <span>Email: <strong class="text-white/80">${esc(a.email || '—')}</strong></span>
           <span>Phone: <strong class="text-white/80">${esc(a.phone || '—')}</strong></span>
+          ${a.aiScore ? `<span class="text-violet-300"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>AI fit: <strong>${a.aiScore}%</strong></span>` : ''}
         </div>
+        ${a.aiNote ? `<div class="text-[12px] text-violet-200/80 mt-2"><i class="fa-solid fa-robot mr-1"></i>${esc(a.aiNote)}</div>` : ''}
         ${a.assessmentNotes ? `<div class="text-[12px] text-white/55 mt-2 italic">“${esc(a.assessmentNotes)}”</div>` : ''}
-      </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No applications yet. The public Ajira page is open to everyone.</div>'}</div>`;
+      </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No applications yet. The public Ajira page is open to everyone.</div>'}</div>
+      ${employmentContractsHtml(contracts)}`;
+    }
+
+    if (t === 'payroll') {
+      const [sl, tx] = await Promise.all([
+        apiGet('api/payments.php', { action: 'payslips' }),
+        apiGet('api/payments.php', { action: 'tax_return' }),
+      ]);
+      const slips = sl.payslips || [];
+      const w = tx.withheld || {};
+      const total = slips.reduce((s, p) => s + (p.net || 0), 0);
+      h = `<div class="rounded-2xl border border-lime-400/25 bg-lime-500/[.05] p-4 text-[13px] text-white/70 mb-4">
+        <i class="fa-solid fa-money-check-dollar text-lime-300 mr-2"></i>
+        Every time escrow releases to a worker, a payslip is raised: <strong>PAYE</strong> (banded), <strong>NSSF</strong> and <strong>WCF</strong> are deducted, and the net goes to the worker. The worker sees only their own payslips.
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-5">
+        ${[['Payslips', slips.length, 'lime-300'], ['Net to workers', fmtTZS(total), 'emerald-300'], ['Outstanding', fmtTZS(sl.outstanding || 0), 'amber-300'], ['TRA to remit', fmtTZS(tx.totalRemittable || 0), 'rose-300']]
+          .map(([l, v, c]) => `<div class="glass rounded-xl p-3.5 border border-white/10"><div class="text-[20px] font-extrabold text-${c}">${v}</div><div class="text-[11.5px] text-white/50">${l}</div></div>`).join('')}
+      </div>
+      <div class="grid md:grid-cols-3 gap-3 mb-5">
+        <div class="glass rounded-2xl p-4 border border-white/10"><div class="text-[11.5px] font-bold text-white/45 uppercase tracking-wider mb-2">Withheld this period</div>
+          <div class="flex justify-between text-[13px]"><span class="text-white/60">PAYE (TRA)</span><strong class="font-mono">${fmtTZS(w.paye || 0)}</strong></div>
+          <div class="flex justify-between text-[13px] mt-1"><span class="text-white/60">WCF (TRA)</span><strong class="font-mono">${fmtTZS(w.wcf || 0)}</strong></div>
+          <div class="flex justify-between text-[13px] mt-1"><span class="text-white/60">NSSF</span><strong class="font-mono">${fmtTZS(w.nssf || 0)}</strong></div>
+        </div>
+        <div class="glass rounded-2xl p-4 border border-white/10 md:col-span-2"><div class="text-[11.5px] font-bold text-white/45 uppercase tracking-wider mb-2">Payslips</div>
+          <div class="grid gap-2">${slips.map(p => `<div class="flex flex-wrap items-center gap-3 text-[12.5px]">
+            <span class="font-mono text-lime-300">${esc(p.id)}</span>
+            <span class="flex-1 min-w-[140px]">${esc(p.employeeName)} <span class="text-white/40">${esc(p.contractId)}</span></span>
+            <span class="text-white/50">gross <strong class="text-white/80 font-mono">${fmtTZS(p.gross)}</strong></span>
+            <span class="text-emerald-300">net <strong class="font-mono">${fmtTZS(p.net)}</strong></span>
+            <span class="badge ${p.status === 'Paid' ? 'status-Completed' : 'status-Pending'}">${esc(p.status)}</span>
+            ${p.status !== 'Paid' ? `<button onclick="payPayslip('${p.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 font-bold">Pay</button>` : ''}
+          </div>`).join('') || '<div class="text-white/40 text-[13px]">No payslips yet — they appear when escrow releases to a worker.</div>'}</div>
+        </div>
+      </div>
+      <div class="text-[12px] text-white/45">${esc(tx.note || '')}</div>`;
     }
 
     if (t === 'queue') {
@@ -4122,6 +4164,51 @@ async function delApplication(id) {
   adminTab('ajira'); toast('Application deleted.', 'info');
 }
 
+/* The employment contracts raised when someone is hired. The CEO reads the
+   terms and signs; the signature is a real ECDSA over those terms. */
+function employmentContractsHtml(contracts) {
+  if (!contracts || !contracts.length) return '';
+  return `<div class="mt-7">
+    <div class="font-bold text-[14px] mb-3"><i class="fa-solid fa-file-signature text-emerald-300 mr-1.5"></i>Employment Contracts (${contracts.length})</div>
+    <div class="grid gap-2.5">
+    ${contracts.map(c => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <div class="font-bold text-[13.5px]">${esc(c.employeeName)} <span class="text-white/40 font-normal">— ${esc(c.roleTitle || '')}</span></div>
+          <div class="text-[11.5px] text-white/45">${esc(c.department)} • ${esc(c.service || '—')} • ${esc(c.salary || 'Salary on request')}</div>
+        </div>
+        <span class="badge ${c.status === 'Active' ? 'status-Completed' : 'status-Pending'}">${esc(c.status)}</span>
+        <button onclick="signEmploymentContract('${c.id}')" class="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/30 hover:border-emerald-400/70 text-[12px] font-bold text-emerald-300"><i class="fa-solid fa-signature mr-1"></i>Sign as CEO</button>
+      </div>
+      <details class="mt-2.5"><summary class="text-[12px] text-white/50 cursor-pointer">View terms</summary>
+        <pre class="text-[11.5px] text-white/60 mt-2 whitespace-pre-wrap font-sans">${esc(c.terms)}</pre></details>
+    </div>`).join('')}</div></div>`;
+}
+
+async function signEmploymentContract(id) {
+  try {
+    const r = await apiPost('api/ajira.php', { action: 'employment_contract_sign', id });
+    toast(`Signed (${r.algorithm}) — status ${r.status} ✓`, 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ajira');
+}
+
+async function aiRank(count) {
+  if (!count) { toast('No applicants to rank yet.', 'info'); return; }
+  toast('Ranking applicants with the AI engine…', 'info');
+  try {
+    const r = await apiPost('api/ajira.php', { action: 'ai_rank', jobId: adminJobFilter || '' });
+    toast(`AI ranked ${r.count || 0} applicant(s) via ${r.provider || 'the engine'} ✓`, 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('ajira');
+}
+
+async function payPayslip(id) {
+  if (!confirm('Mark this payslip as paid? Record it once the worker has been paid out of the company account.')) return;
+  try { await apiPost('api/payments.php', { action: 'payslip_pay', id }); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('payroll'); toast('Payslip marked paid ✓', 'ok');
+}
+
 /* ============================================================
    AGENTS + ONLINE OFFICE + SECURITY
    ============================================================ */
@@ -4426,7 +4513,7 @@ function staffTab(t) {
     b.classList.toggle('text-white', b.dataset.stab === t);
     b.classList.toggle('text-white/70', b.dataset.stab !== t);
   });
-  const titles = { home: T('My Desk', 'Dawati Langu'), tasks: T('My Tasks', 'Kazi Zangu'), tools: T('My Tools', 'Zana Zangu'), workspace: T('AI Workspace', 'Eneo la AI'), office: T('Online Office', 'Ofisi Mtandaoni') };
+  const titles = { home: T('My Desk', 'Dawati Langu'), tasks: T('My Tasks', 'Kazi Zangu'), tools: T('My Tools', 'Zana Zangu'), workspace: T('AI Workspace', 'Eneo la AI'), office: T('Online Office', 'Ofisi Mtandaoni'), pay: T('Pay & Contract', 'Malipo na Mkataba') };
   if ($('staffTabTitle')) $('staffTabTitle').textContent = titles[t] || titles.home;
   staffLoad();
 }
@@ -4441,6 +4528,7 @@ async function staffLoad() {
     if (sTab === 'tools') return await staffTools(box);
     if (sTab === 'workspace') return await staffWorkspace(box);
     if (sTab === 'office') return staffOffice(box);
+    if (sTab === 'pay') return await staffPay(box);
   } catch (e) {
     box.innerHTML = `<div class="rounded-2xl border border-red-400/25 bg-red-500/[.06] p-4 text-red-200 text-sm"><i class="fa-solid fa-circle-exclamation mr-2"></i>${esc(e.message)}</div>`;
   }
@@ -4524,6 +4612,61 @@ async function staffTasks(box) {
       </div>
     </div>`;
   }).join('');
+}
+
+async function staffPay(box) {
+  const [sl, ec] = await Promise.all([
+    apiGet('api/payments.php', { action: 'payslips' }),
+    apiGet('api/ajira.php', { action: 'employment_contracts' }).catch(() => ({ contracts: [] })),
+  ]);
+  const slips = sl.payslips || [];
+  const contracts = ec.contracts || [];
+  const money = (n, cur) => fmtMoney(n, cur || 'TZS');
+  box.innerHTML = `
+    <div class="glass rounded-3xl p-5 border border-white/10">
+      <div class="font-bold text-[15px] mb-3"><i class="fa-solid fa-money-check-dollar text-lime-300 mr-2"></i>${T('My payslips', 'Payslips zangu')}</div>
+      ${slips.length ? `<div class="grid gap-3">${slips.map(p => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="font-mono text-lime-300 text-[13px]">${esc(p.id)}</span>
+          <span class="flex-1 min-w-[120px] text-[13px]">${esc(p.contractId)}</span>
+          <span class="badge ${p.status === 'Paid' ? 'status-Completed' : 'status-Pending'}">${esc(p.status)}</span>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-[13px] mt-3">
+          ${staffRow(T('Gross', 'Pato ghafi'), money(p.gross, p.currency))}
+          ${staffRow(T('PAYE', 'Kodi ya mapato'), money(p.paye, p.currency))}
+          ${staffRow(T('NSSF', 'NSSF'), money(p.nssf, p.currency))}
+          ${staffRow(T('WCF', 'WCF'), money(p.wcf, p.currency))}
+        </div>
+        <div class="flex justify-between items-center mt-3 pt-3 border-t border-white/10">
+          <span class="text-[12.5px] text-white/50">${T('Net pay', 'Malipo halisi')}</span>
+          <span class="font-display font-bold text-xl text-emerald-300">${money(p.net, p.currency)}</span>
+        </div>
+      </div>`).join('')}</div>`
+      : `<div class="text-white/45 text-[13px]">${T('No payslips yet. One is raised each time a job you delivered is accepted and the money leaves escrow.', 'Hakuna payslip bado. Huundwa kila kazi uliyokamilisha inapokubaliwa na fedha kutoka escrow.')}</div>`}
+    </div>
+    <div class="glass rounded-3xl p-5 border border-white/10 mt-4">
+      <div class="font-bold text-[15px] mb-3"><i class="fa-solid fa-file-signature text-emerald-300 mr-2"></i>${T('My employment contract', 'Mkataba wangu wa ajira')}</div>
+      ${contracts.length ? `<div class="grid gap-3">${contracts.map(c => `<div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="flex-1 text-[13px] font-bold">${esc(c.roleTitle || '')} <span class="text-white/45 font-normal">${esc(c.department)}</span></span>
+          <span class="badge ${c.status === 'Active' ? 'status-Completed' : 'status-Pending'}">${esc(c.status)}</span>
+          ${c.employeeSignedAt ? `<span class="text-emerald-300 text-[12px]"><i class="fa-solid fa-check-double mr-1"></i>${T('Signed', 'Imesainiwa')}</span>`
+            : `<button onclick="staffSignContract('${c.id}')" class="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/30 hover:border-emerald-400/70 text-[12px] font-bold text-emerald-300"><i class="fa-solid fa-signature mr-1"></i>${T('Sign', 'Saini')}</button>`}
+        </div>
+        <div class="text-[12px] text-white/45 mt-1">${esc(c.salary || '')}</div>
+        <details class="mt-2.5"><summary class="text-[12px] text-white/50 cursor-pointer">${T('View terms', 'Ona masharti')}</summary>
+          <pre class="text-[11.5px] text-white/60 mt-2 whitespace-pre-wrap font-sans">${esc(c.terms)}</pre></details>
+      </div>`).join('')}</div>`
+      : `<div class="text-white/45 text-[13px]">${T('No contract yet. One is drafted for you when you are hired.', 'Hakuna mkataba bado. Huandaliwa unapoajiriwa.')}</div>`}
+    </div>`;
+}
+
+async function staffSignContract(id) {
+  try {
+    const r = await apiPost('api/ajira.php', { action: 'employment_contract_sign', id });
+    toast(`${T('Signed', 'Imesainiwa')} (${r.algorithm}) ✓`, 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  staffLoad();
 }
 
 async function staffSetStatus(requestId, status) {

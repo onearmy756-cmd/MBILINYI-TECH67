@@ -614,6 +614,7 @@ fn hire(c: &Ctx) -> Response {
         &emp_id,
         &util::s(app.get("email").unwrap_or(&J::Null)),
         &util::s(app.get("full_name").unwrap_or(&J::Null)),
+        &util::s(app.get("phone").unwrap_or(&J::Null)),
     )
     .is_some();
     // Draft the employment contract from the vacancy, so hiring and the paper
@@ -763,9 +764,11 @@ fn employment_contract_sign(c: &Ctx) -> Response {
         return err("Contract not found.", 404);
     };
     let role = u.get("role").and_then(|v| v.as_str()).unwrap_or("");
-    // The bytes the signature covers: every term that matters.
+    // The bytes the signature covers: every term that matters, plus the role of
+    // the signer, so the CEO's signature and the worker's are distinct and each
+    // one says who agreed to what.
     let message = format!(
-        "MTS-EMPLOYMENT|id={}|employee={}|role={}|department={}|service={}|salary={}|terms={}|created={}",
+        "MTS-EMPLOYMENT|id={}|employee={}|role={}|department={}|service={}|salary={}|terms={}|created={}|signer={}",
         util::s(row.get("id").unwrap_or(&J::Null)),
         util::s(row.get("employee_id").unwrap_or(&J::Null)),
         util::s(row.get("role_title").unwrap_or(&J::Null)),
@@ -774,6 +777,7 @@ fn employment_contract_sign(c: &Ctx) -> Response {
         util::s(row.get("salary").unwrap_or(&J::Null)),
         util::s(row.get("terms").unwrap_or(&J::Null)),
         util::s(row.get("created_at").unwrap_or(&J::Null)),
+        if role == "admin" { "admin" } else { "employee" },
     );
     let sig = match crate::security::sign_bytes(message.as_bytes()) {
         Ok(s) => s,
@@ -804,8 +808,10 @@ fn employment_contract_sign(c: &Ctx) -> Response {
         &[arg(json!(id))],
     )
     .map(|r| {
-        !util::s(r.get("admin_sig").unwrap_or(&J::Null)).is_empty()
-            && !util::s(r.get("employee_sig").unwrap_or(&J::Null)).is_empty()
+        both_signed(
+            r.get("admin_sig").and_then(|v| v.as_str()).unwrap_or(""),
+            r.get("employee_sig").and_then(|v| v.as_str()).unwrap_or(""),
+        )
     })
     .unwrap_or(false);
     if both {
@@ -821,4 +827,23 @@ fn employment_contract_sign(c: &Ctx) -> Response {
         "signature": sig,
         "algorithm": "ECDSA-secp256k1",
     }))
+}
+
+/// A contract is live only when both the CEO and the worker have signed it.
+/// A single signature is a draft, not an agreement.
+fn both_signed(admin_sig: &str, employee_sig: &str) -> bool {
+    !admin_sig.is_empty() && !employee_sig.is_empty()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_contract_is_active_only_when_both_have_signed() {
+        assert!(!both_signed("", ""));
+        assert!(!both_signed("sig", ""));
+        assert!(!both_signed("", "sig"));
+        assert!(both_signed("sig", "sig"));
+    }
 }

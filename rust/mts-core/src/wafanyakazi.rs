@@ -218,16 +218,23 @@ pub async fn handle(c: &Ctx) -> Response {
     }
 }
 
+/// Keep only the digits of a phone number, so "0711 999 888" and "+255711999888"
+/// are stored the same way and the PIN tail is computed consistently.
+fn digits_only(raw: &str) -> String {
+    raw.chars().filter(|c| c.is_ascii_digit()).collect()
+}
+
 /// Link an employee record to a user account, creating the account when needed.
 /// An employee without a login cannot use the portal, so this is what hiring
 /// with portal access does.
-pub fn link_account(employee_id: &str, email: &str, name: &str) -> Option<String> {
+pub fn link_account(employee_id: &str, email: &str, name: &str, phone: &str) -> Option<String> {
     if email.trim().is_empty() {
         return None;
     }
+    let phone = digits_only(phone);
     // An existing account with that address is reused rather than duplicated.
     if let Some(u) = db::row(
-        "SELECT id FROM users WHERE lower(email) = ?",
+        "SELECT id, phone FROM users WHERE lower(email) = ?",
         &[arg(json!(email.to_lowercase()))],
     ) {
         let uid = util::s(u.get("id").unwrap_or(&J::Null));
@@ -235,17 +242,27 @@ pub fn link_account(employee_id: &str, email: &str, name: &str) -> Option<String
             "UPDATE employees SET user_id = ? WHERE id = ?",
             &[arg(json!(uid)), arg(json!(employee_id))],
         );
+        // Backfill the phone when the account has none: without it the worker
+        // has no PIN and cannot get past the second sign-in step.
+        if util::s(u.get("phone").unwrap_or(&J::Null)).is_empty() && !phone.is_empty() {
+            let _ = db::run(
+                "UPDATE users SET phone = ? WHERE id = ?",
+                &[arg(json!(phone)), arg(json!(uid))],
+            );
+        }
         return Some(uid);
     }
     let uid = util::new_id("U-");
     // A random password is issued; the employee sets their own on first sign-in
     // through the ordinary password reset, so no shared secret is ever mailed.
+    // The phone is stored so the last four digits serve as the sign-in PIN,
+    // which is the same scheme every other account uses.
     let pass = util::token_hex(12);
     let _ = db::run(
         "INSERT INTO users (id, name, email, phone, company, password_hash, role, status, created_at)
          VALUES (?,?,?,?,?,?,?,?,?)",
         &[
-            arg(json!(uid)), arg(json!(name)), arg(json!(email.to_lowercase())), arg(json!("")),
+            arg(json!(uid)), arg(json!(name)), arg(json!(email.to_lowercase())), arg(json!(phone)),
             arg(json!("Mbilinyi Tech Solutions")),
             arg(json!(bcrypt::hash(&pass, 10).unwrap_or_default())),
             arg(json!("staff")), arg(json!("Active")), arg(json!(util::now())),
@@ -293,7 +310,7 @@ fn current_employee(c: &Ctx) -> Result<db::Row, Response> {
 /// not a worker. Used by payroll so a worker reads only their own payslips.
 pub fn employee_for_account(user_id: &str) -> Option<String> {
     db::row(
-        "SELECT id FROM employees WHERE user_id = ?",
+        "SELECT id FROM employees WHERE user_id = ? ORDER BY created_at DESC, id DESC",
         &[arg(json!(user_id))],
     )
     .map(|r| util::s(r.get("id").unwrap_or(&J::Null)))
@@ -621,7 +638,7 @@ fn save(c: &Ctx) -> Response {
         );
         // A worker with a portal account can reach their own tools; without one
         // the record is still saved, and the CEO can link it later.
-        let linked = link_account(&new_id, &c.p("email"), &name).is_some();
+        let linked = link_account(&new_id, &c.p("email"), &name, &c.p("phone")).is_some();
         ok(json!({ "id": new_id, "saved": true, "portalAccount": linked }))
     } else {
         let _ = db::run(
@@ -638,7 +655,7 @@ fn save(c: &Ctx) -> Response {
                 arg(json!(status)), arg(json!(now)), arg(json!(id)),
             ],
         );
-        let linked = link_account(&id, &c.p("email"), &name).is_some();
+        let linked = link_account(&id, &c.p("email"), &name, &c.p("phone")).is_some();
         ok(json!({ "id": id, "saved": true, "portalAccount": linked }))
     }
 }
@@ -897,5 +914,15 @@ mod tests {
         ));
         assert!(!same_service("", "AI Fine-Tuning"));
         assert!(!same_service("AI Fine-Tuning", ""));
+    }
+
+    /// The phone is stored digit-only so the sign-in PIN, which is its last four
+    /// digits, is computed the same way whatever the formatting.
+    #[test]
+    fn phone_is_reduced_to_digits() {
+        assert_eq!(digits_only("0711 999 888"), "0711999888");
+        assert_eq!(digits_only("+255 (711) 999-888"), "255711999888");
+        assert_eq!(digits_only(""), "");
+        assert_eq!(digits_only("no digits here"), "");
     }
 }
