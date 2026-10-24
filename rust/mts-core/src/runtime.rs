@@ -240,6 +240,56 @@ pub async fn run(code: &str, args: &J) -> Outcome {
             }
             Outcome::done(crate::sandbox::explain("malware scan", &evidence).await, "malware: scanned")
         }
+        "secret_scan" => {
+            let (evidence, ok) = crate::sandbox::audit_secrets(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "secrets: nothing to read");
+            }
+            Outcome::done(crate::sandbox::explain("secrets scan", &evidence).await, "secrets: scanned")
+        }
+        "log_audit" | "siem" => {
+            let (evidence, ok) = crate::sandbox::audit_logs(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "logs: nothing to read");
+            }
+            Outcome::done(crate::sandbox::explain("log analysis", &evidence).await, "logs: analysed")
+        }
+        "file_integrity" | "hash_check" => {
+            let (evidence, ok) = crate::sandbox::hash_file(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "hash: nothing to read");
+            }
+            Outcome::done(evidence, "hash: computed")
+        }
+        "password_audit" => {
+            let (evidence, ok) = crate::sandbox::audit_password(&s("task")).await;
+            if !ok {
+                return Outcome::failed(evidence, "password: no candidate");
+            }
+            Outcome::done(evidence, "password: measured")
+        }
+        "jwt_inspect" => {
+            let token = if s("token").is_empty() { pick_target(args) } else { s("token") };
+            let (evidence, ok) = crate::sandbox::inspect_jwt(&token).await;
+            if !ok {
+                return Outcome::failed(evidence, "jwt: not a token");
+            }
+            Outcome::done(evidence, "jwt: decoded")
+        }
+        "cors_audit" | "cookie_audit" | "method_audit" | "cert_inspect" | "subdomain_enum" => {
+            let target = pick_target(args);
+            let (evidence, ok) = match code {
+                "cors_audit" => crate::sandbox::audit_cors(&target).await,
+                "cookie_audit" => crate::sandbox::audit_cookies(&target).await,
+                "method_audit" => crate::sandbox::audit_methods(&target).await,
+                "cert_inspect" => crate::sandbox::audit_cert(&target).await,
+                _ => crate::sandbox::subdomain_scan(&target).await,
+            };
+            if !ok {
+                return Outcome::failed(evidence, "web: no answer");
+            }
+            Outcome::done(crate::sandbox::explain("web security review", &evidence).await, "web: audited")
+        }
 
         // ---- Code tools that compile and run for real ----
         "test_runner" => {
@@ -287,7 +337,7 @@ Time: {} ms
 
 /// The target a security tool was given, from whichever field the caller used.
 fn pick_target(args: &J) -> String {
-    for k in ["target", "url", "host", "domain", "task", "input"] {
+    for k in ["target", "url", "host", "domain", "path", "task", "input"] {
         let v = args.get(k).map(util::s).unwrap_or_default();
         if !v.trim().is_empty() {
             return v;

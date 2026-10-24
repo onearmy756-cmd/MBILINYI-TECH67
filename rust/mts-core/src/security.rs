@@ -308,9 +308,20 @@ async fn scan(c: &Ctx) -> Response {
         "dependencies" => crate::sandbox::audit_dependencies(&target).await,
         "code" => crate::sandbox::audit_code(&target).await,
         "malware" => crate::sandbox::scan_malware(&target).await,
+        "methods" => crate::sandbox::audit_methods(&target).await,
+        "cors" => crate::sandbox::audit_cors(&target).await,
+        "cookies" => crate::sandbox::audit_cookies(&target).await,
+        "secrets" => crate::sandbox::audit_secrets(&target).await,
+        "password" => crate::sandbox::audit_password(&target).await,
+        "jwt" => crate::sandbox::inspect_jwt(&target).await,
+        "cert" => crate::sandbox::audit_cert(&target).await,
+        "subdomains" => crate::sandbox::subdomain_scan(&target).await,
+        "hash" => crate::sandbox::hash_file(&target).await,
+        "logs" => crate::sandbox::audit_logs(&target).await,
         _ => {
             return bad(
-                "Choose a check: headers, exposure, dns, tls, dependencies, code or malware.",
+                "Choose a check: headers, exposure, dns, tls, methods, cors, cookies, cert, \
+                 subdomains, dependencies, code, secrets, malware, hash, logs or password.",
             )
         }
     };

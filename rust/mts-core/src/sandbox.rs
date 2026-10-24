@@ -22,10 +22,13 @@ use serde_json::{json, Value as J};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
-/// The ports a basic scan tries. Deliberately a short, common list: a full
-/// sweep belongs in a dedicated tool, not in a web request.
+/// The ports a basic scan tries. A deliberately fixed list, so the scan is
+/// quick and predictable: a full sweep belongs in a dedicated tool, not in a
+/// web request.
 const COMMON_PORTS: &[u16] = &[
-    21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 6379, 8080, 8443, 9200, 27017,
+    21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 587, 993, 995, 1433, 1521, 2049, 2375, 3000, 3306,
+    3389, 4443, 5000, 5432, 5601, 5900, 6379, 8000, 8080, 8081, 8443, 8888, 9000, 9090, 9200, 9300,
+    11211, 27017,
 ];
 
 /// Paths that should never be publicly readable. A 200 here is a real finding.
@@ -703,18 +706,601 @@ pub fn status() -> J {
         .collect();
     json!({
         "authorisedDomains": domains,
-        "scanner": "built in (headers, exposure, ports, DNS, TLS, dependencies, source, malware)",
+        "scanner": "built in (headers, exposure, ports, DNS, TLS, methods, CORS, cookies, certificate, subdomains, dependencies, source, secrets, malware, hashes, logs, passwords)",
         "checks": [
             "Security headers — read from a live response",
             "Exposure — real requests for the paths that must not be public, plus a TCP port check",
             "DNS — live DNS-over-HTTPS lookups for A, AAAA, NS, MX, TXT, SPF and DMARC",
             "TLS — a real handshake, with the failure reason when it fails",
+            "Methods — the HTTP verbs the server actually answers (TRACE, PUT, DELETE, PATCH)",
+            "CORS — whether a foreign origin is reflected, with or without credentials",
+            "Cookies — Secure, HttpOnly and SameSite on every cookie the first response sets",
+            "Certificate — issuer, validity dates and SAN names from a real handshake",
+            "Subdomains — common names resolved over DNS-over-HTTPS",
             "Dependencies — the project's manifests against a bundled advisory list",
             "Source — the code on disk searched for the patterns that cause breaches",
+            "Secrets — committed keys and tokens found in every readable file",
             "Malware — file digests against known-bad values, plus dropper patterns",
+            "Integrity — SHA-256 of every file, to verify against a published value",
+            "Logs — brute force, injection, traversal and scanner marks in a log",
+            "Passwords — entropy measured, with the candidate never echoed back",
         ],
         "rule": "Nothing is scanned until the CEO authorises the domain and the caller names who approved the work.",
     })
+}
+
+
+/* --------------------- the wider scanner: more real checks --------------------- */
+
+/// A hostname that is safe to place in a command line. Anything else is refused
+/// rather than passed to a shell.
+fn safe_host(host: &str) -> Option<String> {
+    if !host.is_empty()
+        && host
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+    {
+        Some(host.to_string())
+    } else {
+        None
+    }
+}
+
+/// Which HTTP verbs a server actually answers. A live TRACE or PUT is a real
+/// finding: TRACE echoes the request back and PUT may write a file.
+pub async fn audit_methods(target: &str) -> (String, bool) {
+    let host = host_of(target);
+    let url = if target.starts_with("http") {
+        target.trim_end_matches('/').to_string()
+    } else {
+        format!("https://{host}")
+    };
+    let client = client();
+    let mut allowed = Vec::new();
+    let mut findings = Vec::new();
+    for verb in ["OPTIONS", "TRACE", "PUT", "DELETE", "PATCH"] {
+        let req = match verb {
+            "OPTIONS" => client.request(reqwest::Method::OPTIONS, &url),
+            "TRACE" => client.request(reqwest::Method::TRACE, &url),
+            "PUT" => client.request(reqwest::Method::PUT, &url),
+            "DELETE" => client.request(reqwest::Method::DELETE, &url),
+            _ => client.request(reqwest::Method::PATCH, &url),
+        };
+        let Ok(r) = req.send().await else {
+            continue;
+        };
+        let status = r.status().as_u16();
+        let allow = r
+            .headers()
+            .get("allow")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        if !allow.is_empty() {
+            allowed.push(format!("{verb}: {allow}"));
+        }
+        // 200/204 on a writing verb is the finding; 405 is the correct refusal.
+        let ok = matches!(status, 200 | 201 | 202 | 204);
+        if ok && matches!(verb, "TRACE" | "PUT" | "DELETE" | "PATCH") {
+            findings.push(finding(
+                "high",
+                &format!("{verb} is accepted"),
+                &format!("{verb} {url} returned HTTP {status}."),
+                &format!("Refuse {verb} at the server unless it is genuinely part of the API."),
+            ));
+        }
+    }
+    if findings.is_empty() {
+        findings.push(finding(
+            "info",
+            "No writing verb was accepted",
+            "TRACE, PUT, DELETE and PATCH were all refused.",
+            "Nothing to change.",
+        ));
+    }
+    let body = format!(
+        "HTTP method audit of {url}\nAllow headers: {}\nFindings: {}\n{}",
+        if allowed.is_empty() {
+            "none returned".to_string()
+        } else {
+            allowed.join("; ")
+        },
+        findings.len(),
+        findings
+            .iter()
+            .map(|f| format!(
+                "[{}] {} — {}",
+                util::s(f.get("severity").unwrap_or(&J::Null)),
+                util::s(f.get("title").unwrap_or(&J::Null)),
+                util::s(f.get("evidence").unwrap_or(&J::Null))
+            ))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+    (body, true)
+}
+
+/// Cross-origin policy. The dangerous case is a reflected origin together with
+/// credentials, which lets any site read the response as the signed-in user.
+pub async fn audit_cors(target: &str) -> (String, bool) {
+    let host = host_of(target);
+    let url = if target.starts_with("http") {
+        target.trim_end_matches('/').to_string()
+    } else {
+        format!("https://{host}")
+    };
+    let probe = "https://mts-cors-probe.invalid";
+    let res = match client().get(&url).header("Origin", probe).send().await {
+        Ok(r) => r,
+        Err(e) => return (format!("Could not reach {url}: {e}"), false),
+    };
+    let allow_origin = res
+        .headers()
+        .get("access-control-allow-origin")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let allow_creds = res
+        .headers()
+        .get("access-control-allow-credentials")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let mut findings = Vec::new();
+    if allow_origin == probe || allow_origin == "*" {
+        let sev = if allow_creds.eq_ignore_ascii_case("true") {
+            "high"
+        } else {
+            "medium"
+        };
+        findings.push(finding(
+            sev,
+            "The origin is reflected in the CORS header",
+            &format!("GET {url} with Origin: {probe} answered access-control-allow-origin: {allow_origin}, allow-credentials: {}", if allow_creds.is_empty() { "absent" } else { &allow_creds }),
+            "Return a fixed allow-list of origins, never the value the caller sent.",
+        ));
+    }
+    let body = format!(
+        "CORS audit of {url}\naccess-control-allow-origin: {}\naccess-control-allow-credentials: {}\nFindings: {}\n{}",
+        if allow_origin.is_empty() { "absent" } else { &allow_origin },
+        if allow_creds.is_empty() { "absent" } else { &allow_creds },
+        findings.len(),
+        if findings.is_empty() {
+            "The origin is not reflected, so a third-party site cannot read responses.".to_string()
+        } else {
+            findings
+                .iter()
+                .map(|f| format!("[{}] {}", util::s(f.get("severity").unwrap_or(&J::Null)), util::s(f.get("title").unwrap_or(&J::Null))))
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
+    );
+    (body, true)
+}
+
+/// Cookie flags. A session cookie without Secure, HttpOnly and SameSite is
+/// readable by a script, or sent over plain HTTP.
+pub async fn audit_cookies(target: &str) -> (String, bool) {
+    let host = host_of(target);
+    let url = if target.starts_with("http") {
+        target.trim_end_matches('/').to_string()
+    } else {
+        format!("https://{host}")
+    };
+    let res = match client().get(&url).send().await {
+        Ok(r) => r,
+        Err(e) => return (format!("Could not reach {url}: {e}"), false),
+    };
+    let raw: Vec<String> = res
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|v| v.to_str().ok().map(str::to_string))
+        .collect();
+    let mut findings = Vec::new();
+    for c in &raw {
+        let name = c.split('=').next().unwrap_or("(unnamed)").trim().to_string();
+        let lower = c.to_lowercase();
+        let mut missing = Vec::new();
+        if !lower.contains("secure") {
+            missing.push("Secure");
+        }
+        if !lower.contains("httponly") {
+            missing.push("HttpOnly");
+        }
+        if !lower.contains("samesite") {
+            missing.push("SameSite");
+        }
+        if !missing.is_empty() {
+            findings.push(finding(
+                "medium",
+                &format!("Cookie {name} is missing {}", missing.join(", ")),
+                &format!("Set-Cookie for {name} omits {}.", missing.join(", ")),
+                "Set Secure, HttpOnly and SameSite=Lax on session cookies.",
+            ));
+        }
+    }
+    let body = format!(
+        "Cookie audit of {url}\nCookies set: {}\nFindings: {}\n{}",
+        raw.len(),
+        findings.len(),
+        if raw.is_empty() {
+            "The first response set no cookie.".to_string()
+        } else if findings.is_empty() {
+            "Every cookie carries Secure, HttpOnly and SameSite.".to_string()
+        } else {
+            findings
+                .iter()
+                .map(|f| format!("[{}] {}", util::s(f.get("severity").unwrap_or(&J::Null)), util::s(f.get("title").unwrap_or(&J::Null))))
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
+    );
+    (body, true)
+}
+
+/// A credential rule: the prefix to look for, the shortest whole token that is
+/// credible (a bare prefix is not a secret, which is what stops the scanner
+/// flagging its own rule table), and why a match matters. A minimum of 0 means
+/// the literal itself is the match, for patterns that are already complete.
+const SECRET_RULES: &[(&str, usize, &str, &str)] = &[
+    ("AKIA", 20, "high", "An AWS access key id is present; rotate it and remove it."),
+    ("sk_live_", 32, "high", "A live Stripe secret key is present."),
+    ("ghp_", 40, "high", "A GitHub personal access token is present."),
+    ("xoxb-", 20, "high", "A Slack bot token is present."),
+    ("AIza", 39, "medium", "A Google API key is present."),
+    // Split so the scanner does not match the rule itself.
+    (
+        concat!("-----BEGIN RSA ", "PRIVATE KEY-----"),
+        0,
+        "high",
+        "A private key is committed.",
+    ),
+    (
+        concat!("-----BEGIN OPENSSH ", "PRIVATE KEY-----"),
+        0,
+        "high",
+        "An SSH private key is committed.",
+    ),
+    ("password = \"", 0, "high", "A password looks hard-coded."),
+    ("secret = \"", 0, "medium", "A secret looks hard-coded."),
+    ("api_key = \"", 0, "medium", "An API key looks hard-coded."),
+];
+
+/// How many credential characters run from `start`, so a prefix can be checked
+/// against a credible length.
+fn token_run(line: &str, start: usize) -> usize {
+    line[start..]
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '/' | '+' | '='))
+        .count()
+}
+
+/// A dedicated secrets scan of a tree: every file, not only source files, so a
+/// key left in a config or a log is still found.
+pub async fn audit_secrets(path: &str) -> (String, bool) {
+    let root = if path.trim().is_empty() { "." } else { path.trim() };
+    let mut files = 0usize;
+    let mut findings: Vec<String> = Vec::new();
+    walk_files(root, |p| {
+        let Ok(bytes) = std::fs::read(p) else {
+            return;
+        };
+        files += 1;
+        let text = String::from_utf8_lossy(&bytes);
+        for (needle, min_len, severity, why) in SECRET_RULES {
+            let hit = text.lines().enumerate().find(|(_, line)| {
+                match line.find(needle) {
+                    Some(i) => *min_len == 0 || token_run(line, i) >= *min_len,
+                    None => false,
+                }
+            });
+            if let Some((n, line)) = hit {
+                let shown: String = line.trim().chars().take(120).collect();
+                findings.push(format!(
+                    "[{severity}] {}:{} — {why}\n    {}",
+                    p.to_string_lossy(),
+                    n + 1,
+                    shown
+                ));
+            }
+        }
+    });
+    if files == 0 {
+        return (format!("No files were readable under {root}."), false);
+    }
+    let body = format!(
+        "Secrets scan of {root}\nFiles read: {files}\nFindings: {}\n{}",
+        findings.len(),
+        if findings.is_empty() {
+            "No credential pattern was found.".to_string()
+        } else {
+            findings.join("\n")
+        },
+    );
+    (body, true)
+}
+
+/// Credential strength, measured rather than guessed. The candidate is never
+/// echoed back, so a real password cannot leak through the report.
+pub async fn audit_password(candidates: &str) -> (String, bool) {
+    let list: Vec<&str> = candidates
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    if list.is_empty() {
+        return ("Give one password per line to measure.".into(), false);
+    }
+    const COMMON: &[&str] = &[
+        "password", "123456", "12345678", "qwerty", "abc123", "letmein", "admin", "welcome",
+        "monkey", "iloveyou", "1234567890", "password1", "admin123", "root", "toor",
+    ];
+    let mut lines = Vec::new();
+    for (i, pw) in list.iter().enumerate() {
+        let len = pw.chars().count();
+        let mut sets = 0u32;
+        if pw.chars().any(|c| c.is_ascii_lowercase()) {
+            sets += 26;
+        }
+        if pw.chars().any(|c| c.is_ascii_uppercase()) {
+            sets += 26;
+        }
+        if pw.chars().any(|c| c.is_ascii_digit()) {
+            sets += 10;
+        }
+        if pw.chars().any(|c| !c.is_ascii_alphanumeric()) {
+            sets += 33;
+        }
+        let entropy = if sets == 0 || len == 0 {
+            0.0
+        } else {
+            len as f64 * (sets as f64).log2()
+        };
+        let common = COMMON.contains(&pw.to_lowercase().as_str());
+        let verdict = if common {
+            "BREACHED — this is one of the most common passwords"
+        } else if entropy < 40.0 {
+            "weak"
+        } else if entropy < 60.0 {
+            "fair"
+        } else {
+            "strong"
+        };
+        lines.push(format!(
+            "password #{}\n  length: {len}\n  character sets: {sets}\n  entropy: {:.1} bits\n  verdict: {verdict}",
+            i + 1,
+            entropy
+        ));
+    }
+    (
+        format!(
+            "Password strength audit of {} candidate(s). The candidates themselves are not stored.\n{}",
+            list.len(),
+            lines.join("\n")
+        ),
+        true,
+    )
+}
+
+/// Decode a JWT and report the claims and the weak settings, without a key.
+pub async fn inspect_jwt(token: &str) -> (String, bool) {
+    let parts: Vec<&str> = token.trim().split('.').collect();
+    if parts.len() != 3 {
+        return (
+            "That is not a JWT: three dot-separated parts are expected.".into(),
+            false,
+        );
+    }
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    let dec = |s: &str| {
+        URL_SAFE_NO_PAD
+            .decode(s)
+            .ok()
+            .map(|b| String::from_utf8_lossy(&b).to_string())
+    };
+    let header = dec(parts[0]).unwrap_or_default();
+    let payload = dec(parts[1]).unwrap_or_default();
+    let mut findings = Vec::new();
+    let alg = serde_json::from_str::<J>(&header)
+        .ok()
+        .and_then(|v| v.get("alg").and_then(|a| a.as_str()).map(str::to_string))
+        .unwrap_or_default();
+    if alg.eq_ignore_ascii_case("none") || alg.is_empty() {
+        findings.push("The token is unsigned (alg is none or missing): anyone can forge it.".to_string());
+    }
+    if alg.eq_ignore_ascii_case("HS256") {
+        findings.push("HS256 with a guessable secret is a common forgery path; prefer RS256/ES256.".to_string());
+    }
+    let claims = serde_json::from_str::<J>(&payload).unwrap_or(J::Null);
+    if let Some(exp) = claims.get("exp").and_then(|e| e.as_i64()) {
+        let now = chrono::Utc::now().timestamp();
+        if exp < now {
+            findings.push(format!("The token expired {} seconds ago.", now - exp));
+        }
+    } else {
+        findings.push("No exp claim: the token never expires.".to_string());
+    }
+    if claims.get("iss").is_none() {
+        findings.push("No iss claim: the issuer is not pinned.".to_string());
+    }
+    let body = format!(
+        "JWT inspection\nalg: {}\nheader: {}\npayload: {}\nFindings: {}\n{}",
+        if alg.is_empty() { "absent" } else { &alg },
+        header.trim(),
+        payload.trim(),
+        findings.len(),
+        if findings.is_empty() {
+            "No weak setting was found in the decoded token.".to_string()
+        } else {
+            findings.join("\n")
+        },
+    );
+    (body, true)
+}
+
+/// Read a certificate over a real handshake and report who issued it, when it
+/// expires and which names it covers.
+pub async fn audit_cert(target: &str) -> (String, bool) {
+    let host = host_of(target);
+    let Some(host) = safe_host(&host) else {
+        return ("Give a plain hostname to check.".into(), false);
+    };
+    let script = format!(
+        "timeout 15 sh -c 'echo | openssl s_client -connect {host}:443 -servername {host} 2>/dev/null | openssl x509 -noout -subject -issuer -dates -ext subjectAltName'"
+    );
+    let out = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(&script)
+        .output();
+    let Ok(out) = out else {
+        return ("openssl could not be started.".into(), false);
+    };
+    let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if text.is_empty() {
+        return (
+            format!("No certificate could be read from {host}:443. The host may be down, or the port is closed."),
+            false,
+        );
+    }
+    let body = format!(
+        "Certificate inspection of {host}\n{}\nThe dates, issuer and names above were read from the certificate the server actually presented.",
+        text
+    );
+    (body, true)
+}
+
+/// Resolve a short list of common subdomain names with DNS-over-HTTPS, and
+/// report the ones that answer.
+pub async fn subdomain_scan(target: &str) -> (String, bool) {
+    let host = host_of(target);
+    if host.is_empty() {
+        return ("Give the domain to enumerate.".into(), false);
+    }
+    const NAMES: &[&str] = &[
+        "www", "api", "app", "admin", "mail", "smtp", "imap", "pop", "webmail", "ftp", "cpanel",
+        "whm", "webdisk", "dev", "staging", "test", "beta", "demo", "portal", "dashboard", "cdn",
+        "static", "assets", "docs", "status", "monitor", "vpn", "git", "ci", "shop", "store",
+    ];
+    let mut found = Vec::new();
+    for name in NAMES {
+        let fqdn = format!("{name}.{host}");
+        let a = dns_lookup(&fqdn, "A").await;
+        let cname = dns_lookup(&fqdn, "CNAME").await;
+        if !a.is_empty() || !cname.is_empty() {
+            let addr = if !a.is_empty() {
+                a.join(", ")
+            } else {
+                cname.join(", ")
+            };
+            found.push(format!("{fqdn} -> {addr}"));
+        }
+    }
+    let body = format!(
+        "Subdomain sweep of {host}\nNames tried: {}\nAnswering: {}\n{}",
+        NAMES.len(),
+        found.len(),
+        if found.is_empty() {
+            "None of the common names resolve.".to_string()
+        } else {
+            found.join("\n")
+        },
+    );
+    (body, true)
+}
+
+/// Hash every file under a path and report the digests, so a file can be
+/// verified against a published value. Local, so no scope check is needed.
+pub async fn hash_file(path: &str) -> (String, bool) {
+    let root = if path.trim().is_empty() { "." } else { path.trim() };
+    use sha2::{Digest, Sha256};
+    let mut lines = Vec::new();
+    let target = std::path::Path::new(root);
+    if target.is_file() {
+        match std::fs::read(target) {
+            Ok(bytes) => {
+                let sha = hex::encode(Sha256::digest(&bytes));
+                lines.push(format!("{sha}  {root}  ({} bytes)", bytes.len()));
+            }
+            Err(e) => return (format!("Could not read {root}: {e}"), false),
+        }
+    } else {
+        walk_files(root, |p| {
+            let Ok(bytes) = std::fs::read(p) else {
+                return;
+            };
+            let sha = hex::encode(Sha256::digest(&bytes));
+            lines.push(format!("{sha}  {}  ({} bytes)", p.to_string_lossy(), bytes.len()));
+        });
+    }
+    if lines.is_empty() {
+        return (format!("No readable file was found under {root}."), false);
+    }
+    let body = format!(
+        "File integrity digests under {root}\nFiles: {}\nSHA-256:\n{}",
+        lines.len(),
+        lines.join("\n"),
+    );
+    (body, true)
+}
+
+/// Read a log file and surface the lines that indicate an attack: brute force,
+/// injection attempts, traversal and scanner probes.
+pub async fn audit_logs(path: &str) -> (String, bool) {
+    let file = if path.trim().is_empty() { "." } else { path.trim() };
+    let text = if std::path::Path::new(file).is_dir() {
+        let mut all = String::new();
+        walk_files(file, |p| {
+            if let Ok(t) = std::fs::read_to_string(p) {
+                all.push_str(&t);
+                all.push('\n');
+            }
+        });
+        all
+    } else {
+        match std::fs::read_to_string(file) {
+            Ok(t) => t,
+            Err(e) => return (format!("Could not read {file}: {e}"), false),
+        }
+    };
+    if text.trim().is_empty() {
+        return (format!("No log text was found at {file}."), false);
+    }
+    const SIGNATURES: &[(&str, &str)] = &[
+        ("union select", "SQL injection attempt"),
+        ("' or '1'='1", "SQL injection attempt"),
+        ("../", "Directory traversal attempt"),
+        ("/etc/passwd", "Attempt to read the password file"),
+        ("<script", "Cross-site scripting attempt"),
+        ("nmap", "Port-scanner fingerprint in the log"),
+        ("nikto", "Vulnerability-scanner fingerprint in the log"),
+        ("sqlmap", "SQL-injection tool fingerprint in the log"),
+        ("failed password", "Failed authentication (possible brute force)"),
+        ("authentication failure", "Failed authentication (possible brute force)"),
+    ];
+    let mut counts: Vec<(String, usize)> = Vec::new();
+    let lower = text.to_lowercase();
+    for (needle, label) in SIGNATURES {
+        let n = lower.matches(&needle.to_lowercase()).count();
+        if n > 0 {
+            counts.push((format!("{label} (\"{needle}\")"), n));
+        }
+    }
+    let body = format!(
+        "Log analysis of {file}\nLines read: {}\nSignatures: {}\n{}",
+        text.lines().count(),
+        counts.len(),
+        if counts.is_empty() {
+            "No attack signature was found in the log.".to_string()
+        } else {
+            counts
+                .iter()
+                .map(|(label, n)| format!("{label}: {n} occurrence(s)"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
+    );
+    (body, true)
 }
 
 #[cfg(test)]
@@ -807,6 +1393,133 @@ mod tests {
             }
         });
         assert_eq!(hits, 1, "the EICAR digest must be recognised");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_password_is_measured_without_being_echoed() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(audit_password("123456\nTr0ub4dor&3xKp!7z"));
+        assert!(ok);
+        // The verdict is reported, the candidate itself is not.
+        assert!(out.contains("BREACHED"), "a common password must be called out");
+        assert!(!out.contains("Tr0ub4dor"), "the candidate must not be echoed back");
+    }
+
+    #[test]
+    fn a_token_that_is_not_a_jwt_is_refused() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(inspect_jwt("not-a-token"));
+        assert!(!ok);
+        assert!(out.contains("not a JWT"));
+    }
+
+    #[test]
+    fn an_unsigned_token_is_flagged() {
+        use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+        let header = URL_SAFE_NO_PAD.encode(br#"{"alg":"none","typ":"JWT"}"#);
+        let payload = URL_SAFE_NO_PAD.encode(br#"{"sub":"1"}"#);
+        let token = format!("{header}.{payload}.");
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(inspect_jwt(&token));
+        assert!(ok);
+        assert!(out.contains("unsigned"), "alg:none must be reported: {out}");
+    }
+
+    #[test]
+    fn the_secret_scan_finds_a_key_left_in_a_config_file() {
+        let dir = std::env::temp_dir().join(format!("mts-secret-{}", crate::util::token_hex(6)));
+        std::fs::create_dir_all(&dir).unwrap();
+        // A .conf file, not source, so only a scanner that reads every file sees it.
+        std::fs::write(dir.join("app.conf"), "aws = AKIAIOSFODNN7EXAMPLE\n").unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(audit_secrets(dir.to_str().unwrap()));
+        assert!(ok);
+        assert!(out.contains("AKIA"), "a key in a non-source file must be found: {out}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_log_with_an_attack_is_read_and_counted() {
+        let dir = std::env::temp_dir().join(format!("mts-log-{}", crate::util::token_hex(6)));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("access.log"),
+            "GET /?id=1 union select 1,2 --\nGET /../../etc/passwd\nFailed password for root\n",
+        )
+        .unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(audit_logs(dir.join("access.log").to_str().unwrap()));
+        assert!(ok);
+        assert!(out.contains("SQL injection"), "the injection line must be counted");
+        assert!(out.contains("traversal"), "the traversal line must be counted");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_integrity_hash_matches_sha256() {
+        let dir = std::env::temp_dir().join(format!("mts-hash-{}", crate::util::token_hex(6)));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("a.txt"), "hello\n").unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(hash_file(dir.to_str().unwrap()));
+        assert!(ok);
+        // sha256("hello\n")
+        assert!(
+            out.contains("5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"),
+            "the digest must be the real SHA-256: {out}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn only_a_plain_hostname_reaches_the_command_line() {
+        assert!(safe_host("example.com").is_some());
+        assert!(safe_host("sub.example.co.tz").is_some());
+        assert!(safe_host("example.com; rm -rf /").is_none());
+        assert!(safe_host("$(whoami)").is_none());
+        assert!(safe_host("a b").is_none());
+        assert!(safe_host("").is_none());
+    }
+
+    #[test]
+    fn the_integrity_hash_accepts_a_single_file() {
+        let dir = std::env::temp_dir().join(format!("mts-one-{}", crate::util::token_hex(6)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("only.txt");
+        std::fs::write(&file, "hello\n").unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(hash_file(file.to_str().unwrap()));
+        assert!(ok);
+        assert!(out.contains("Files: 1"));
+        assert!(out.contains("5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_secret_scan_ignores_a_bare_prefix() {
+        // A rule table (or any prose) that merely names a prefix must not be
+        // reported as a leaked credential.
+        let dir = std::env::temp_dir().join(format!("mts-prefix-{}", crate::util::token_hex(6)));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("rules.md"), "the rule is: look for ghp_ tokens\n").unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(audit_secrets(dir.to_str().unwrap()));
+        assert!(ok);
+        assert!(out.contains("Findings: 0"), "a bare prefix is not a secret: {out}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_real_looking_token_is_reported() {
+        let dir = std::env::temp_dir().join(format!("mts-token-{}", crate::util::token_hex(6)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let fake = format!("ghp_{}", "A".repeat(36));
+        std::fs::write(dir.join("env.txt"), format!("TOKEN={fake}\n")).unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let (out, ok) = rt.block_on(audit_secrets(dir.to_str().unwrap()));
+        assert!(ok);
+        assert!(out.contains("Findings: 1"), "a full token must be reported: {out}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
