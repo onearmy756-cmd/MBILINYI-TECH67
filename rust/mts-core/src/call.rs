@@ -54,7 +54,11 @@ fn join(room: &str, name: &str, conn: &str) -> (broadcast::Receiver<String>, Str
     let mut map = rooms().lock().unwrap_or_else(|e| e.into_inner());
     let entry = map.entry(room.to_string()).or_insert_with(|| {
         let (tx, _rx) = broadcast::channel(256);
-        Room { tx, peers: 0, roster: Vec::new() }
+        Room {
+            tx,
+            peers: 0,
+            roster: Vec::new(),
+        }
     });
     let label = format!("{name}#{conn}");
     let rx = entry.tx.subscribe();
@@ -141,7 +145,11 @@ pub async fn ws_call(
 ) -> impl IntoResponse {
     let session = crate::session::load(&headers);
     let Some(user) = crate::session::current_user(&session) else {
-        return (axum::http::StatusCode::UNAUTHORIZED, "sign in to join a call").into_response();
+        return (
+            axum::http::StatusCode::UNAUTHORIZED,
+            "sign in to join a call",
+        )
+            .into_response();
     };
     let name = crate::util::s(user.get("name").unwrap_or(&serde_json::Value::Null));
     let name = if name.trim().is_empty() {
@@ -152,7 +160,8 @@ pub async fn ws_call(
     // One account can be open on several devices at once. Give each connection
     // its own label so the two do not look like the same participant.
     let conn = uuid_like();
-    ws.on_upgrade(move |socket| handle(socket, room, name, conn)).into_response()
+    ws.on_upgrade(move |socket| handle(socket, room, name, conn))
+        .into_response()
 }
 
 /// A short random token, used to tell two connections of the same account apart.
@@ -357,6 +366,28 @@ mod tests {
         leave(room, &first);
         leave(room, &second);
         assert!(roster(room).is_empty());
+    }
+
+    #[test]
+    fn leaving_a_room_announces_the_label_not_the_name() {
+        // The client compares the announcement against its own label to know
+        // whether it is the one leaving. Sending the display name instead would
+        // make a person on two devices see their own departure as a peer's.
+        let room = "unit-room-leave-label";
+        let (_, a, _) = join(room, "Asha", "c1");
+        let (_, b, _) = join(room, "Asha", "c2");
+        assert_ne!(a, b);
+        let mut rx = {
+            let map = rooms().lock().unwrap_or_else(|e| e.into_inner());
+            map.get(room).unwrap().tx.subscribe()
+        };
+        leave(room, &a);
+        let seen = rx.try_recv().expect("a peer-left was broadcast");
+        assert_eq!(from_field(&seen).as_deref(), Some(a.as_str()));
+        assert_ne!(from_field(&seen).as_deref(), Some(b.as_str()));
+        assert_eq!(peers_in(room), 1);
+        leave(room, &b);
+        assert_eq!(peers_in(room), 0);
     }
 
     #[test]

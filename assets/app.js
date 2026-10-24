@@ -4201,6 +4201,10 @@ async function queueSweep() {
 }
 
 function openCall(roomId) {
+  // End any call already running, so its camera and socket are released before
+  // this one starts, then drop its markup so the script binds to the new room.
+  window.dispatchEvent(new Event('mbilinyi-call-end'));
+  document.querySelectorAll('[data-call-room]').forEach(el => el.remove());
   const who = (currentUser()?.name || 'guest');
   openGen('Live Call', `
     <div data-call-room="${esc(roomId)}" data-call-name="${esc(who)}" class="call-root">
@@ -4217,12 +4221,17 @@ function openCall(roomId) {
       <div data-call-status class="text-[12px] text-white/55 mt-2">Inaandaa kamera na maikrofoni…</div>
       <div class="text-[11.5px] text-white/40 mt-1">Sauti na picha zinasafiri moja kwa moja kati ya vivinjari (WebRTC, imesimbwa kwa DTLS-SRTP). Server inapitisha tu ishara ya kuunganisha.</div>
     </div>`);
-  loadScript('/assets/call.js');
+  loadScript('/assets/call.js', true);
 }
 
 /* Load a script once, so opening the call twice does not run it twice. */
-function loadScript(src) {
-  if (document.querySelector(`script[data-src="${src}"]`)) return;
+function loadScript(src, force) {
+  const existing = document.querySelector(`script[data-src="${src}"]`);
+  // A call script runs once and binds to the first room element on the page.
+  // Starting a second call therefore needs a fresh copy, not the cached one:
+  // reusing it silently does nothing, which is what happened after hanging up.
+  if (existing && !force) return;
+  if (existing) existing.remove();
   const s = document.createElement('script');
   s.src = src;
   s.setAttribute('data-src', src);

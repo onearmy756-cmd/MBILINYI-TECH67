@@ -20,7 +20,10 @@
   var scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   var socket;
   var localStream;
-  var peers = {};            // peer label -> { pc, polite, name }
+  var peers = {};            // peer label -> { pc, initiate }
+  var left = false;          // the user hung up; do not come back
+  var joined = false;        // the server accepted us into the room
+  var tries = 0;             // how many connection attempts since we joined
   var makingOffer = {};
   var makingOfferState = {};
 
@@ -178,6 +181,8 @@
     try { msg = JSON.parse(text); } catch (e) { return; }
     var from = msg.from;
     if (msg.type === 'joined') {
+      joined = true;
+      tries = 0;
       var info = payloadObject(msg);
       if (info.you && info.you.label) myLabel = info.you.label;
       if (info.you && info.you.name) myName = info.you.name;
@@ -211,9 +216,8 @@
     if (msg.type === 'ice') return handleIce(from, msg.payload.candidate);
   }
 
-var left = false;
 
-function open() {
+  function open() {
     if (left) return;
     if (!hasTurn) {
       say('Chumba kimefunguliwa. Kumbuka: hakuna TURN serveri iliyowekwa, hivyo simu inaweza kushindwa kwenye mtandao wa simu.');
@@ -222,11 +226,45 @@ function open() {
     socket.onmessage = function (e) { onMessage(e.data); };
     socket.onclose = function () {
       if (left) return;
+      tries += 1;
+      // A socket that closed before we were ever let in was refused, not
+      // interrupted — the usual cause is a session that has expired. Retrying
+      // that forever would hammer the server and never succeed, so say what is
+      // wrong and stop. A socket that closed after we were in was a dropped
+      // call, and reconnecting is the right thing to do, but only a few times.
+      if (!joined) {
+        if (tries >= 2) {
+          say('Imeshindwa kujiunga. Hakikisha umeingia (sign in) kisha ujaribu tena.');
+          return;
+        }
+      } else if (tries > 5) {
+        say('Mawasiliano yamekatika. Bofya kitufe cha kuanza simu tena.');
+        return;
+      }
       say('Mawasiliano yamekatika. Inajaribu kuunganisha tena…');
       setTimeout(open, 2000);
     };
     socket.onerror = function () { say('Imeshindwa kuunganisha. Angalia mtandao.'); };
   }
+
+  /* End the call: leave the room, close every connection and release the camera
+     and microphone. Returns false if there was nothing left to end, so a second
+     hang-up cannot overwrite the message with a duplicate. */
+  function endCall() {
+    if (left) return false;
+    // Tell the room first, while the socket is still open.
+    send('leave', {});
+    left = true;
+    Object.keys(peers).forEach(function (n) { peers[n].pc.close(); });
+    peers = {};
+    if (localStream) localStream.getTracks().forEach(function (t) { t.stop(); });
+    if (socket) socket.close();
+    return true;
+  }
+
+  // Starting another call replaces this one. Without this the previous call's
+  // socket stayed open and its camera kept recording behind the new call.
+  window.addEventListener('mbilinyi-call-end', function () { endCall(); });
 
   function wireButtons() {
     root.querySelectorAll('[data-call-action]').forEach(function (b) {
@@ -243,15 +281,7 @@ function open() {
         } else if (a === 'share') {
           share(b);
         } else if (a === 'hangup') {
-          if (left) return;
-          // Tell the room first, while the socket is still open.
-          send('leave', {});
-          left = true;
-          Object.keys(peers).forEach(function (n) { peers[n].pc.close(); });
-          peers = {};
-          if (localStream) localStream.getTracks().forEach(function (t) { t.stop(); });
-          if (socket) socket.close();
-          say('Umeondoka kwenye chumba.');
+          if (endCall()) say('Umeondoka kwenye chumba.');
         }
       });
     });
