@@ -33,6 +33,10 @@ pub struct Lang {
     pub check: Option<&'static [&'static str]>,
     /// The command that runs the project's own test suite.
     pub test: Option<&'static [&'static str]>,
+    /// True for a language whose `run` compiles rather than executes: the
+    /// platform builds a binary and then runs it. `run` must end in the output
+    /// flag (`-o`), so the build is `run… <binary> <source>`.
+    pub compiled: bool,
 }
 
 pub const LANGS: &[Lang] = &[
@@ -43,14 +47,16 @@ pub const LANGS: &[Lang] = &[
         run: &["python3"],
         check: Some(&["python3", "-m", "py_compile"]),
         test: Some(&["python3", "-m", "pytest", "-q"]),
+        compiled: false,
     },
     Lang {
         key: "rust",
         name: "Rust",
         ext: "rs",
-        run: &["rustc", "--edition", "2021"],
+        run: &["rustc", "--edition", "2021", "-O", "-o"],
         check: None,
         test: Some(&["cargo", "test", "--quiet"]),
+        compiled: true,
     },
     Lang {
         key: "go",
@@ -59,6 +65,7 @@ pub const LANGS: &[Lang] = &[
         run: &["go", "run"],
         check: Some(&["go", "vet"]),
         test: Some(&["go", "test", "./..."]),
+        compiled: false,
     },
     Lang {
         key: "elixir",
@@ -67,6 +74,7 @@ pub const LANGS: &[Lang] = &[
         run: &["elixir"],
         check: None,
         test: Some(&["mix", "test"]),
+        compiled: false,
     },
     Lang {
         key: "r",
@@ -75,6 +83,7 @@ pub const LANGS: &[Lang] = &[
         run: &["Rscript"],
         check: None,
         test: None,
+        compiled: false,
     },
     Lang {
         key: "node",
@@ -83,6 +92,7 @@ pub const LANGS: &[Lang] = &[
         run: &["node"],
         check: Some(&["node", "--check"]),
         test: Some(&["npm", "test", "--silent"]),
+        compiled: false,
     },
     Lang {
         key: "c",
@@ -91,6 +101,7 @@ pub const LANGS: &[Lang] = &[
         run: &["cc", "-O2", "-o"],
         check: None,
         test: None,
+        compiled: true,
     },
 ];
 
@@ -193,6 +204,22 @@ fn write(dir: &Path, name: &str, body: &str) -> std::io::Result<PathBuf> {
     Ok(p)
 }
 
+/// Toolchain-location variables a child needs to run an installed language.
+///
+/// A rustup-managed `rustc` is a shim: with no `RUSTUP_HOME` it cannot choose a
+/// version and refuses to run, so a language that is installed would look
+/// broken. Go, Elixir and the rest use their own cache/home variables the same
+/// way. Only these named locations are forwarded — never the whole environment,
+/// which is what would let a snippet read a key or a database path.
+const TOOLCHAIN_ENV: [&str; 6] = [
+    "RUSTUP_HOME",
+    "CARGO_HOME",
+    "GOPATH",
+    "GOCACHE",
+    "MIX_HOME",
+    "ERL_LIBS",
+];
+
 /// Run a command in `dir` with a clean environment and a hard deadline. The
 /// child's output is captured, capped so a program that prints forever cannot
 /// exhaust memory, and returned as text.
@@ -205,11 +232,18 @@ fn run_cmd(dir: &Path, argv: &[String], timeout: Duration) -> Ran {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         // No inherited environment: a snippet must not be able to read a key or
-        // a database path out of the platform's own environment.
+        // a database path out of the platform's own environment. The toolchain
+        // locations are re-added by name below, because a shim such as rustup's
+        // `rustc` cannot run without them.
         .env_clear()
         .env("PATH", path_env())
         .env("HOME", dir)
         .env("LANG", "C.UTF-8");
+    for key in TOOLCHAIN_ENV {
+        if let Ok(v) = std::env::var(key) {
+            cmd.env(key, v);
+        }
+    }
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => {
@@ -358,8 +392,10 @@ pub fn run_snippet_within(lang_key: &str, code: &str, limit: Duration) -> Ran {
         }
     }
 
-    // C needs its two-step build, so the compile and the run are separate.
-    let argv: Vec<String> = if lang.key == "c" {
+    // A compiled language needs its two-step build, so the compile and the run
+    // are separate: build a binary, then execute it. `rustc -o` and `cc -o` are
+    // the same shape, which is why the flag lives on the language.
+    let argv: Vec<String> = if lang.compiled {
         let bin = dir.join("a.out").to_string_lossy().to_string();
         let build: Vec<String> = lang
             .run
@@ -373,7 +409,7 @@ pub fn run_snippet_within(lang_key: &str, code: &str, limit: Duration) -> Ran {
             let _ = std::fs::remove_dir_all(&dir);
             return Ran {
                 ok: false,
-                output: format!("The C compiler rejected the code:\n{}", b.output),
+                output: format!("The {} compiler rejected the code:\n{}", lang.name, b.output),
                 ms: b.ms,
             };
         }
@@ -550,6 +586,37 @@ mod tests {
         let capped = cap(&long, 1000);
         assert!(capped.len() < 2000);
         assert!(capped.contains("truncated"));
+    }
+
+    // A rustup `rustc` shim cannot pick a toolchain without RUSTUP_HOME, so the
+    // child must receive it. Only toolchain locations may be forwarded — the
+    // allowlist must never grow a name that carries a secret, such as a key.
+    #[test]
+    fn only_toolchain_locations_are_forwarded_to_a_snippet() {
+        assert!(TOOLCHAIN_ENV.contains(&"RUSTUP_HOME"));
+        assert!(TOOLCHAIN_ENV.contains(&"CARGO_HOME"));
+        for forbidden in ["OPENAI_API_KEY", "MTS_DB", "GITHUB_TOKEN", "PATH", "HOME"] {
+            assert!(
+                !TOOLCHAIN_ENV.contains(&forbidden),
+                "{forbidden} must not be forwarded into a snippet"
+            );
+        }
+    }
+
+    // Rust and C compile rather than interpret, so a one-step "run" would leave
+    // the program built but never executed — it reported success with no output.
+    #[test]
+    fn a_compiled_language_is_built_and_then_run() {
+        for key in ["rust", "c"] {
+            let l = find(key).expect("known language");
+            assert!(l.compiled, "{key} should be marked compiled");
+            assert!(
+                l.run.last().map(|s| *s == "-o").unwrap_or(false),
+                "{key} run must end in -o so a binary can be named"
+            );
+        }
+        assert!(!find("python").unwrap().compiled);
+        assert!(!find("go").unwrap().compiled);
     }
 
     /// The PATH handed to a child must include the usual install directories.

@@ -64,6 +64,24 @@ fi
 command -v Rscript >/dev/null 2>&1 && log "R: $(Rscript --version 2>&1 | head -1)" \
   || log "R not available — reports will fall back to CSV."
 
+# --- Go, Elixir, R (the runtimes the platform advertises) ------------------
+# The Runtimes screen only offers a language it can actually run, so these are
+# installed on the same footing as R: a missing one degrades that language, it
+# does not stop the platform.
+if ! command -v go >/dev/null 2>&1 || ! command -v elixir >/dev/null 2>&1; then
+  log "Installing the Go and Elixir runtimes..."
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo mkdir -p /var/lib/apt/lists/partial 2>/dev/null || true
+    sudo apt-get update -qq >/dev/null 2>&1 || true
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq golang-go elixir >/dev/null 2>&1 \
+      || log "Go/Elixir could not be installed; those languages will be hidden."
+  fi
+fi
+for c in go elixir; do
+  command -v "$c" >/dev/null 2>&1 && log "$c: $($c --version 2>&1 | head -1)" \
+    || log "$c not available."
+done
+
 # --- build ----------------------------------------------------------------
 # A binary built before a session reset is stale: the toolchain that made it is
 # gone, and so are the object files it linked against.
