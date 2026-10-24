@@ -1,0 +1,44 @@
+{
+  "appId": "tz.co.mbilinyitech.app",
+  "appName": "Mbilinyi Tech",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://mbilinyitech.co.tz",
+    "cleartext": false,
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "allowNavigation": [
+      "mbilinyitech.co.tz",
+      "*.mbilinyitech.co.tz",
+      "checkout.stripe.com",
+      "*.stripe.com"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "always",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#FF6B2C"
+    },
+    "SplashScreen": {
+      "backgroundColor": "#050914",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#050914"
+    }
+  }
+}

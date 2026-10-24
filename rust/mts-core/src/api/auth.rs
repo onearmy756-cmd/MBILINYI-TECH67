@@ -98,17 +98,27 @@ fn login(c: &Ctx) -> Response {
     if email.is_empty() || pass.is_empty() {
         return bad("Fill email and password.");
     }
-    let Some(row) = db::row("SELECT * FROM users WHERE lower(email) = ?", &[arg(json!(email))]) else {
+    let Some(row) = db::row(
+        "SELECT * FROM users WHERE lower(email) = ?",
+        &[arg(json!(email))],
+    ) else {
         return bad("Invalid email or password.");
     };
-    let hash = row.get("password_hash").and_then(|v| v.as_str()).unwrap_or("");
+    let hash = row
+        .get("password_hash")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if !bcrypt::verify(&pass, hash).unwrap_or(false) {
         return bad("Invalid email or password.");
     }
     if row.get("status").and_then(|v| v.as_str()) != Some("Active") {
         return bad("Account is suspended. Contact 0796 752 645.");
     }
-    let has_pin = !row.get("pin_hash").and_then(|v| v.as_str()).unwrap_or("").is_empty();
+    let has_pin = !row
+        .get("pin_hash")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .is_empty();
     let has_tail = !phone_tail(row.get("phone").and_then(|v| v.as_str()).unwrap_or("")).is_empty();
     ok(json!({
         "otp_required": true,
@@ -128,13 +138,19 @@ fn verify_login_pin(c: &Ctx) -> Response {
     if email.is_empty() || pin.is_empty() {
         return bad("Email and PIN are required.");
     }
-    let Some(row) = db::row("SELECT * FROM users WHERE lower(email) = ?", &[arg(json!(email))]) else {
+    let Some(row) = db::row(
+        "SELECT * FROM users WHERE lower(email) = ?",
+        &[arg(json!(email))],
+    ) else {
         return err("No account with this email.", 404);
     };
     if row.get("status").and_then(|v| v.as_str()) != Some("Active") {
         return err("Account is suspended. Contact 0796 752 645.", 403);
     }
-    let locked = row.get("pin_locked_until").and_then(|v| v.as_str()).unwrap_or("");
+    let locked = row
+        .get("pin_locked_until")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if !locked.is_empty() {
         if let Ok(until) = chrono::NaiveDateTime::parse_from_str(locked, "%Y-%m-%d %H:%M:%S") {
             let now = chrono::Local::now().naive_local();
@@ -148,7 +164,11 @@ fn verify_login_pin(c: &Ctx) -> Response {
         }
     }
     let (good, reason) = check_pin(&row, &pin);
-    let id = row.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let id = row
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     if !good {
         let fails = row.get("pin_fails").and_then(|v| v.as_i64()).unwrap_or(0) + 1;
         if fails >= 5 {
@@ -165,7 +185,10 @@ fn verify_login_pin(c: &Ctx) -> Response {
             "UPDATE users SET pin_fails = ? WHERE id = ?",
             &[arg(json!(fails)), arg(json!(id))],
         );
-        return bad(&format!("{reason} {} attempt(s) left before a 15-minute lock.", 5 - fails));
+        return bad(&format!(
+            "{reason} {} attempt(s) left before a 15-minute lock.",
+            5 - fails
+        ));
     }
     let _ = db::run(
         "UPDATE users SET pin_fails = 0, pin_locked_until = NULL WHERE id = ?",
@@ -233,12 +256,21 @@ fn register(c: &Ctx) -> Response {
     if !pin.is_empty() && (pin.len() < 4 || pin.len() > 6) {
         return bad("PIN must be 4-6 digits.");
     }
-    if db::row("SELECT id FROM users WHERE lower(email) = ?", &[arg(json!(email))]).is_some() {
+    if db::row(
+        "SELECT id FROM users WHERE lower(email) = ?",
+        &[arg(json!(email))],
+    )
+    .is_some()
+    {
         return bad("An account with this email already exists. Sign in instead.");
     }
     let id = util::new_id("U-");
     let hash = bcrypt::hash(&pass, 10).unwrap_or_default();
-    let pin_hash = if pin.is_empty() { String::new() } else { hash_pin(&pin) };
+    let pin_hash = if pin.is_empty() {
+        String::new()
+    } else {
+        hash_pin(&pin)
+    };
     let _ = db::run(
         "INSERT INTO users (id, name, email, phone, company, password_hash, pin_hash, role, status, created_at)
          VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -283,18 +315,29 @@ fn forgot_init(c: &Ctx) -> Response {
     let email = c.p("email").to_lowercase();
     // The reply is identical whether or not the account exists, so the endpoint
     // cannot be used to discover which emails are registered.
-    if let Some(row) = db::row("SELECT id FROM users WHERE lower(email) = ?", &[arg(json!(email))]) {
+    if let Some(row) = db::row(
+        "SELECT id FROM users WHERE lower(email) = ?",
+        &[arg(json!(email))],
+    ) {
         let token = util::token_hex(32);
         let expires = (chrono::Local::now() + chrono::Duration::hours(1))
             .format("%Y-%m-%d %H:%M:%S")
             .to_string();
-        let uid = row.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let uid = row
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let _ = db::run(
             "INSERT INTO password_resets (id, user_id, email, token, expires_at, created_at)
              VALUES (?,?,?,?,?,?)",
             &[
-                arg(json!(util::new_id("PR-"))), arg(json!(uid)), arg(json!(email)),
-                arg(json!(token)), arg(json!(expires)), arg(json!(util::now())),
+                arg(json!(util::new_id("PR-"))),
+                arg(json!(uid)),
+                arg(json!(email)),
+                arg(json!(token)),
+                arg(json!(expires)),
+                arg(json!(util::now())),
             ],
         );
     }
@@ -316,10 +359,17 @@ fn forgot_complete(c: &Ctx) -> Response {
     ) else {
         return bad("This reset link is not valid. Request a new one.");
     };
-    let uid = row.get("user_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let uid = row
+        .get("user_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     let _ = db::run(
         "UPDATE users SET password_hash = ? WHERE id = ?",
-        &[arg(json!(bcrypt::hash(&pass, 10).unwrap_or_default())), arg(json!(uid))],
+        &[
+            arg(json!(bcrypt::hash(&pass, 10).unwrap_or_default())),
+            arg(json!(uid)),
+        ],
     );
     let _ = db::run(
         "UPDATE password_resets SET used_at = ? WHERE token = ?",
@@ -389,13 +439,27 @@ fn passkey_register_finish(c: &Ctx) -> Response {
     let Ok(u) = c.require_user() else {
         return util::unauth();
     };
-    let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let uid = u
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     let resp = c.pv("response");
-    let client_data = util::s(resp.get("clientDataJSON").unwrap_or(&serde_json::Value::Null));
-    let attestation = util::s(resp.get("attestationObject").unwrap_or(&serde_json::Value::Null));
+    let client_data = util::s(
+        resp.get("clientDataJSON")
+            .unwrap_or(&serde_json::Value::Null),
+    );
+    let attestation = util::s(
+        resp.get("attestationObject")
+            .unwrap_or(&serde_json::Value::Null),
+    );
     let label = {
         let l = c.p("label");
-        if l.is_empty() { "This device".to_string() } else { l }
+        if l.is_empty() {
+            "This device".to_string()
+        } else {
+            l
+        }
     };
     let transports: Vec<String> = match c.pv("transports") {
         serde_json::Value::Array(a) => a.iter().map(util::s).collect(),
@@ -405,7 +469,12 @@ fn passkey_register_finish(c: &Ctx) -> Response {
         let challenge = crate::payments::take_challenge(&c.session.id, "wa_reg")
             .ok_or_else(|| "The registration challenge expired. Try again.".to_string())?;
         let info = crate::payments::webauthn::verify_registration(
-            &client_data, &attestation, &challenge, &origin(), &rp_id(), &transports,
+            &client_data,
+            &attestation,
+            &challenge,
+            &origin(),
+            &rp_id(),
+            &transports,
         )
         .map_err(|e| e.to_string())?;
         let _ = db::run(
@@ -432,7 +501,10 @@ fn passkey_login_begin(c: &Ctx) -> Response {
     let allow = if email.is_empty() {
         vec![]
     } else {
-        match db::row("SELECT id FROM users WHERE lower(email) = ?", &[arg(json!(email))]) {
+        match db::row(
+            "SELECT id FROM users WHERE lower(email) = ?",
+            &[arg(json!(email))],
+        ) {
             Some(r) => passkey_credentials(r.get("id").and_then(|v| v.as_str()).unwrap_or("")),
             None => vec![],
         }
@@ -449,8 +521,14 @@ fn passkey_login_begin(c: &Ctx) -> Response {
 fn passkey_login_finish(c: &Ctx) -> Response {
     let cred_id = c.p("id");
     let resp = c.pv("response");
-    let client_data = util::s(resp.get("clientDataJSON").unwrap_or(&serde_json::Value::Null));
-    let auth_data = util::s(resp.get("authenticatorData").unwrap_or(&serde_json::Value::Null));
+    let client_data = util::s(
+        resp.get("clientDataJSON")
+            .unwrap_or(&serde_json::Value::Null),
+    );
+    let auth_data = util::s(
+        resp.get("authenticatorData")
+            .unwrap_or(&serde_json::Value::Null),
+    );
     let signature = util::s(resp.get("signature").unwrap_or(&serde_json::Value::Null));
     attempt(|| {
         let Some(cred) = db::row(
@@ -462,22 +540,47 @@ fn passkey_login_finish(c: &Ctx) -> Response {
         let challenge = crate::payments::take_challenge(&c.session.id, "wa_auth")
             .ok_or_else(|| "The sign-in challenge expired. Try again.".to_string())?;
         let stored = cred.get("sign_count").and_then(|v| v.as_i64()).unwrap_or(0);
-        let pem = cred.get("public_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let pem = cred
+            .get("public_key")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let counter = crate::payments::webauthn::verify_assertion(
-            &client_data, &auth_data, &signature, &pem, stored, &challenge, &origin(), &rp_id(),
+            &client_data,
+            &auth_data,
+            &signature,
+            &pem,
+            stored,
+            &challenge,
+            &origin(),
+            &rp_id(),
         )
         .map_err(|e| e.to_string())?;
-        let uid = cred.get("user_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let cid = cred.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let uid = cred
+            .get("user_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let cid = cred
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let _ = db::run(
             "UPDATE webauthn_credentials SET sign_count = ?, last_used_at = ? WHERE id = ?",
-            &[arg(json!(counter as i64)), arg(json!(util::now())), arg(json!(cid))],
+            &[
+                arg(json!(counter as i64)),
+                arg(json!(util::now())),
+                arg(json!(cid)),
+            ],
         );
         let Some(u) = db::row("SELECT * FROM users WHERE id = ?", &[arg(json!(uid))]) else {
             return Ok(bad("This passkey has no account."));
         };
         if u.get("status").and_then(|v| v.as_str()) != Some("Active") {
-            return Ok(util::forbidden("This account is suspended. Contact 0796 752 645."));
+            return Ok(util::forbidden(
+                "This account is suspended. Contact 0796 752 645.",
+            ));
         }
         let sess = crate::session::login(&uid);
         let mut res = ok(json!({ "user": map::user(&u) }));
@@ -519,7 +622,11 @@ fn passkey_delete(c: &Ctx) -> Response {
     let Ok(u) = c.require_user() else {
         return util::unauth();
     };
-    let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let uid = u
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     let id = c.p("id");
     let _ = db::run(
         "DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?",

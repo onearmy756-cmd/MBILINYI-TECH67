@@ -120,15 +120,27 @@ pub fn pick_for_service(service: &str) -> Option<db::Row> {
     };
     let mut best: Option<(i64, i64, db::Row)> = None;
     for r in all {
-        let raw = r.get("services").and_then(|v| v.as_str()).unwrap_or("[]").to_string();
+        let raw = r
+            .get("services")
+            .and_then(|v| v.as_str())
+            .unwrap_or("[]")
+            .to_string();
         let serves: Vec<String> = serde_json::from_str(&raw).unwrap_or_default();
         let serves_this = serves.iter().any(|s| same_service(s, service))
             || serves.iter().any(|s| s.eq_ignore_ascii_case("all"));
         if !serves_this {
             continue;
         }
-        let lvl = r.get("level").and_then(|v| v.as_str()).unwrap_or("mid").to_string();
-        let id = r.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let lvl = r
+            .get("level")
+            .and_then(|v| v.as_str())
+            .unwrap_or("mid")
+            .to_string();
+        let id = r
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let busy = db::scalar_i64(
             "SELECT COUNT(*) FROM request_assignment WHERE employee_id = ?",
             &[arg(json!(id))],
@@ -165,7 +177,10 @@ pub async fn handle(c: &Ctx) -> Response {
             );
             ok(json!({ "employees": rows.iter().map(map::employee_public).collect::<Vec<_>>() }))
         }
-        "get" => match db::row("SELECT * FROM employees WHERE id = ?", &[arg(json!(c.p("id")))]) {
+        "get" => match db::row(
+            "SELECT * FROM employees WHERE id = ?",
+            &[arg(json!(c.p("id")))],
+        ) {
             Some(r) => ok(json!({ "employee": map::employee(&r) })),
             None => err("Employee not found.", 404),
         },
@@ -187,8 +202,288 @@ pub async fn handle(c: &Ctx) -> Response {
         }
         // What the client sees: who is serving them and how far along the work is.
         "my_worker" => my_worker(c),
+
+        /* ---- The employee's own portal ----
+         * A worker signs in with the same account system as everyone else, and
+         * their employee record is linked to that account. From there they see
+         * only their own jobs, the tools their job allows, and the progress of
+         * the work they are carrying out. */
+        "me" => employee_me(c),
+        "my_tasks" => my_tasks(c),
+        "task_update" => task_update(c),
+        "my_tools" => my_tools(c),
+        "workspace" => workspace(c),
+
         _ => bad("Unknown wafanyakazi action."),
     }
+}
+
+/// Link an employee record to a user account, creating the account when needed.
+/// An employee without a login cannot use the portal, so this is what hiring
+/// with portal access does.
+pub fn link_account(employee_id: &str, email: &str, name: &str) -> Option<String> {
+    if email.trim().is_empty() {
+        return None;
+    }
+    // An existing account with that address is reused rather than duplicated.
+    if let Some(u) = db::row(
+        "SELECT id FROM users WHERE lower(email) = ?",
+        &[arg(json!(email.to_lowercase()))],
+    ) {
+        let uid = util::s(u.get("id").unwrap_or(&J::Null));
+        let _ = db::run(
+            "UPDATE employees SET user_id = ? WHERE id = ?",
+            &[arg(json!(uid)), arg(json!(employee_id))],
+        );
+        return Some(uid);
+    }
+    let uid = util::new_id("U-");
+    // A random password is issued; the employee sets their own on first sign-in
+    // through the ordinary password reset, so no shared secret is ever mailed.
+    let pass = util::token_hex(12);
+    let _ = db::run(
+        "INSERT INTO users (id, name, email, phone, company, password_hash, role, status, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?)",
+        &[
+            arg(json!(uid)), arg(json!(name)), arg(json!(email.to_lowercase())), arg(json!("")),
+            arg(json!("Mbilinyi Tech Solutions")),
+            arg(json!(bcrypt::hash(&pass, 10).unwrap_or_default())),
+            arg(json!("staff")), arg(json!("Active")), arg(json!(util::now())),
+        ],
+    );
+    let _ = db::run(
+        "UPDATE employees SET user_id = ? WHERE id = ?",
+        &[arg(json!(uid)), arg(json!(employee_id))],
+    );
+    crate::mail::spawn(
+        email.to_lowercase(),
+        "Your Mbilinyi Tech staff portal account".to_string(),
+        format!(
+            "Karibu {name}.<br><br>A staff account has been created for you on the Mbilinyi Tech platform.<br>\
+             Sign in with this address and use \"Forgot password\" to set your own password.<br><br>\
+             Kwa maswali, wasiliana na CEO: 0796 752 645."
+        ),
+        "staff_invite",
+    );
+    Some(uid)
+}
+
+/// The signed-in employee's own record, or the error explaining why they have
+/// none. Every other action here builds on this, so the rule "a worker sees only
+/// their own work" is enforced in one place.
+fn current_employee(c: &Ctx) -> Result<db::Row, Response> {
+    let u = c.require_user()?;
+    let uid = util::s(u.get("id").unwrap_or(&J::Null));
+    let email = util::s(u.get("email").unwrap_or(&J::Null));
+    // Matched on the linked account, or on the address the record carries, so a
+    // worker hired before the portal existed is still recognised.
+    db::row(
+        "SELECT * FROM employees WHERE user_id = ? OR (user_id = '' AND lower(email) = ?)",
+        &[arg(json!(uid)), arg(json!(email.to_lowercase()))],
+    )
+    .ok_or_else(|| {
+        crate::util::err(
+            "This account is not linked to an employee record. Ask the CEO to add you under Wafanyakazi.",
+            403,
+        )
+    })
+}
+
+fn employee_me(c: &Ctx) -> Response {
+    match current_employee(c) {
+        Ok(e) => {
+            let id = util::s(e.get("id").unwrap_or(&J::Null));
+            let open = db::scalar_i64(
+                "SELECT COUNT(*) FROM request_assignment ra JOIN requests r ON r.id = ra.request_id
+                 WHERE ra.employee_id = ? AND r.status NOT IN ('Completed','Rejected')",
+                &[arg(json!(id))],
+            );
+            let done = db::scalar_i64(
+                "SELECT COUNT(*) FROM request_assignment ra JOIN requests r ON r.id = ra.request_id
+                 WHERE ra.employee_id = ? AND r.status = 'Completed'",
+                &[arg(json!(id))],
+            );
+            ok(json!({
+                "employee": map::employee(&e),
+                "openTasks": open,
+                "completedTasks": done,
+                "tools": tools::granted(&util::s(e.get("tools").unwrap_or(&J::Null))),
+            }))
+        }
+        Err(e) => e,
+    }
+}
+
+/// The work assigned to the signed-in employee, newest first, with the client's
+/// progress visible so the worker knows what the client is being shown.
+fn my_tasks(c: &Ctx) -> Response {
+    let e = match current_employee(c) {
+        Ok(e) => e,
+        Err(e) => return e,
+    };
+    let id = util::s(e.get("id").unwrap_or(&J::Null));
+    let rows = db::rows(
+        "SELECT r.*, ra.id AS assignment_id, ra.created_at AS assigned_at, ra.note AS assignment_note
+         FROM request_assignment ra JOIN requests r ON r.id = ra.request_id
+         WHERE ra.employee_id = ? ORDER BY ra.created_at DESC",
+        &[arg(json!(id))],
+    );
+    let items: Vec<J> = rows
+        .iter()
+        .map(|r| {
+            let status = util::s(r.get("status").unwrap_or(&J::Null));
+            json!({
+                "request": map::request(r),
+                "assignmentId": util::s(r.get("assignment_id").unwrap_or(&J::Null)),
+                "assignedAt": util::iso(r.get("assigned_at").and_then(|v| v.as_str())),
+                "note": util::s(r.get("assignment_note").unwrap_or(&J::Null)),
+                "progress": progress_of(&status),
+                "canStart": matches!(status.as_str(), "Approved" | "Quoted"),
+                "canFinish": matches!(status.as_str(), "In Progress"),
+            })
+        })
+        .collect();
+    ok(json!({ "tasks": items }))
+}
+
+/// A worker moves their own task along. They may start work the CEO approved and
+/// mark it finished for review — nothing more. Delivering to the client, and
+/// releasing money, stay with the client and the CEO.
+fn task_update(c: &Ctx) -> Response {
+    if let Err(e) = c.require_csrf() {
+        return e;
+    }
+    let e = match current_employee(c) {
+        Ok(e) => e,
+        Err(e) => return e,
+    };
+    let emp_id = util::s(e.get("id").unwrap_or(&J::Null));
+    let rid = c.p("requestId");
+    let want = c.p("status");
+    if !matches!(want.as_str(), "In Progress" | "Completed") {
+        return bad("A worker may start work or mark it finished. Nothing else.");
+    }
+    // Only the worker assigned to this request may move it.
+    let Some(assignment) = db::row(
+        "SELECT * FROM request_assignment WHERE employee_id = ? AND (request_id = ? OR request_id IN
+           (SELECT id FROM requests WHERE tracking_id = ?)) ORDER BY created_at DESC LIMIT 1",
+        &[arg(json!(emp_id)), arg(json!(rid)), arg(json!(rid))],
+    ) else {
+        return crate::util::err("That task is not assigned to you.", 403);
+    };
+    let request_id = util::s(assignment.get("request_id").unwrap_or(&J::Null));
+    let Some(req) = db::row(
+        "SELECT * FROM requests WHERE id = ?",
+        &[arg(json!(request_id))],
+    ) else {
+        return crate::util::err("Request not found.", 404);
+    };
+    let current = util::s(req.get("status").unwrap_or(&J::Null));
+    // The 50/50 gate still applies: work may not start before the deposit.
+    if want == "In Progress" {
+        if let Some(block) = deposit_block(&util::s(req.get("tracking_id").unwrap_or(&J::Null))) {
+            return bad(&block);
+        }
+        if !matches!(current.as_str(), "Approved" | "Quoted" | "In Progress") {
+            return bad("The CEO has not approved this request yet.");
+        }
+    }
+    let _ = db::run(
+        "UPDATE requests SET status = ? WHERE id = ?",
+        &[arg(json!(want)), arg(json!(request_id))],
+    );
+    let tracking = util::s(req.get("tracking_id").unwrap_or(&J::Null));
+    let note = format!(
+        "{} moved {tracking} to {want}.",
+        util::s(e.get("full_name").unwrap_or(&J::Null))
+    );
+    crate::notify::sms(
+        &util::s(req.get("phone").unwrap_or(&J::Null)),
+        &format!("Kazi ya ombi lako {tracking} sasa ni {want}. Fuatilia maendeleo kwenye portal."),
+        &tracking,
+        "worker_status",
+    );
+    crate::notify::admin_alert(&format!("{tracking} → {want}"), &note, "worker_status");
+    ok(json!({ "updated": true, "status": want, "progress": progress_of(&want) }))
+}
+
+/// The tools the signed-in worker's job allows. Only the codes, never the
+/// settings behind them.
+fn my_tools(c: &Ctx) -> Response {
+    let e = match current_employee(c) {
+        Ok(e) => e,
+        Err(e) => return e,
+    };
+    let codes = tools::granted(&util::s(e.get("tools").unwrap_or(&J::Null)));
+    let items: Vec<J> = codes
+        .iter()
+        .filter_map(|c| tools::find(c))
+        .map(|t| json!({ "code": t.code, "name": t.name, "icon": t.icon, "family": t.family, "agentic": t.agentic }))
+        .collect();
+    ok(json!({ "tools": items, "count": items.len() }))
+}
+
+/// The AI workspace: what the worker's granted tools are doing, and what they
+/// produced. This is the "interface nzuri za kufanya kazi" — a place to give a
+/// tool a job and read the result, without leaving the platform.
+fn workspace(c: &Ctx) -> Response {
+    let e = match current_employee(c) {
+        Ok(e) => e,
+        Err(e) => return e,
+    };
+    let emp_id = util::s(e.get("id").unwrap_or(&J::Null));
+    // The runs this worker's requests produced, most recent first.
+    let runs = db::rows(
+        "SELECT ar.* FROM agent_runs ar
+         WHERE ar.request_id IN (SELECT request_id FROM request_assignment WHERE employee_id = ?)
+         ORDER BY ar.created_at DESC LIMIT 40",
+        &[arg(json!(emp_id))],
+    );
+    let items: Vec<J> = runs
+        .iter()
+        .map(|r| {
+            json!({
+                "id": util::s(r.get("id").unwrap_or(&J::Null)),
+                "agentName": util::s(r.get("agent_name").unwrap_or(&J::Null)),
+                "status": util::s(r.get("status").unwrap_or(&J::Null)),
+                "task": util::s(r.get("task").unwrap_or(&J::Null)),
+                "result": util::s(r.get("result").unwrap_or(&J::Null)),
+                "steps": util::i(r.get("steps").unwrap_or(&J::Null)),
+                "provider": util::s(r.get("provider").unwrap_or(&J::Null)),
+                "model": util::s(r.get("model").unwrap_or(&J::Null)),
+                "startedAt": util::iso(r.get("started_at").and_then(|v| v.as_str())),
+                "endedAt": util::iso(r.get("ended_at").and_then(|v| v.as_str())),
+            })
+        })
+        .collect();
+    ok(json!({
+        "employee": map::employee(&e),
+        "runs": items,
+        "toolCount": tools::granted(&util::s(e.get("tools").unwrap_or(&J::Null))).len(),
+    }))
+}
+
+/// The 50/50 rule, reused by the worker's own status change so a worker cannot
+/// start work the deposit gate forbids.
+fn deposit_block(tracking_id: &str) -> Option<String> {
+    if tracking_id.is_empty() {
+        return None;
+    }
+    let unpaid: i64 = db::scalar_i64(
+        "SELECT COUNT(*) FROM invoices WHERE tracking_id = ? AND status != 'Paid' AND amount > 0",
+        &[arg(json!(tracking_id))],
+    );
+    let paid: i64 = db::scalar_i64(
+        "SELECT COUNT(*) FROM invoices WHERE tracking_id = ? AND status = 'Paid'",
+        &[arg(json!(tracking_id))],
+    );
+    if unpaid > 0 && paid == 0 {
+        return Some(
+            "Work cannot start until the client has paid the deposit invoice. Send the deposit, then start."
+                .to_string(),
+        );
+    }
+    None
 }
 
 fn save(c: &Ctx) -> Response {
@@ -219,7 +514,9 @@ fn save(c: &Ctx) -> Response {
         .unwrap_or_default();
     for t in &tools_in {
         if !tools::known(t) {
-            return bad(&format!("Unknown tool: {t}. Only platform tools may be granted."));
+            return bad(&format!(
+                "Unknown tool: {t}. Only platform tools may be granted."
+            ));
         }
     }
     let list_json = |key: &str| -> String {
@@ -243,25 +540,59 @@ fn save(c: &Ctx) -> Response {
     // creates a worker who is active and in a real department.
     let department = {
         let d = c.p("department");
-        if d.trim().is_empty() { "employee".to_string() } else { d }
+        if d.trim().is_empty() {
+            "employee".to_string()
+        } else {
+            d
+        }
     };
     let level = {
         let l = c.p("level");
-        if l.trim().is_empty() { "mid".to_string() } else { l }
+        if l.trim().is_empty() {
+            "mid".to_string()
+        } else {
+            l
+        }
     };
     let status = {
         let s = c.p("status");
-        if s.trim().is_empty() { "active".to_string() } else { s }
+        if s.trim().is_empty() {
+            "active".to_string()
+        } else {
+            s
+        }
     };
     let country = {
         let x = c.p("country");
-        if x.trim().is_empty() { "Tanzania".to_string() } else { x }
+        if x.trim().is_empty() {
+            "Tanzania".to_string()
+        } else {
+            x
+        }
     };
     let currency = {
         let x = c.p("currency");
-        if x.trim().is_empty() { "TZS".to_string() } else { x }
+        if x.trim().is_empty() {
+            "TZS".to_string()
+        } else {
+            x
+        }
     };
     if id.is_empty() || id == "new" {
+        // Two employee records for one email would both be routed work and would
+        // fight over the same portal account, so the second one is refused.
+        let email = c.p("email").trim().to_string();
+        if !email.is_empty() {
+            let taken = db::scalar_i64(
+                "SELECT COUNT(*) FROM employees WHERE lower(email) = ?",
+                &[arg(json!(email.to_lowercase()))],
+            ) > 0;
+            if taken {
+                return bad(
+                    "That email already belongs to an employee. Edit the existing record instead.",
+                );
+            }
+        }
         let new_id = util::new_id("EMP-");
         let _ = db::run(
             "INSERT INTO employees (id, full_name, photo, profession, level, department, email, phone, region, country,
@@ -277,7 +608,10 @@ fn save(c: &Ctx) -> Response {
                 arg(json!(status)), arg(json!(now)), arg(json!(now)), arg(json!(now)),
             ],
         );
-        ok(json!({ "id": new_id, "saved": true }))
+        // A worker with a portal account can reach their own tools; without one
+        // the record is still saved, and the CEO can link it later.
+        let linked = link_account(&new_id, &c.p("email"), &name).is_some();
+        ok(json!({ "id": new_id, "saved": true, "portalAccount": linked }))
     } else {
         let _ = db::run(
             "UPDATE employees SET full_name=?, photo=?, profession=?, level=?, department=?, email=?, phone=?, region=?,
@@ -293,7 +627,8 @@ fn save(c: &Ctx) -> Response {
                 arg(json!(status)), arg(json!(now)), arg(json!(id)),
             ],
         );
-        ok(json!({ "id": id, "saved": true }))
+        let linked = link_account(&id, &c.p("email"), &name).is_some();
+        ok(json!({ "id": id, "saved": true, "portalAccount": linked }))
     }
 }
 
@@ -305,10 +640,17 @@ fn toggle(c: &Ctx) -> Response {
         return e;
     }
     let id = c.p("id");
-    let cur = db::row("SELECT status FROM employees WHERE id = ?", &[arg(json!(id))])
-        .and_then(|r| r.get("status").and_then(|v| v.as_str()).map(str::to_string))
-        .unwrap_or_default();
-    let next = if cur == "active" { "inactive" } else { "active" };
+    let cur = db::row(
+        "SELECT status FROM employees WHERE id = ?",
+        &[arg(json!(id))],
+    )
+    .and_then(|r| r.get("status").and_then(|v| v.as_str()).map(str::to_string))
+    .unwrap_or_default();
+    let next = if cur == "active" {
+        "inactive"
+    } else {
+        "active"
+    };
     let _ = db::run(
         "UPDATE employees SET status = ?, updated_at = ? WHERE id = ?",
         &[arg(json!(next)), arg(json!(util::now())), arg(json!(id))],
@@ -323,7 +665,10 @@ fn delete(c: &Ctx) -> Response {
     if let Err(e) = c.require_admin() {
         return e;
     }
-    let _ = db::run("DELETE FROM employees WHERE id = ?", &[arg(json!(c.p("id")))]);
+    let _ = db::run(
+        "DELETE FROM employees WHERE id = ?",
+        &[arg(json!(c.p("id")))],
+    );
     ok(json!({ "deleted": true }))
 }
 
@@ -337,10 +682,16 @@ fn assign(c: &Ctx) -> Response {
     }
     let request_id = c.p("requestId");
     let employee_id = c.p("employeeId");
-    let Some(emp) = db::row("SELECT * FROM employees WHERE id = ? AND status = 'active'", &[arg(json!(employee_id))]) else {
+    let Some(emp) = db::row(
+        "SELECT * FROM employees WHERE id = ? AND status = 'active'",
+        &[arg(json!(employee_id))],
+    ) else {
         return bad("That employee is not available.");
     };
-    let Some(req) = db::row("SELECT * FROM requests WHERE id = ? OR tracking_id = ?", &[arg(json!(request_id)), arg(json!(request_id))]) else {
+    let Some(req) = db::row(
+        "SELECT * FROM requests WHERE id = ? OR tracking_id = ?",
+        &[arg(json!(request_id)), arg(json!(request_id))],
+    ) else {
         return bad("Request not found.");
     };
     let rid = util::s(req.get("id").unwrap_or(&J::Null));
@@ -366,7 +717,9 @@ fn assign(c: &Ctx) -> Response {
         &rid,
         "assign",
     );
-    ok(json!({ "assigned": true, "employee": emp_name, "employeeId": employee_id, "requestId": rid }))
+    ok(
+        json!({ "assigned": true, "employee": emp_name, "employeeId": employee_id, "requestId": rid }),
+    )
 }
 
 /// Route a request to whichever worker serves its service.
@@ -378,7 +731,10 @@ fn auto_assign(c: &Ctx) -> Response {
         return e;
     }
     let rid_in = c.p("requestId");
-    let Some(req) = db::row("SELECT * FROM requests WHERE id = ? OR tracking_id = ?", &[arg(json!(rid_in)), arg(json!(rid_in))]) else {
+    let Some(req) = db::row(
+        "SELECT * FROM requests WHERE id = ? OR tracking_id = ?",
+        &[arg(json!(rid_in)), arg(json!(rid_in))],
+    ) else {
         return bad("Request not found.");
     };
     let service = util::s(req.get("service").unwrap_or(&J::Null));
@@ -417,8 +773,15 @@ fn auto_assign(c: &Ctx) -> Response {
 /// progress the client can watch.
 fn my_worker(c: &Ctx) -> Response {
     let rid = c.p("requestId");
-    let rid = if rid.is_empty() { c.p("trackingId") } else { rid };
-    let Some(req) = db::row("SELECT * FROM requests WHERE id = ? OR tracking_id = ?", &[arg(json!(rid)), arg(json!(rid))]) else {
+    let rid = if rid.is_empty() {
+        c.p("trackingId")
+    } else {
+        rid
+    };
+    let Some(req) = db::row(
+        "SELECT * FROM requests WHERE id = ? OR tracking_id = ?",
+        &[arg(json!(rid)), arg(json!(rid))],
+    ) else {
         return err("Request not found.", 404);
     };
     let id = util::s(req.get("id").unwrap_or(&J::Null));
@@ -437,7 +800,9 @@ fn my_worker(c: &Ctx) -> Response {
             let t: Vec<J> = codes
                 .iter()
                 .filter_map(|x| tools::find(x))
-                .map(|t| json!({"code": t.code, "name": t.name, "icon": t.icon, "family": t.family}))
+                .map(
+                    |t| json!({"code": t.code, "name": t.name, "icon": t.icon, "family": t.family}),
+                )
                 .collect();
             (emp.map(|e| map::employee_public(&e)), t)
         }
@@ -490,19 +855,36 @@ mod tests {
     fn the_two_label_sets_route_to_the_same_worker() {
         // The services grid and the priced catalogue name the same work
         // differently; both must match one grant.
-        assert!(same_service("AI Fine-Tuning", "AI fine-tuning on your own data (RAG / LoRA)"));
-        assert!(same_service("Cybersecurity Services", "Cyber-security audit (OWASP Top-10)"));
-        assert!(same_service("Custom Software Development", "Custom software development"));
+        assert!(same_service(
+            "AI Fine-Tuning",
+            "AI fine-tuning on your own data (RAG / LoRA)"
+        ));
+        assert!(same_service(
+            "Cybersecurity Services",
+            "Cyber-security audit (OWASP Top-10)"
+        ));
+        assert!(same_service(
+            "Custom Software Development",
+            "Custom software development"
+        ));
         assert!(same_service("AI Chatbots", "AI chatbot"));
-        assert!(same_service("BRELA & Business Registration", "BRELA business / company registration"));
+        assert!(same_service(
+            "BRELA & Business Registration",
+            "BRELA business / company registration"
+        ));
     }
 
     #[test]
     fn unrelated_services_do_not_match() {
-        assert!(!same_service("Digital Forensics", "Mobile app (Android + iOS)"));
-        assert!(!same_service("Email & Communication Setup", "Windows & OS Installation"));
+        assert!(!same_service(
+            "Digital Forensics",
+            "Mobile app (Android + iOS)"
+        ));
+        assert!(!same_service(
+            "Email & Communication Setup",
+            "Windows & OS Installation"
+        ));
         assert!(!same_service("", "AI Fine-Tuning"));
         assert!(!same_service("AI Fine-Tuning", ""));
     }
 }
-

@@ -29,8 +29,10 @@ const PUB_SETTING: &str = "platform_ecdsa_public";
 fn signing_key() -> Result<SigningKey, String> {
     let stored = settings::get(KEY_SETTING, "");
     if !stored.is_empty() {
-        let bytes = hex::decode(stored.trim()).map_err(|_| "stored signing key is malformed".to_string())?;
-        return SigningKey::from_slice(&bytes).map_err(|e| format!("stored signing key is invalid: {e}"));
+        let bytes = hex::decode(stored.trim())
+            .map_err(|_| "stored signing key is malformed".to_string())?;
+        return SigningKey::from_slice(&bytes)
+            .map_err(|e| format!("stored signing key is invalid: {e}"));
     }
     let key = SigningKey::random(&mut rand::thread_rng());
     let secret = hex::encode(key.to_bytes());
@@ -59,33 +61,53 @@ fn contract_message(c: &db::Row) -> String {
     )
 }
 
+/// The canonical bytes of a contract, for callers outside this module — the
+/// post-quantum signer needs exactly the same message the classical one signs,
+/// or the two halves would cover different terms.
+pub fn contract_message_public(c: &db::Row) -> String {
+    contract_message(c)
+}
+
+/// Sign arbitrary bytes with the platform key. Used for the ECDSA half of a
+/// hybrid signature.
+pub fn sign_bytes(message: &[u8]) -> Result<String, String> {
+    let key = signing_key()?;
+    let sig: Signature = key.sign(message);
+    Ok(hex::encode(sig.to_bytes()))
+}
+
+/// Verify an ECDSA signature over arbitrary bytes against the platform key.
+pub fn verify_bytes(message: &[u8], signature_hex: &str) -> bool {
+    let Ok(key) = signing_key() else {
+        return false;
+    };
+    let Ok(bytes) = hex::decode(signature_hex.trim()) else {
+        return false;
+    };
+    let Ok(sig) = Signature::from_slice(&bytes) else {
+        return false;
+    };
+    key.verifying_key().verify(message, &sig).is_ok()
+}
+
 /// Sign a contract. The signature and the signer's public key are stored on the
 /// contract row so any later reader can verify it without the private key.
+///
+/// The signature is **hybrid**: ECDSA together with ML-DSA-65. A verifier that
+/// only knows ECDSA can still read the classical half; one that knows both
+/// demands both.
 pub fn sign_contract(contract_id: &str) -> Option<String> {
-    let c = db::row("SELECT * FROM contracts WHERE id = ?", &[arg(json!(contract_id))])?;
-    let key = signing_key().ok()?;
-    let msg = contract_message(&c);
-    let sig: Signature = key.sign(msg.as_bytes());
-    let sig_hex = hex::encode(sig.to_bytes());
-    let _ = db::run(
-        "UPDATE contracts SET admin_sig = ?, admin_signed_at = ? WHERE id = ?",
-        &[arg(json!(sig_hex)), arg(json!(util::now())), arg(json!(contract_id))],
-    );
-    Some(sig_hex)
+    crate::pqc::sign_contract_hybrid(contract_id)?;
+    let c = db::row(
+        "SELECT admin_sig FROM contracts WHERE id = ?",
+        &[arg(json!(contract_id))],
+    )?;
+    Some(util::s(c.get("admin_sig").unwrap_or(&J::Null)))
 }
 
 /// Verify a contract's stored signature against its current contents.
 pub fn verify_contract(contract_id: &str) -> Option<bool> {
-    let c = db::row("SELECT * FROM contracts WHERE id = ?", &[arg(json!(contract_id))])?;
-    let sig_hex = util::s(c.get("admin_sig").unwrap_or(&J::Null));
-    if sig_hex.is_empty() {
-        return Some(false);
-    }
-    let key = signing_key().ok()?;
-    let bytes = hex::decode(sig_hex.trim()).ok()?;
-    let sig = Signature::from_slice(&bytes).ok()?;
-    let msg = contract_message(&c);
-    Some(key.verifying_key().verify(msg.as_bytes(), &sig).is_ok())
+    crate::pqc::verify_contract(contract_id)
 }
 
 pub fn init_tables() {
@@ -110,7 +132,10 @@ pub async fn handle(c: &Ctx) -> Response {
         "status" => {
             let key = signing_key();
             let gateway_count = crate::payments::CATALOGUE.len();
-            let enabled = crate::payments::CATALOGUE.iter().filter(|g| crate::payments::enabled(g)).count();
+            let enabled = crate::payments::CATALOGUE
+                .iter()
+                .filter(|g| crate::payments::enabled(g))
+                .count();
             let stripe_ready = crate::payments::CATALOGUE
                 .iter()
                 .find(|g| g.key == "stripe")
@@ -123,9 +148,11 @@ pub async fn handle(c: &Ctx) -> Response {
                     "publicKey": public_key_hex(),
                 },
                 "quantum": {
-                    "plan": "post-quantum migration ready",
-                    "signatureScheme": "ECDSA (secp256k1)",
+                    "signatureScheme": "ECDSA-secp256k1 + ML-DSA-65 (hybrid)",
+                    "plan": "hybrid signatures live; ML-DSA-only is the next phase",
                     "note": "Signatures are held separately from the payload, so the scheme can be swapped without re-issuing contracts.",
+                    "postQuantum": crate::pqc::status(),
+                    "log": crate::pqc::log_entries(20),
                 },
                 "gateways": { "catalogue": gateway_count, "enabled": enabled, "stripeReady": stripe_ready },
                 "transport": {
@@ -133,10 +160,13 @@ pub async fn handle(c: &Ctx) -> Response {
                     "csrf": true,
                     "passkeys": true,
                 },
+                "hardening": crate::hardening::posture(),
                 "escrow": { "held": crate::payments::escrow::total_held() },
             }))
         }
-        "public_key" => ok(json!({ "publicKey": public_key_hex(), "algorithm": "ECDSA secp256k1" })),
+        "public_key" => {
+            ok(json!({ "publicKey": public_key_hex(), "algorithm": "ECDSA secp256k1" }))
+        }
         "sign" => sign(c),
         "verify" => verify(c),
         "log" => {
@@ -210,8 +240,81 @@ pub async fn handle(c: &Ctx) -> Response {
         }
         "company_account" => ok(json!({ "account": company_account() })),
         "company_account_set" => company_account_set(c),
+        // The sandbox: which domains the platform may probe, and the live
+        // scanner's own posture. A domain is added here only after the client's
+        // written permission, which is why nothing is scanned by default.
+        "sandbox" => ok(crate::sandbox::status()),
+        "authorise_domain" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let domain = crate::sandbox::host_of(&c.p("domain"));
+            if domain.is_empty() {
+                return bad("Give the domain the client has authorised.");
+            }
+            let mut list: Vec<String> = settings::get("security_authorised_domains", "")
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if !list.iter().any(|d| d.eq_ignore_ascii_case(&domain)) {
+                list.push(domain.clone());
+            }
+            settings::set("security_authorised_domains", &list.join(","));
+            ok(json!({ "added": domain, "domains": list }))
+        }
+        "deauthorise_domain" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let domain = crate::sandbox::host_of(&c.p("domain"));
+            let list: Vec<String> = settings::get("security_authorised_domains", "")
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty() && !s.eq_ignore_ascii_case(&domain))
+                .collect();
+            settings::set("security_authorised_domains", &list.join(","));
+            ok(json!({ "removed": domain, "domains": list }))
+        }
+        // A scan the CEO asks for directly, so the sandbox can be proven without
+        // running a whole agent job.
+        "scan" => scan(c).await,
         _ => bad("Unknown security action."),
     }
+}
+
+/// Run one sandbox check on demand. The scope rule applies exactly as it does
+/// inside an agent run — there is no privileged path that skips it.
+async fn scan(c: &Ctx) -> Response {
+    if let Err(e) = c.require_csrf() {
+        return e;
+    }
+    if let Err(e) = c.require_admin() {
+        return e;
+    }
+    let kind = c.p("kind");
+    let target = c.p("target");
+    let (evidence, succeeded) = match kind.as_str() {
+        "headers" => crate::sandbox::audit_headers(&target).await,
+        "exposure" => crate::sandbox::audit_exposure(&target, &c.p("authorised")).await,
+        "dns" => crate::sandbox::audit_dns(&target).await,
+        "tls" => crate::sandbox::audit_tls(&target).await,
+        "dependencies" => crate::sandbox::audit_dependencies(&target).await,
+        "code" => crate::sandbox::audit_code(&target).await,
+        "malware" => crate::sandbox::scan_malware(&target).await,
+        _ => {
+            return bad(
+                "Choose a check: headers, exposure, dns, tls, dependencies, code or malware.",
+            )
+        }
+    };
+    ok(json!({ "kind": kind, "ok": succeeded, "evidence": evidence }))
 }
 
 fn sign(c: &Ctx) -> Response {
@@ -234,7 +337,9 @@ fn sign(c: &Ctx) -> Response {
                     arg(json!(sig)), arg(json!(1)), arg(json!(util::now())),
                 ],
             );
-            ok(json!({ "signed": true, "signature": sig, "algorithm": "ECDSA secp256k1", "publicKey": public_key_hex() }))
+            ok(
+                json!({ "signed": true, "signature": sig, "algorithm": "ECDSA secp256k1", "publicKey": public_key_hex() }),
+            )
         }
         None => bad("Could not sign that contract."),
     }

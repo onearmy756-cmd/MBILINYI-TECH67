@@ -34,8 +34,15 @@ pub struct Call {
 pub enum Msg {
     System(String),
     User(String),
-    Assistant { text: String, calls: Vec<Call> },
-    ToolResult { id: String, name: String, content: String },
+    Assistant {
+        text: String,
+        calls: Vec<Call>,
+    },
+    ToolResult {
+        id: String,
+        name: String,
+        content: String,
+    },
 }
 
 /// What the model replied with: prose, tool calls, or both.
@@ -104,42 +111,42 @@ fn default_base(provider: &str) -> &'static str {
 /// container deployment wants.
 impl Llm {
     pub fn from_settings() -> Llm {
-    let mut provider = settings::get("llm_provider", "").trim().to_lowercase();
-    if provider.is_empty() {
-        provider = if !env_first(&["ANTHROPIC_API_KEY"]).is_empty() {
-            "anthropic".into()
-        } else if !env_first(&["GEMINI_API_KEY", "GOOGLE_API_KEY"]).is_empty() {
-            "gemini".into()
-        } else if !env_first(&["OLLAMA_CLOUD_API_KEY", "OLLAMA_API_KEY"]).is_empty() {
-            "ollama".into()
-        } else {
-            "openai".into()
+        let mut provider = settings::get("llm_provider", "").trim().to_lowercase();
+        if provider.is_empty() {
+            provider = if !env_first(&["ANTHROPIC_API_KEY"]).is_empty() {
+                "anthropic".into()
+            } else if !env_first(&["GEMINI_API_KEY", "GOOGLE_API_KEY"]).is_empty() {
+                "gemini".into()
+            } else if !env_first(&["OLLAMA_CLOUD_API_KEY", "OLLAMA_API_KEY"]).is_empty() {
+                "ollama".into()
+            } else {
+                "openai".into()
+            };
+        }
+        let model = {
+            let m = settings::get("llm_model", "");
+            if m.trim().is_empty() {
+                env_first(&["LLM_MODEL"]).if_empty(default_model(&provider))
+            } else {
+                m.trim().to_string()
+            }
         };
-    }
-    let model = {
-        let m = settings::get("llm_model", "");
-        if m.trim().is_empty() {
-            env_first(&["LLM_MODEL"]).if_empty(default_model(&provider))
-        } else {
-            m.trim().to_string()
+        let base = {
+            let b = settings::get("llm_base_url", "");
+            if b.trim().is_empty() {
+                env_first(&["LLM_BASE_URL", "OLLAMA_HOST"]).if_empty(default_base(&provider))
+            } else {
+                b.trim().to_string()
+            }
+        };
+        Llm {
+            provider: provider.clone(),
+            model,
+            base: base.trim_end_matches('/').to_string(),
+            key: key_for(&provider),
+            max_tokens: settings::num("llm_max_tokens", 4096.0) as u32,
+            temperature: settings::num("llm_temperature", 0.3),
         }
-    };
-    let base = {
-        let b = settings::get("llm_base_url", "");
-        if b.trim().is_empty() {
-            env_first(&["LLM_BASE_URL", "OLLAMA_HOST"]).if_empty(default_base(&provider))
-        } else {
-            b.trim().to_string()
-        }
-    };
-    Llm {
-        provider: provider.clone(),
-        model,
-        base: base.trim_end_matches('/').to_string(),
-        key: key_for(&provider),
-        max_tokens: settings::num("llm_max_tokens", 4096.0) as u32,
-        temperature: settings::num("llm_temperature", 0.3),
-    }
     }
 }
 
@@ -155,6 +162,26 @@ impl IfEmpty for String {
             self
         }
     }
+}
+
+/// Is an AI provider ready to answer? Used by callers that want to say so
+/// plainly rather than attempt a call that cannot work.
+pub fn ready() -> bool {
+    Llm::from_settings().ready()
+}
+
+/// The active provider's name, for a message that names who answered.
+pub fn provider_name() -> String {
+    Llm::from_settings().provider
+}
+
+/// One prompt in, one answer out. The shorthand for a caller that has no tools
+/// and no conversation — the AI scribe, a summary, a rewrite.
+pub async fn complete(prompt: &str) -> Result<String, String> {
+    let llm = Llm::from_settings();
+    let msgs = vec![Msg::User(prompt.to_string())];
+    let turn = llm.chat(&msgs, &[]).await?;
+    Ok(turn.text)
 }
 
 impl Llm {
@@ -251,7 +278,8 @@ impl Llm {
         if !status.is_success() {
             return Err(provider_error("OpenAI", status.as_u16(), &text));
         }
-        let v: J = serde_json::from_str(&text).map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
+        let v: J = serde_json::from_str(&text)
+            .map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
         let msg = &v["choices"][0]["message"];
         let prose = msg["content"].as_str().unwrap_or("").to_string();
         let calls = msg["tool_calls"]
@@ -335,7 +363,8 @@ impl Llm {
         if !status.is_success() {
             return Err(provider_error("Anthropic", status.as_u16(), &text));
         }
-        let v: J = serde_json::from_str(&text).map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
+        let v: J = serde_json::from_str(&text)
+            .map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
         let mut prose = String::new();
         let mut calls = Vec::new();
         if let Some(blocks) = v["content"].as_array() {
@@ -417,7 +446,8 @@ impl Llm {
         if !status.is_success() {
             return Err(provider_error("Gemini", status.as_u16(), &text));
         }
-        let v: J = serde_json::from_str(&text).map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
+        let v: J = serde_json::from_str(&text)
+            .map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
         let mut prose = String::new();
         let mut calls = Vec::new();
         if let Some(parts) = v["candidates"][0]["content"]["parts"].as_array() {
@@ -449,7 +479,9 @@ impl Llm {
         if !specs.is_empty() {
             body["tools"] = json!(Self::openai_tools(specs));
         }
-        let mut req = Self::client()?.post(format!("{}/api/chat", self.base)).json(&body);
+        let mut req = Self::client()?
+            .post(format!("{}/api/chat", self.base))
+            .json(&body);
         if !self.key.is_empty() {
             req = req.bearer_auth(&self.key);
         }
@@ -462,7 +494,8 @@ impl Llm {
         if !status.is_success() {
             return Err(provider_error("Ollama", status.as_u16(), &text));
         }
-        let v: J = serde_json::from_str(&text).map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
+        let v: J = serde_json::from_str(&text)
+            .map_err(|e| format!("the model sent an unreadable reply: {e}"))?;
         let msg = &v["message"];
         let prose = msg["content"].as_str().unwrap_or("").to_string();
         let calls = msg["tool_calls"]
@@ -503,7 +536,9 @@ fn provider_error(name: &str, code: u16, body: &str) -> String {
     let short: String = body.chars().take(400).collect();
     let short = redact(&short);
     match code {
-        401 | 403 => format!("{name} refused the API key. Check it in Admin -> Settings. ({short})"),
+        401 | 403 => {
+            format!("{name} refused the API key. Check it in Admin -> Settings. ({short})")
+        }
         429 => format!("{name} is rate-limiting us. Try again shortly. ({short})"),
         _ => format!("{name} returned HTTP {code}: {short}"),
     }
@@ -518,7 +553,9 @@ pub fn redact(s: &str) -> String {
             || t.starts_with("sk_")
             || t.starts_with("sk-ant")
             || t.starts_with("AIza")
-            || (t.len() > 32 && t.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
+            || (t.len() > 32
+                && t.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
         if looks_secret && !t.is_empty() {
             out.push_str("[redacted] ");
         } else {
@@ -596,7 +633,11 @@ mod tests {
             max_tokens: 1,
             temperature: 0.0,
         };
-        let msgs = vec![Msg::ToolResult { id: "c1".into(), name: "web".into(), content: "ok".into() }];
+        let msgs = vec![Msg::ToolResult {
+            id: "c1".into(),
+            name: "web".into(),
+            content: "ok".into(),
+        }];
         let m = l.openai_messages(&msgs);
         assert_eq!(m[0]["role"], json!("tool"));
         assert_eq!(m[0]["tool_call_id"], json!("c1"));

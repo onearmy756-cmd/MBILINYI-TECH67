@@ -15,7 +15,11 @@ use serde_json::json;
 /// The providers the platform can reach.
 const PROVIDERS: &[(&str, &str, &str)] = &[
     ("openai", "OpenAI (GPT)", "gpt-4o-mini"),
-    ("anthropic", "Anthropic (Claude)", "claude-3-5-sonnet-latest"),
+    (
+        "anthropic",
+        "Anthropic (Claude)",
+        "claude-3-5-sonnet-latest",
+    ),
     ("gemini", "Google Gemini", "gemini-1.5-pro"),
     ("ollama", "Ollama (local or cloud)", "llama3.1"),
 ];
@@ -70,10 +74,15 @@ pub async fn handle(c: &Ctx) -> Response {
                 settings::set("llm_max_tokens", &util::i(&c.pv("maxTokens")).to_string());
             }
             if !c.p("temperature").trim().is_empty() {
-                settings::set("llm_temperature", &format!("{}", util::f(&c.pv("temperature"))));
+                settings::set(
+                    "llm_temperature",
+                    &format!("{}", util::f(&c.pv("temperature"))),
+                );
             }
             let l = Llm::from_settings();
-            ok(json!({ "saved": true, "provider": l.provider, "model": l.model, "ready": l.ready() }))
+            ok(
+                json!({ "saved": true, "provider": l.provider, "model": l.model, "ready": l.ready() }),
+            )
         }
         "clear_key" => {
             if let Err(e) = c.require_csrf() {
@@ -110,7 +119,9 @@ pub async fn handle(c: &Ctx) -> Response {
                     "model": l.model,
                     "ms": started.elapsed().as_millis() as u64,
                 })),
-                Err(e) => ok(json!({ "connected": false, "error": e, "provider": l.provider, "model": l.model })),
+                Err(e) => ok(
+                    json!({ "connected": false, "error": e, "provider": l.provider, "model": l.model }),
+                ),
             }
         }
         _ => bad("Unknown llm action."),
@@ -124,7 +135,14 @@ fn hint(key: &str) -> String {
     if t.is_empty() {
         return String::new();
     }
-    let tail: String = t.chars().rev().take(4).collect::<Vec<_>>().into_iter().rev().collect();
+    let tail: String = t
+        .chars()
+        .rev()
+        .take(4)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
     format!("…{tail}")
 }
 

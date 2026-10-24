@@ -37,7 +37,8 @@ pub async fn handle(c: &Ctx) -> Response {
                 return e;
             }
             let id = c.p("id");
-            let Some(r) = db::row("SELECT * FROM agent_runs WHERE id = ?", &[arg(json!(id))]) else {
+            let Some(r) = db::row("SELECT * FROM agent_runs WHERE id = ?", &[arg(json!(id))])
+            else {
                 return err("Run not found.", 404);
             };
             let steps = db::rows(
@@ -68,10 +69,12 @@ pub async fn handle(c: &Ctx) -> Response {
                 &[],
             )
             .into_iter()
-            .map(|r| json!({
-                "status": util::s(r.get("status").unwrap_or(&J::Null)),
-                "count": util::i(r.get("n").unwrap_or(&J::Null)),
-            }))
+            .map(|r| {
+                json!({
+                    "status": util::s(r.get("status").unwrap_or(&J::Null)),
+                    "count": util::i(r.get("n").unwrap_or(&J::Null)),
+                })
+            })
             .collect::<Vec<_>>();
             ok(json!({
                 "total": db::scalar_i64("SELECT COUNT(*) FROM agent_runs", &[]),
@@ -109,7 +112,10 @@ pub async fn handle(c: &Ctx) -> Response {
             };
             let tool = c.p("tool");
             if !tool.is_empty() {
-                let Some(a) = db::row("SELECT * FROM agents WHERE id = ?", &[arg(json!(agent_id.clone()))]) else {
+                let Some(a) = db::row(
+                    "SELECT * FROM agents WHERE id = ?",
+                    &[arg(json!(agent_id.clone()))],
+                ) else {
                     return err("Agent not found.", 404);
                 };
                 let grant = util::s(a.get("tools").unwrap_or(&J::Null));
@@ -118,7 +124,10 @@ pub async fn handle(c: &Ctx) -> Response {
                 }
             }
             engine::spawn(agent_id.clone(), task.clone(), request_id.clone());
-            let a = db::row("SELECT name FROM agents WHERE id = ?", &[arg(json!(agent_id.clone()))]);
+            let a = db::row(
+                "SELECT name FROM agents WHERE id = ?",
+                &[arg(json!(agent_id.clone()))],
+            );
             ok(json!({
                 "started": true,
                 "agentId": agent_id,
@@ -152,10 +161,12 @@ pub async fn handle(c: &Ctx) -> Response {
                 &[],
             )
             .into_iter()
-            .map(|r| json!({
-                "department": util::s(r.get("department").unwrap_or(&J::Null)),
-                "count": util::i(r.get("n").unwrap_or(&J::Null)),
-            }))
+            .map(|r| {
+                json!({
+                    "department": util::s(r.get("department").unwrap_or(&J::Null)),
+                    "count": util::i(r.get("n").unwrap_or(&J::Null)),
+                })
+            })
             .collect::<Vec<_>>();
             ok(json!({
                 "provider": llm.provider,

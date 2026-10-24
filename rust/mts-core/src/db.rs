@@ -8,7 +8,7 @@
 //! a long-lived connection would instead keep writing to a deleted inode. The
 //! smoke test relies on that behaviour, so it is preserved here.
 
-use rusqlite::{Connection, OptionalExtension, params_from_iter};
+use rusqlite::{params_from_iter, Connection, OptionalExtension};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};

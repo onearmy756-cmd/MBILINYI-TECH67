@@ -81,13 +81,29 @@ pub async fn ws_call(
 
 async fn handle(mut socket: WebSocket, room: String, name: String) {
     // Refuse a room name that could be used to confuse the map or a log.
-    if room.is_empty() || room.len() > 80 || !room.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
-        let _ = socket.send(Message::Text(envelope("error", "server", "bad room name").into())).await;
+    if room.is_empty()
+        || room.len() > 80
+        || !room
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        let _ = socket
+            .send(Message::Text(
+                envelope("error", "server", "bad room name").into(),
+            ))
+            .await;
         return;
     }
     let (mut rx, _) = join(&room, &name);
     let _ = socket
-        .send(Message::Text(envelope("joined", "server", &format!("{{\"room\":\"{room}\",\"you\":\"{name}\"}}")).into()))
+        .send(Message::Text(
+            envelope(
+                "joined",
+                "server",
+                &format!("{{\"room\":\"{room}\",\"you\":\"{name}\"}}"),
+            )
+            .into(),
+        ))
         .await;
 
     loop {
@@ -131,12 +147,21 @@ fn relay(room: &str, from: &str, raw: &str) {
         Ok(v) => v,
         Err(_) => return,
     };
-    let kind = parsed.get("type").and_then(|v| v.as_str()).unwrap_or("signal");
+    let kind = parsed
+        .get("type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("signal");
     // Only the signalling verbs are relayed; anything else is ignored.
-    if !matches!(kind, "offer" | "answer" | "ice" | "chat" | "mute" | "camera" | "share" | "leave" | "signal") {
+    if !matches!(
+        kind,
+        "offer" | "answer" | "ice" | "chat" | "mute" | "camera" | "share" | "leave" | "signal"
+    ) {
         return;
     }
-    let payload = parsed.get("payload").cloned().unwrap_or(serde_json::Value::Null);
+    let payload = parsed
+        .get("payload")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let out = serde_json::json!({ "type": kind, "from": from, "payload": payload }).to_string();
     let map = rooms().lock().unwrap_or_else(|e| e.into_inner());
     if let Some(entry) = map.get(room) {

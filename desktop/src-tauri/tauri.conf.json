@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/1",
+  "build": {
+    "distDir": "../www",
+    "devPath": "https://mbilinyitech.co.tz",
+    "withGlobalTauri": true
+  },
+  "package": {
+    "productName": "Mbilinyi Tech",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "shell": { "open": true },
+      "notification": { "all": true },
+      "window": { "all": true }
+    },
+    "bundle": {
+      "active": true,
+      "identifier": "tz.co.mbilinyitech.desktop",
+      "targets": "all",
+      "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.icns", "icons/icon.ico"],
+      "windows": {
+        "wix": { "language": "en-US" },
+        "nsis": { "languages": ["English", "Swahili"], "displayLanguageSelector": true }
+      },
+      "shortDescription": "Mbilinyi Tech Solutions — software, AI and security from Dodoma.",
+      "longDescription": "The Mbilinyi Tech desktop client: requests, contracts, invoices, payments and the online office, from Windows, macOS or Linux."
+    },
+    "security": {
+      "csp": "default-src 'self' https://mbilinyitech.co.tz; connect-src 'self' https://mbilinyitech.co.tz wss://mbilinyitech.co.tz; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    },
+    "windows": [
+      {
+        "title": "Mbilinyi Tech Solutions",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "url": "https://mbilinyitech.co.tz/?src=desktop"
+      }
+    ]
+  }
+}

@@ -8,6 +8,85 @@ details moved with their sections).
 **Deploying?** Clone it and open it — see [DEPLOY.md](DEPLOY.md). There is nothing
 to configure first, and `/deploy` shows whether the host is ready.
 
+## The Rust core (`rust/mts-core`)
+
+Everything the platform actually does — pages, API, payments, agents, security —
+is served by a Rust service. The PHP files are the original shell and are kept
+only so old bookmarks resolve; the Rust router in `src/main.rs` (`page_dispatch`)
+answers every page, and `src/api/mod.rs` answers every `/api/*` call.
+
+```bash
+cd rust/mts-core
+cargo build --release
+MTS_DB=storage/mts.sqlite MTS_PORT=12000 ./target/release/mts-core
+```
+
+Environment: `MTS_DB` (SQLite path, default `storage/mts.sqlite`), `MTS_PORT`
+(default 12000). On first run the schema, the settings and the demo data are
+created, so a fresh clone runs with no setup.
+
+```bash
+cargo test          # 87 unit tests
+cargo fmt --all -- --check
+cargo clippy --all-targets
+```
+
+## Paying in USD or TZS (Stripe + mobile money)
+
+A client chooses the currency at the payment step, and the amount is converted
+at the rate the CEO publishes in *Admin → Settings → `fx_usd_tzs`*:
+
+- **Stripe** handles cards in **USD, EUR, GBP and TZS**.
+- Tanzanian mobile money (M-Pesa, Airtel, Tigo, Halopesa) and bank transfer
+  take **TZS**.
+
+The gateways the client may choose from come from `GET /api/payments.php?action=gateways`,
+which returns each gateway's `currencies` and the live `fx` rate — so a currency
+is never offered when no switched-on gateway accepts it.
+
+### Stripe setup (Admin → Settings)
+
+| Setting | Meaning |
+|---------|---------|
+| `gw_stripe_publishable` | Publishable key (`pk_…`) |
+| `gw_stripe_secret` | Secret key (`sk_…`) |
+| `gw_stripe_webhook_secret` | Webhook signing secret (`whsec_…`) |
+| `gw_stripe_enabled` | `1` to offer Stripe |
+| `gw_stripe_api_base` | Optional; defaults to `https://api.stripe.com` |
+| `fx_usd_tzs` | TZS per 1 USD, used for every conversion |
+
+Point the Stripe webhook at `POST /api/webhook/stripe`.
+
+**Why the signature check is strict:** Stripe signs the *raw request bytes*.
+The handler therefore verifies the signature against the untouched body
+(`Ctx::raw`), never against a re-serialised JSON value — `serde_json` writes
+object keys in sorted order, so a round-trip changes the bytes and a genuine
+callback would be rejected. The check is HMAC-SHA256, constant-time, and rejects
+a timestamp older than five minutes so a captured callback cannot be replayed.
+
+## Hiring workers and routing requests
+
+*Admin → Wafanyakazi (Hire Staff)* hires a worker **for a named service**, with
+their photo, profession, level, department, skills, languages and region. Only
+the CEO hires, and only the CEO grants tools.
+
+When a client submits a request, it is routed to the worker who serves that
+service — the client is served by a named person, not a queue — and the
+assignment is recorded in `request_assignment`. Work only begins after the CEO
+approves the request (the approval gate), and the worker then carries it out with
+exactly the tools the CEO granted them. Two employee records may not share one
+email, since both would be routed work and would fight over the same portal
+account.
+
+## Growth by country and region
+
+*Admin → Ukuaji* charts where the work actually came from. Every request records
+the country and region it was filed from, and the counts live on the
+`service_regions` rows, so the chart moves as real requests arrive. A country
+outside the seeded catalogue is added on first use rather than being dropped.
+The Tanzania-only services (BRELA, TRA, government e-services) are hidden from
+visitors abroad and refused by the API even if a request is crafted.
+
 ## Pages — kila sehemu ina page yake
 
 Clicking a nav item **goes to a real new page** (no anchored scrolling):
@@ -26,6 +105,12 @@ Clicking a nav item **goes to a real new page** (no anchored scrolling):
 | `auth.php`   | Sign in / create account |
 | `client.php` | Client portal (overview, requests, quotes, contracts, invoices, support) |
 | `admin.php`  | Admin/CEO control center (dashboard, requests, quotes, contracts, accounts, invoices, tickets) |
+| `careers.php`| Open roles + application (assessed practically and theoretically) |
+| `staff.php`  | The experts who serve you (worker profiles) |
+| `mtaalamu.php`| Staff portal — your tasks and the tools granted to you |
+| `reports.php`| Reports — proof of work, written down |
+| `community.php`| Community — builders, learners and partners |
+| `faq.php`    | Frequently asked questions (pricing, payment, contracts, delivery) |
 | `deploy.php` | Deployment health check (PHP, database engine, extensions, permissions) |
 
 Shared: `partials/head.php`, `partials/header.php` (real `<a href>` nav +

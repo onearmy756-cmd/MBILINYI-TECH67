@@ -30,6 +30,12 @@
       <a href="privacy" class="hover:text-cyan-300 transition" data-en="Privacy Policy" data-sw="Sera ya Faragha">Privacy Policy</a>
       <span class="text-white/20">•</span>
       <a href="feedback" class="hover:text-cyan-300 transition" data-en="Feedback" data-sw="Maoni">Feedback</a>
+      <span class="text-white/20">•</span>
+      <a href="reports" class="hover:text-cyan-300 transition" data-en="Reports" data-sw="Ripoti">Reports</a>
+      <span class="text-white/20">•</span>
+      <a href="faq" class="hover:text-cyan-300 transition" data-en="FAQ" data-sw="Maswali">FAQ</a>
+      <span class="text-white/20">•</span>
+      <a href="community" class="hover:text-cyan-300 transition" data-en="Community" data-sw="Jamii">Community</a>
     </div>
     <div class="text-[12px] text-white/35">&copy; <?php
       /* Auto-rolls over every new year — no manual edit needed. */
@@ -109,6 +115,8 @@
         <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="BUDGET RANGE (TZS)" data-sw="KIWANGO CHA BAJETI (TZS)">BUDGET RANGE (TZS)</label>
         <select id="qBudget" class="input mt-1"><option data-en="Under TZS 500,000 (< $200)" data-sw="Chini ya TZS 500,000 (< $200)">Under TZS 500,000 (< $200)</option><option data-en="TZS 500K – 1.5M ($200 – $600)" data-sw="TZS 500K – 1.5M">TZS 500K – 1.5M ($200 – $600)</option><option data-en="TZS 1.5M – 5M ($600 – $2,000)" data-sw="TZS 1.5M – 5M">TZS 1.5M – 5M ($600 – $2,000)</option><option data-en="TZS 5M – 15M ($2,000 – $6,000)" data-sw="TZS 5M – 15M">TZS 5M – 15M ($2,000 – $6,000)</option><option data-en="TZS 15M+ (> $6,000)" data-sw="Zaidi ya TZS 15M">TZS 15M+ (> $6,000)</option><option data-en="Need professional advice" data-sw="Nahitaji ushauri wa kitaalamu">Need professional advice</option></select>
         <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="EXPECTED DEADLINE" data-sw="MUDA UNAOTARAJIWA">EXPECTED DEADLINE</label><input id="qDeadline" type="date" class="input mt-1">
+        <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="YOUR REGION (optional — Tanzania)" data-sw="MKOA WAKO (si lazima — Tanzania)">YOUR REGION (optional — Tanzania)</label>
+        <select id="qRegion" class="input mt-1"><option value="">—</option></select>
         <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="HOW DID YOU HEAR ABOUT US?" data-sw="ULISIKIA KUHUSU SISI VIPI?">HOW DID YOU HEAR ABOUT US?</label><select id="qSource" class="input mt-1"><option data-en="Instagram @mbilinyitech" data-sw="Instagram @mbilinyitech">Instagram @mbilinyitech</option><option data-en="WhatsApp / Referral" data-sw="WhatsApp / Rafiki">WhatsApp / Referral</option><option data-en="Google Search" data-sw="Utafutaji wa Google">Google Search</option><option data-en="Previous Client" data-sw="Mteja wa Awali">Previous Client</option><option data-en="Other" data-sw="Nyingine">Other</option></select>
         <div class="mt-4 rounded-2xl bg-cyan-500/[.06] border border-cyan-400/25 p-4 text-[13px] text-white/70"><i class="fa-solid fa-circle-info text-cyan-300 mr-1"></i> <span data-en="After submitting, CEO Jackson Mbilinyi reviews your request and sends an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval." data-sw="Baada ya kutuma, CEO Jackson Mbilinyi hupitia ombi lako na kutuma nukuu rasmi yenye bei kwenye portal yako, email na WhatsApp ndani ya saa 24. Mkataba rasmi wa BRELA unafuata baada ya kukubali.">After submitting, CEO Jackson Mbilinyi reviews your request and sends an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval.</span></div>
       </div>

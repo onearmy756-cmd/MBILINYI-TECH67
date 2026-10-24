@@ -106,7 +106,10 @@ fn csv_for(key: &str) -> Result<String, String> {
             )
         }
         "payments" => {
-            let rs = db::rows("SELECT gateway, status, currency, amount FROM payments", &[]);
+            let rs = db::rows(
+                "SELECT gateway, status, currency, amount FROM payments",
+                &[],
+            );
             (
                 "gateway,status,currency,amount",
                 rs.iter()

@@ -38,10 +38,18 @@ pub struct Outcome {
 
 impl Outcome {
     fn done(content: String, note: &str) -> Outcome {
-        Outcome { content, ok: true, note: note.to_string() }
+        Outcome {
+            content,
+            ok: true,
+            note: note.to_string(),
+        }
     }
     fn failed(content: String, note: &str) -> Outcome {
-        Outcome { content, ok: false, note: note.to_string() }
+        Outcome {
+            content,
+            ok: false,
+            note: note.to_string(),
+        }
     }
 }
 
@@ -50,12 +58,22 @@ pub fn spec(code: &str) -> Spec {
     let (desc, schema) = match code {
         "code_studio" | "code_execution" | "mobile_forge" | "desktop_forge"
         | "game_forge" | "iot_forge" | "os_forge" | "build_pipeline" => (
-            "Write or build software. Give the language and what it must do.",
-            obj(&[("language", "string", "e.g. rust, python, react"), ("task", "string", "what the code must do")], &["task"]),
+            "Write or build software. Give the language and what it must do. When you also supply              `code`, it is compiled and run for real and you are given the true output.",
+            obj(&[
+                ("language", "string", "rust | python | go | elixir | r | node | c"),
+                ("task", "string", "what the code must do"),
+                ("code", "string", "optional: the exact program to compile and run"),
+            ], &["task"]),
         ),
         "test_runner" => (
-            "Write and reason about tests for a described piece of software.",
-            obj(&[("target", "string", "what is under test"), ("kind", "string", "unit | integration | e2e")], &["target"]),
+            "Run code or a project's tests for real. Give `language` with `code` to run a snippet,              or `path` to run the project's own suite.",
+            obj(&[
+                ("language", "string", "rust | python | go | elixir | r | node | c"),
+                ("code", "string", "a snippet to run"),
+                ("path", "string", "a project directory whose test suite should run"),
+                ("target", "string", "what is under test"),
+                ("kind", "string", "unit | integration | e2e"),
+            ], &[]),
         ),
         "deployer" | "deploy_runner" => (
             "Plan and carry out a deployment of a reviewed build.",
@@ -123,14 +141,21 @@ pub fn spec(code: &str) -> Spec {
         ),
         _ => ("Carry out the described task.", obj(&[("task", "string", "what to do")], &["task"])),
     };
-    Spec { name: code.to_string(), description: desc.to_string(), schema }
+    Spec {
+        name: code.to_string(),
+        description: desc.to_string(),
+        schema,
+    }
 }
 
 /// Build an object schema from `(name, type, description)` triples.
 fn obj(props: &[(&str, &str, &str)], required: &[&str]) -> J {
     let mut p = serde_json::Map::new();
     for (name, ty, desc) in props {
-        p.insert((*name).to_string(), json!({ "type": ty, "description": desc }));
+        p.insert(
+            (*name).to_string(),
+            json!({ "type": ty, "description": desc }),
+        );
     }
     json!({
         "type": "object",
@@ -164,9 +189,111 @@ pub async fn run(code: &str, args: &J) -> Outcome {
         "process_registry" => processes(),
         "daily_briefing" => briefing(),
 
+        // ---- Security tools that observe for real, then have the model explain ----
+        "owasp_audit" | "clearance_audit" => {
+            let target = pick_target(args);
+            let (evidence, ok) = crate::sandbox::audit_headers(&target).await;
+            if !ok {
+                return Outcome::failed(evidence, "headers: unreachable");
+            }
+            Outcome::done(crate::sandbox::explain("security header audit", &evidence).await, "headers: audited")
+        }
+        "pentest" | "vuln_scanner" | "threat_swarm" => {
+            let target = pick_target(args);
+            let (evidence, ok) = crate::sandbox::audit_exposure(&target, &s("authorised")).await;
+            if !ok {
+                return Outcome::failed(evidence, "exposure: refused");
+            }
+            Outcome::done(crate::sandbox::explain("exposure and port audit", &evidence).await, "exposure: audited")
+        }
+        "threat_intel" => {
+            let target = pick_target(args);
+            let (evidence, ok) = crate::sandbox::audit_dns(&target).await;
+            if !ok {
+                return Outcome::failed(evidence, "dns: no answer");
+            }
+            Outcome::done(crate::sandbox::explain("DNS posture review", &evidence).await, "dns: audited")
+        }
+        "url_safety" | "kali_lab" => {
+            let target = pick_target(args);
+            let (evidence, ok) = crate::sandbox::audit_tls(&target).await;
+            Outcome::done(crate::sandbox::explain("TLS review", &evidence).await, if ok { "tls: checked" } else { "tls: failed" })
+        }
+        "dependency_check" => {
+            let (evidence, ok) = crate::sandbox::audit_dependencies(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "deps: nothing to read");
+            }
+            Outcome::done(crate::sandbox::explain("dependency audit", &evidence).await, "deps: audited")
+        }
+        "code_audit" => {
+            let (evidence, ok) = crate::sandbox::audit_code(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "code: nothing to read");
+            }
+            Outcome::done(crate::sandbox::explain("source code audit", &evidence).await, "code: audited")
+        }
+        "malware_scan" | "forensics" => {
+            let (evidence, ok) = crate::sandbox::scan_malware(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "malware: nothing to read");
+            }
+            Outcome::done(crate::sandbox::explain("malware scan", &evidence).await, "malware: scanned")
+        }
+
+        // ---- Code tools that compile and run for real ----
+        "test_runner" => {
+            let lang = s("language");
+            if !lang.is_empty() && !s("code").is_empty() {
+                let r = crate::langrun::run_snippet(&lang, &s("code"));
+                Outcome::done(
+                    format!("Ran the {} code.
+Exit: {}
+Time: {} ms
+
+{}", lang, if r.ok { "success" } else { "failure" }, r.ms, r.output),
+                    if r.ok { "test: ran" } else { "test: failed" },
+                )
+            } else if !s("path").is_empty() {
+                let r = crate::langrun::run_tests(&lang, &s("path"));
+                Outcome::done(
+                    format!("Test run in {}.
+Exit: {}
+
+{}", s("path"), if r.ok { "success" } else { "failure" }, r.output),
+                    "tests: ran",
+                )
+            } else {
+                model_tool(code, args).await
+            }
+        }
+        "code_studio" | "code_execution" if !s("code").is_empty() && !s("language").is_empty() => {
+            let lang = s("language");
+            let r = crate::langrun::run_snippet(&lang, &s("code"));
+            Outcome::done(
+                format!("{} code, run for real.
+Exit: {}
+Time: {} ms
+
+{}", lang, if r.ok { "success" } else { "failure" }, r.ms, r.output),
+                if r.ok { "code: ran" } else { "code: failed" },
+            )
+        }
+
         // ---- Model-backed tools: the LLM does the work ----
         _ => model_tool(code, args).await,
     }
+}
+
+/// The target a security tool was given, from whichever field the caller used.
+fn pick_target(args: &J) -> String {
+    for k in ["target", "url", "host", "domain", "task", "input"] {
+        let v = args.get(k).map(util::s).unwrap_or_default();
+        if !v.trim().is_empty() {
+            return v;
+        }
+    }
+    String::new()
 }
 
 fn analytics(focus: &str) -> Outcome {
@@ -178,9 +305,15 @@ fn analytics(focus: &str) -> Outcome {
     .map(|r| format!("{} ({})", util::s(r.get("country").unwrap_or(&J::Null)), util::i(r.get("n").unwrap_or(&J::Null))))
     .collect::<Vec<_>>()
     .join(", ");
-    let tz_regions = db::scalar_i64("SELECT COUNT(*) FROM service_regions WHERE country='Tanzania'", &[]);
+    let tz_regions = db::scalar_i64(
+        "SELECT COUNT(*) FROM service_regions WHERE country='Tanzania'",
+        &[],
+    );
     let requests = db::scalar_i64("SELECT COUNT(*) FROM requests", &[]);
-    let done = db::scalar_i64("SELECT COUNT(*) FROM requests WHERE status='Completed'", &[]);
+    let done = db::scalar_i64(
+        "SELECT COUNT(*) FROM requests WHERE status='Completed'",
+        &[],
+    );
     Outcome::done(
         format!(
             "Growth read from the live tables.\nFocus: {focus}\nCountries served: {by_country}\nTanzanian regions tracked: {tz_regions}\nRequests in total: {requests}, completed: {done}\n",
@@ -210,7 +343,10 @@ fn hr() -> Outcome {
     let active = db::scalar_i64("SELECT COUNT(*) FROM employees WHERE status='active'", &[]);
     let open_jobs = db::scalar_i64("SELECT COUNT(*) FROM job_openings", &[]);
     let applications = db::scalar_i64("SELECT COUNT(*) FROM job_applications", &[]);
-    let assessed = db::scalar_i64("SELECT COUNT(*) FROM job_applications WHERE total_score > 0", &[]);
+    let assessed = db::scalar_i64(
+        "SELECT COUNT(*) FROM job_applications WHERE total_score > 0",
+        &[],
+    );
     Outcome::done(
         format!(
             "HR position, read live.\nStaff on the books: {staff} ({active} active)\nOpen roles: {open_jobs}\nApplications: {applications}, assessed: {assessed}\n",
@@ -235,13 +371,23 @@ fn ledger() -> Outcome {
     })
     .collect::<Vec<_>>();
     if rows.is_empty() {
-        return Outcome::done("The escrow ledger is empty — no money is being held.".into(), "ledger: empty");
+        return Outcome::done(
+            "The escrow ledger is empty — no money is being held.".into(),
+            "ledger: empty",
+        );
     }
-    Outcome::done(format!("Escrow ledger:\n{}", rows.join("\n")), "ledger: read")
+    Outcome::done(
+        format!("Escrow ledger:\n{}", rows.join("\n")),
+        "ledger: read",
+    )
 }
 
 fn crypto(args: &J) -> Outcome {
-    let text = args.get("task").or_else(|| args.get("input")).map(util::s).unwrap_or_default();
+    let text = args
+        .get("task")
+        .or_else(|| args.get("input"))
+        .map(util::s)
+        .unwrap_or_default();
     if text.is_empty() {
         return Outcome::failed("Give the text to hash or sign.".into(), "crypto: no input");
     }
@@ -256,7 +402,10 @@ fn crypto(args: &J) -> Outcome {
 
 fn processes() -> Outcome {
     let agents = db::scalar_i64("SELECT COUNT(*) FROM agents WHERE status='active'", &[]);
-    let running = db::scalar_i64("SELECT COUNT(*) FROM agent_runs WHERE status IN ('running','queued')", &[]);
+    let running = db::scalar_i64(
+        "SELECT COUNT(*) FROM agent_runs WHERE status IN ('running','queued')",
+        &[],
+    );
     let finished = db::scalar_i64("SELECT COUNT(*) FROM agent_runs WHERE status='done'", &[]);
     Outcome::done(
         format!("Running processes:\nActive agents: {agents}\nRuns queued or running: {running}\nRuns finished: {finished}"),
@@ -266,8 +415,14 @@ fn processes() -> Outcome {
 
 fn briefing() -> Outcome {
     let new_requests = db::scalar_i64("SELECT COUNT(*) FROM requests WHERE status='Pending'", &[]);
-    let in_progress = db::scalar_i64("SELECT COUNT(*) FROM requests WHERE status='In Progress'", &[]);
-    let sms = db::scalar_i64("SELECT COUNT(*) FROM sms_log WHERE date(created_at) = date('now')", &[]);
+    let in_progress = db::scalar_i64(
+        "SELECT COUNT(*) FROM requests WHERE status='In Progress'",
+        &[],
+    );
+    let sms = db::scalar_i64(
+        "SELECT COUNT(*) FROM sms_log WHERE date(created_at) = date('now')",
+        &[],
+    );
     Outcome::done(
         format!(
             "Daily briefing.\nNew requests waiting: {new_requests}\nWork in progress: {in_progress}\nMessages sent today: {sms}\nRead live from the platform's own tables."
@@ -300,11 +455,17 @@ async fn model_tool(code: &str, args: &J) -> Outcome {
          Do the work in full and give the finished result, not a plan to do it. \
          Be concrete and professional. Answer in the language the request is written in."
     );
-    let user = format!("Tool input:\n{}", serde_json::to_string_pretty(args).unwrap_or_default());
+    let user = format!(
+        "Tool input:\n{}",
+        serde_json::to_string_pretty(args).unwrap_or_default()
+    );
     let msgs = vec![Msg::System(system), Msg::User(user)];
     match llm.chat(&msgs, &[]).await {
         Ok(t) if !t.text.trim().is_empty() => Outcome::done(t.text, "model: answered"),
-        Ok(_) => Outcome::failed(format!("{name} returned nothing. Try again with more detail."), "model: empty"),
+        Ok(_) => Outcome::failed(
+            format!("{name} returned nothing. Try again with more detail."),
+            "model: empty",
+        ),
         Err(e) => Outcome::failed(format!("{name} could not finish: {e}"), "model: error"),
     }
 }
@@ -316,7 +477,10 @@ pub fn spec_name(code: &str) -> String {
 
 /// The names of every tool that can actually be executed, for a health check.
 pub fn executable() -> Vec<String> {
-    tools::CATALOGUE.iter().map(|t| t.code.to_string()).collect()
+    tools::CATALOGUE
+        .iter()
+        .map(|t| t.code.to_string())
+        .collect()
 }
 
 #[cfg(test)]

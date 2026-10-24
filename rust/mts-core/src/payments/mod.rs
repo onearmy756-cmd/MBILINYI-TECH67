@@ -35,19 +35,132 @@ pub struct GatewayDef {
 /// The full catalogue. `icon` is a Font Awesome class, which the site already
 /// loads, so a real brand mark appears with no extra assets.
 pub const CATALOGUE: &[GatewayDef] = &[
-    GatewayDef { key: "clickpesa", name: "ClickPesa", kind: "mobile", icon: "fa-solid fa-mobile-screen-button", brand: "#00A651", currencies: &["TZS"], required: &["gw_clickpesa_key", "gw_clickpesa_secret", "gw_clickpesa_account"] },
-    GatewayDef { key: "beem", name: "Beem Africa", kind: "mobile", icon: "fa-solid fa-tower-broadcast", brand: "#0B5FFF", currencies: &["TZS"], required: &["gw_beem_key", "gw_beem_secret", "gw_beem_account"] },
-    GatewayDef { key: "selcom", name: "Selcom Pay", kind: "mobile", icon: "fa-solid fa-wallet", brand: "#E31E24", currencies: &["TZS"], required: &["gw_selcom_key", "gw_selcom_secret", "gw_selcom_vendor"] },
-    GatewayDef { key: "mpesa", name: "M-Pesa (Vodacom)", kind: "mobile", icon: "fa-solid fa-mobile-retro", brand: "#E60000", currencies: &["TZS"], required: &["gw_mpesa_key", "gw_mpesa_secret", "gw_mpesa_shortcode"] },
-    GatewayDef { key: "tigopesa", name: "Mixx by Yas (Tigo)", kind: "mobile", icon: "fa-solid fa-sim-card", brand: "#0057B8", currencies: &["TZS"], required: &["gw_tigo_key", "gw_tigo_secret", "gw_tigo_shortcode"] },
-    GatewayDef { key: "airtel", name: "Airtel Money", kind: "mobile", icon: "fa-solid fa-signal", brand: "#FF0000", currencies: &["TZS"], required: &["gw_airtel_key", "gw_airtel_secret", "gw_airtel_shortcode"] },
-    GatewayDef { key: "halopesa", name: "HaloPesa (Halotel)", kind: "mobile", icon: "fa-solid fa-mobile-screen", brand: "#F5A623", currencies: &["TZS"], required: &["gw_halo_key", "gw_halo_secret", "gw_halo_shortcode"] },
-    GatewayDef { key: "bank_local", name: "Bank transfer (Tanzania)", kind: "bank", icon: "fa-solid fa-building-columns", brand: "#0B7285", currencies: &["TZS"], required: &["gw_bank_name", "gw_bank_account", "gw_bank_holder"] },
-    GatewayDef { key: "stripe", name: "Stripe", kind: "card", icon: "fa-brands fa-stripe-s", brand: "#635BFF", currencies: &["USD", "EUR", "GBP", "TZS"], required: &["gw_stripe_publishable", "gw_stripe_secret", "gw_stripe_account"] },
-    GatewayDef { key: "paypal", name: "PayPal", kind: "card", icon: "fa-brands fa-paypal", brand: "#003087", currencies: &["USD", "EUR", "GBP"], required: &["gw_paypal_client", "gw_paypal_secret", "gw_paypal_email"] },
-    GatewayDef { key: "payoneer", name: "Payoneer", kind: "card", icon: "fa-brands fa-cc-mastercard", brand: "#FF4800", currencies: &["USD", "EUR"], required: &["gw_payoneer_id", "gw_payoneer_email"] },
-    GatewayDef { key: "wise", name: "Wise Business", kind: "bank", icon: "fa-solid fa-globe", brand: "#9FE870", currencies: &["USD", "EUR", "GBP"], required: &["gw_wise_iban", "gw_wise_holder"] },
-    GatewayDef { key: "swift", name: "International bank / SWIFT", kind: "bank", icon: "fa-solid fa-earth-americas", brand: "#1B4F72", currencies: &["USD", "EUR", "GBP"], required: &["gw_intl_bank_name", "gw_intl_iban", "gw_intl_swift", "gw_intl_holder"] },
+    GatewayDef {
+        key: "clickpesa",
+        name: "ClickPesa",
+        kind: "mobile",
+        icon: "fa-solid fa-mobile-screen-button",
+        brand: "#00A651",
+        currencies: &["TZS"],
+        required: &[
+            "gw_clickpesa_key",
+            "gw_clickpesa_secret",
+            "gw_clickpesa_account",
+        ],
+    },
+    GatewayDef {
+        key: "beem",
+        name: "Beem Africa",
+        kind: "mobile",
+        icon: "fa-solid fa-tower-broadcast",
+        brand: "#0B5FFF",
+        currencies: &["TZS"],
+        required: &["gw_beem_key", "gw_beem_secret", "gw_beem_account"],
+    },
+    GatewayDef {
+        key: "selcom",
+        name: "Selcom Pay",
+        kind: "mobile",
+        icon: "fa-solid fa-wallet",
+        brand: "#E31E24",
+        currencies: &["TZS"],
+        required: &["gw_selcom_key", "gw_selcom_secret", "gw_selcom_vendor"],
+    },
+    GatewayDef {
+        key: "mpesa",
+        name: "M-Pesa (Vodacom)",
+        kind: "mobile",
+        icon: "fa-solid fa-mobile-retro",
+        brand: "#E60000",
+        currencies: &["TZS"],
+        required: &["gw_mpesa_key", "gw_mpesa_secret", "gw_mpesa_shortcode"],
+    },
+    GatewayDef {
+        key: "tigopesa",
+        name: "Mixx by Yas (Tigo)",
+        kind: "mobile",
+        icon: "fa-solid fa-sim-card",
+        brand: "#0057B8",
+        currencies: &["TZS"],
+        required: &["gw_tigo_key", "gw_tigo_secret", "gw_tigo_shortcode"],
+    },
+    GatewayDef {
+        key: "airtel",
+        name: "Airtel Money",
+        kind: "mobile",
+        icon: "fa-solid fa-signal",
+        brand: "#FF0000",
+        currencies: &["TZS"],
+        required: &["gw_airtel_key", "gw_airtel_secret", "gw_airtel_shortcode"],
+    },
+    GatewayDef {
+        key: "halopesa",
+        name: "HaloPesa (Halotel)",
+        kind: "mobile",
+        icon: "fa-solid fa-mobile-screen",
+        brand: "#F5A623",
+        currencies: &["TZS"],
+        required: &["gw_halo_key", "gw_halo_secret", "gw_halo_shortcode"],
+    },
+    GatewayDef {
+        key: "bank_local",
+        name: "Bank transfer (Tanzania)",
+        kind: "bank",
+        icon: "fa-solid fa-building-columns",
+        brand: "#0B7285",
+        currencies: &["TZS"],
+        required: &["gw_bank_name", "gw_bank_account", "gw_bank_holder"],
+    },
+    GatewayDef {
+        key: "stripe",
+        name: "Stripe",
+        kind: "card",
+        icon: "fa-brands fa-stripe-s",
+        brand: "#635BFF",
+        currencies: &["USD", "EUR", "GBP", "TZS"],
+        required: &["gw_stripe_publishable", "gw_stripe_secret"],
+    },
+    GatewayDef {
+        key: "paypal",
+        name: "PayPal",
+        kind: "card",
+        icon: "fa-brands fa-paypal",
+        brand: "#003087",
+        currencies: &["USD", "EUR", "GBP"],
+        required: &["gw_paypal_client", "gw_paypal_secret", "gw_paypal_email"],
+    },
+    GatewayDef {
+        key: "payoneer",
+        name: "Payoneer",
+        kind: "card",
+        icon: "fa-brands fa-cc-mastercard",
+        brand: "#FF4800",
+        currencies: &["USD", "EUR"],
+        required: &["gw_payoneer_id", "gw_payoneer_email"],
+    },
+    GatewayDef {
+        key: "wise",
+        name: "Wise Business",
+        kind: "bank",
+        icon: "fa-solid fa-globe",
+        brand: "#9FE870",
+        currencies: &["USD", "EUR", "GBP"],
+        required: &["gw_wise_iban", "gw_wise_holder"],
+    },
+    GatewayDef {
+        key: "swift",
+        name: "International bank / SWIFT",
+        kind: "bank",
+        icon: "fa-solid fa-earth-americas",
+        brand: "#1B4F72",
+        currencies: &["USD", "EUR", "GBP"],
+        required: &[
+            "gw_intl_bank_name",
+            "gw_intl_iban",
+            "gw_intl_swift",
+            "gw_intl_holder",
+        ],
+    },
 ];
 
 pub fn find(key: &str) -> Option<&'static GatewayDef> {
@@ -61,7 +174,9 @@ pub fn enabled(g: &GatewayDef) -> bool {
     if !settings::flag(&format!("gw_{}_enabled", g.key)) {
         return false;
     }
-    g.required.iter().all(|k| !settings::get(k, "").trim().is_empty())
+    g.required
+        .iter()
+        .all(|k| !settings::get(k, "").trim().is_empty())
 }
 
 /// The gateways to show a buyer, each with its live configuration status.
@@ -160,10 +275,18 @@ pub fn create_payment(
                                payer_name, payer_phone, payer_email, verify_code, created_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         &[
-            arg(json!(id)), arg(json!(invoice_id)), arg(json!(user_id)),
-            arg(json!(gateway)), arg(json!(amount)), arg(json!(currency)),
-            arg(json!("Pending")), arg(json!(payer_name)), arg(json!(payer_phone)),
-            arg(json!(payer_email)), arg(json!(code)), arg(json!(util::now())),
+            arg(json!(id)),
+            arg(json!(invoice_id)),
+            arg(json!(user_id)),
+            arg(json!(gateway)),
+            arg(json!(amount)),
+            arg(json!(currency)),
+            arg(json!("Pending")),
+            arg(json!(payer_name)),
+            arg(json!(payer_phone)),
+            arg(json!(payer_email)),
+            arg(json!(code)),
+            arg(json!(util::now())),
         ],
     );
     id
@@ -177,8 +300,11 @@ pub fn mark(id: &str, status: &str, reference: &str, note: &str) {
     let _ = db::run(
         "UPDATE payments SET status = ?, reference = ?, note = ?, settled_at = ? WHERE id = ?",
         &[
-            arg(json!(status)), arg(json!(reference)), arg(json!(note)),
-            arg(json!(util::now())), arg(json!(id)),
+            arg(json!(status)),
+            arg(json!(reference)),
+            arg(json!(note)),
+            arg(json!(util::now())),
+            arg(json!(id)),
         ],
     );
 }
@@ -293,6 +419,23 @@ pub fn init_tables() {
 
 /* ---------------- shared helpers ---------------- */
 
+/// Compare two byte strings without leaking, through timing, how many leading
+/// bytes matched. Used for every shared secret the platform checks — an inbound
+/// webhook, an API token — where an ordinary `==` would let an attacker learn
+/// the correct prefix one byte at a time.
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    use subtle::ConstantTimeEq;
+    if a.len() != b.len() {
+        return false;
+    }
+    a.ct_eq(b).into()
+}
+
+/// `constant_time_eq` for the gateway module, which reads the inbound SMS secret.
+pub fn gateways_constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    constant_time_eq(a, b)
+}
+
 pub fn random_bytes(n: usize) -> Vec<u8> {
     use rand::Rng;
     let mut b = vec![0u8; n];
@@ -311,7 +454,9 @@ pub fn store_challenge(session_id: &str, kind: &str, challenge: &str) {
     let _ = db::run(
         "INSERT INTO webauthn_challenges (id, kind, challenge, created_at) VALUES (?,?,?,?)",
         &[
-            arg(json!(session_id)), arg(json!(kind)), arg(json!(challenge)),
+            arg(json!(session_id)),
+            arg(json!(kind)),
+            arg(json!(challenge)),
             arg(json!(util::now())),
         ],
     );
@@ -326,7 +471,9 @@ pub fn take_challenge(session_id: &str, kind: &str) -> Option<String> {
         "DELETE FROM webauthn_challenges WHERE id = ? AND kind = ?",
         &[arg(json!(session_id)), arg(json!(kind))],
     );
-    r.get("challenge").and_then(|v| v.as_str()).map(str::to_string)
+    r.get("challenge")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
 }
 
 #[cfg(test)]
@@ -359,4 +506,3 @@ mod tests {
         assert_eq!(convert_at(100.0, "GBP", "USD", 2600.0), None);
     }
 }
-

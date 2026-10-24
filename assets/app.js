@@ -173,7 +173,8 @@ function paintPlatformCta() {
 const PAGES = {
   landing: '', services: 'services', stack: 'stack', ai: 'ai',
   pricing: 'pricing', process: 'process', work: 'work', track: 'track',
-  contact: 'contact', auth: 'auth', client: 'client', admin: 'admin'
+  contact: 'contact', auth: 'auth', client: 'client', admin: 'admin',
+  mtaalamu: 'mtaalamu'
 };
 
 /* Normalise a location.pathname to a page key, accepting both the clean
@@ -229,6 +230,7 @@ function setLang(l) {
   /* The portal content is rendered from LANG, so redraw whichever tab is open. */
   if ($('clientContent') && currentUser()) clientTab(cTab);
   if ($('adminContent') && currentUser()?.role === 'admin') adminTab(aTab);
+  if ($('staffContent') && currentUser()) staffTab(sTab);
   if (typeof paintVoiceBtn === 'function') paintVoiceBtn();
   if (typeof paintMicBtn === 'function') paintMicBtn();
   if (typeof stopSpeaking === 'function') stopSpeaking();
@@ -1030,7 +1032,24 @@ function openQuoteWizard(preset = '') {
   renderStep3();
   renderServiceFields();
   updateWizardLabels();
+  fillRegionChoices();
   paintWiz(); $('quoteModal').classList.remove('hidden'); $('quoteModal').classList.add('flex'); document.body.style.overflow = 'hidden';
+}
+
+/* The Tanzania regions, filled once from the backend. The list is not hard-coded
+   in the page, so adding a region needs no frontend change. A client outside
+   Tanzania simply leaves this blank. */
+let REGION_CHOICES = null;
+async function fillRegionChoices() {
+  const sel = $('qRegion');
+  if (!sel) return;
+  if (!REGION_CHOICES) {
+    try { REGION_CHOICES = (await apiGet('api/ofisi.php', { action: 'regions', country: 'Tanzania' })).regions || []; }
+    catch (e) { REGION_CHOICES = []; }
+  }
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">—</option>' + REGION_CHOICES.map(r => `<option value="${esc(r.region)}">${esc(r.region)}</option>`).join('');
+  sel.value = cur;
 }
 /* Each service carries its own request form — fields differ per service. */
 const SERVICE_FORMS = {
@@ -1286,6 +1305,10 @@ async function submitRequest() {
       tech: [...qTechSel], serviceDetails: collectServiceFields(),
       platform: $('qPlatform').value, budget: $('qBudget').value,
       deadline: $('qDeadline').value, priority: $('qPriority').value,
+      // Where the client is, so the growth view counts real work by place. The
+      // browser resolves the country; the client names their region.
+      country: (window.__PLATFORM__ && window.__PLATFORM__.country) || '',
+      region: (($('qRegion') && $('qRegion').value) || '').trim(),
     });
   } catch (err) {
     btn.disabled = false; btn.innerHTML = label;
@@ -1893,12 +1916,28 @@ let aTab = 'overview', adminSearch = '', adminStatusFilter = 'All';
 let DEPARTMENTS = [], EMPLOYEES = [], AGENTS = [], TOOLS = [], JOBS = [];
 let adminEmpDept = '', adminJobFilter = '', adminAgentDept = '', adminToolHolder = null;
 
+/* Growth bars: each place's real request count against the busiest place, so a
+   single request still shows a visible bar rather than a zero-width line. */
+function growthBars(rows, labelKey, colour) {
+  const list = rows || [];
+  if (!list.length) return '<div class="text-white/40 text-[12.5px] py-3">No requests from any ' + (labelKey === 'country' ? 'country' : 'region') + ' yet. The first one will appear here.</div>';
+  const max = Math.max(...list.map(r => Number(r.count) || 0), 1);
+  return '<div class="space-y-2">' + list.map(r => {
+    const n = Number(r.count) || 0;
+    const pct = Math.max(4, Math.round((n / max) * 100));
+    return `<div>
+      <div class="flex items-center justify-between text-[12.5px] mb-1"><span class="text-white/80">${esc(r[labelKey] || '—')}</span><span class="chip text-${colour}-300">${n}</span></div>
+      <div class="h-2 rounded-full bg-white/5 overflow-hidden"><div class="h-full rounded-full bg-${colour}-400/70" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
 async function adminTab(t) {
   aTab = t;
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
     wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
-    runs: 'Agent Runs — Every Job the Company Carries Out', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery' };
+    runs: 'Agent Runs — Every Job the Company Carries Out', runtimes: 'Runtimes — Languages the Platform Really Runs', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery' };
   $('adminTabTitle').textContent = titles[t];
   $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
 
@@ -2357,19 +2396,20 @@ async function adminTab(t) {
       const regions = await apiGet('api/ofisi.php', { action: 'regions', country: 'Tanzania' });
       h = `<div class="rounded-2xl border border-teal-400/25 bg-teal-500/[.05] p-4 text-[13px] text-white/70 mb-4">
         <i class="fa-solid fa-earth-africa text-teal-300 mr-2"></i>
-        The services reach <strong>${g.countries} countries</strong> and every one of Tanzania's <strong>${g.regions} regions</strong>. Growth is tracked so you can see where the work is coming from. The Tanzania-only services (BRELA, TRA, e-services) are never shown abroad.
+        Ready to serve <strong>${g.countries} countries</strong> and all <strong>${g.regions} regions</strong> of Tanzania. The bars below count <strong>real requests</strong>, so you see where the work actually comes from — not just what the platform can reach. The Tanzania-only services (BRELA, TRA, e-services) are never shown abroad.
       </div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        ${[['Countries', g.countries, 'fa-globe', 'teal'], ['TZ regions', g.regions, 'fa-map-location-dot', 'cyan'], ['Requests', g.requests, 'fa-inbox', 'violet'], ['Coverage', '100%', 'fa-check-double', 'emerald']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-xl">${v}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
+        ${[['Countries used', g.activeCountries || 0, 'fa-globe', 'teal'], ['TZ regions used', g.activeRegions || 0, 'fa-map-location-dot', 'cyan'], ['Requests', g.requests, 'fa-inbox', 'violet'], ['Reach', g.countries + ' / ' + g.regions, 'fa-check-double', 'emerald']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-xl">${v}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
       </div>
       <div class="grid lg:grid-cols-2 gap-4">
         <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-          <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-globe text-teal-300 mr-1.5"></i>Countries Served</div>
-          <div class="flex flex-wrap gap-1.5">${(g.byCountry || []).map(c => `<span class="chip text-teal-300">${esc(c.country)}</span>`).join('')}</div>
+          <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-globe text-teal-300 mr-1.5"></i>Countries the Work Came From</div>
+          ${growthBars(g.byCountry, 'country', 'teal')}
         </div>
         <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
-          <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-map-location-dot text-cyan-300 mr-1.5"></i>Tanzania Regions (${(regions.regions || []).length})</div>
-          <div class="flex flex-wrap gap-1.5">${(regions.regions || []).map(r => `<span class="chip text-cyan-300">${esc(r.region)}</span>`).join('')}</div>
+          <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-map-location-dot text-cyan-300 mr-1.5"></i>Tanzania Regions the Work Came From</div>
+          ${growthBars(g.byRegion, 'region', 'cyan')}
+          <div class="text-[11.5px] text-white/40 mt-3 pt-3 border-t border-white/10">${(regions.regions || []).length} regions are enabled and ready to serve.</div>
         </div>
       </div>`;
     }
@@ -2421,6 +2461,48 @@ async function adminTab(t) {
           <span class="text-[11px] text-white/35">${esc(e.createdAt)}</span>
         </div>`).join('') || '<div class="text-white/40 text-[12.5px]">No signatures yet. Sign a contract from the Contracts tab.</div>'}
         </div>
+      </div>
+      <div class="rounded-2xl border border-cyan-400/25 bg-cyan-500/[.04] p-4 mt-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="font-bold text-[13.5px]"><i class="fa-solid fa-radar text-cyan-300 mr-1.5"></i>Security Sandbox — the real scanner</div>
+            <div class="text-[12.5px] text-white/55 mt-1">The security tools open real connections and read real responses. Nothing is scanned until you authorise the client's domain here, after their written permission.</div>
+          </div>
+          <button onclick="loadSandbox()" class="px-4 py-2.5 rounded-xl text-[13px] font-bold border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+        </div>
+        <div id="sandboxBox" class="mt-4"></div>
+      </div>`;
+      setTimeout(() => { loadSandbox(); }, 60);
+    }
+
+    /* ---- Runtimes: what the platform can actually compile and run ---- */
+    if (t === 'runtimes') {
+      const [rt, sb] = await Promise.all([
+        apiGet('api/runtime.php', { action: 'status' }),
+        apiGet('api/runtime.php', { action: 'sandbox' }).catch(() => null),
+      ]);
+      h = `<div class="rounded-2xl border border-emerald-400/25 bg-emerald-500/[.05] p-4 text-[13px] text-white/75 mb-4">
+        <i class="fa-solid fa-microchip text-emerald-300 mr-2"></i>
+        The platform compiles and runs code for real. <strong>${(rt.ready || []).length}</strong> runtime(s) are installed and ready.
+        Code runs in a scratch directory with no inherited environment and a hard timeout, so a snippet cannot read a key or run forever.
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        ${(rt.languages || []).map(l => `<div class="card3d ${l.available ? 'pop-emerald' : 'pop-amber'} p-4">
+          <div class="flex justify-between items-start">
+            <div><div class="font-bold text-[14px]">${esc(l.name)}</div><div class="font-mono text-[11px] text-white/45 mt-0.5">${esc(l.binary)}</div></div>
+            <span class="chip ${l.available ? 'text-emerald-300' : 'text-amber-300'}"><i class="fa-solid ${l.available ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i>${l.available ? 'ready' : 'missing'}</span>
+          </div>
+          ${l.canTest ? `<div class="text-[11.5px] text-cyan-300 mt-2"><i class="fa-solid fa-vial mr-1"></i>Test runner available</div>` : ''}
+        </div>`).join('')}
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4 mt-4">
+        <div class="font-bold text-[13.5px] mb-3"><i class="fa-solid fa-play text-cyan-300 mr-1.5"></i>Run a snippet (admin only)</div>
+        <div class="grid sm:grid-cols-[160px_1fr] gap-3">
+          <select id="rtLang" class="input">${(rt.languages || []).map(l => `<option value="${esc(l.key)}">${esc(l.name)}</option>`).join('')}</select>
+          <input id="rtCode" class="input font-mono text-[12.5px]" placeholder="print(6 * 7)">
+        </div>
+        <button onclick="runSnippet()" class="grad-btn mt-3 px-5 py-2.5 rounded-xl font-bold text-[13px]"><i class="fa-solid fa-bolt mr-1"></i>Run</button>
+        <pre id="rtOut" class="mt-3 p-3 rounded-xl bg-black/40 border border-white/10 text-[12px] text-white/80 max-h-72 overflow-auto hidden"></pre>
       </div>`;
     }
 
@@ -3641,6 +3723,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /* The staff portal. A signed-out visitor is sent to sign in; a signed-in
+   * one sees only their own desk, which the API decides. */
+  if ($('view-staff')) {
+    if (!u) {
+      location.href = 'auth?returnTo=mtaalamu';
+    } else {
+      staffTab((location.hash || '').replace('#', '') || 'home');
+    }
+  }
+
   if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
     gsap.registerPlugin(ScrollTrigger);
   }
@@ -4200,3 +4292,282 @@ async function resetLogo() {
   setTimeout(() => location.reload(), 900);
 }
 
+
+/* ================================================================
+   STAFF PORTAL (MTAALAMU) — the worker's own desk
+   ----------------------------------------------------------------
+   A worker sees only their own work: the jobs assigned to them, the
+   tools their job allows, and what those tools produced. The rule
+   "no-one works outside their own job" is enforced by the API, not
+   here — this code only draws what the API is willing to return.
+================================================================ */
+let sTab = 'home';
+
+function staffTab(t) {
+  sTab = t;
+  document.querySelectorAll('#staffNav [data-stab]').forEach(b => {
+    b.classList.toggle('active', b.dataset.stab === t);
+    b.classList.toggle('text-white', b.dataset.stab === t);
+    b.classList.toggle('text-white/70', b.dataset.stab !== t);
+  });
+  const titles = { home: T('My Desk', 'Dawati Langu'), tasks: T('My Tasks', 'Kazi Zangu'), tools: T('My Tools', 'Zana Zangu'), workspace: T('AI Workspace', 'Eneo la AI'), office: T('Online Office', 'Ofisi Mtandaoni') };
+  if ($('staffTabTitle')) $('staffTabTitle').textContent = titles[t] || titles.home;
+  staffLoad();
+}
+
+async function staffLoad() {
+  const box = $('staffContent');
+  if (!box) return;
+  box.innerHTML = `<div class="text-white/40 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i>${T('Loading…', 'Inapakia…')}</div>`;
+  try {
+    if (sTab === 'home') return await staffHome(box);
+    if (sTab === 'tasks') return await staffTasks(box);
+    if (sTab === 'tools') return await staffTools(box);
+    if (sTab === 'workspace') return await staffWorkspace(box);
+    if (sTab === 'office') return staffOffice(box);
+  } catch (e) {
+    box.innerHTML = `<div class="rounded-2xl border border-red-400/25 bg-red-500/[.06] p-4 text-red-200 text-sm"><i class="fa-solid fa-circle-exclamation mr-2"></i>${esc(e.message)}</div>`;
+  }
+}
+
+function paintStaffHeader(me) {
+  if (!me) return;
+  const e = me.employee || {};
+  const initials = (e.fullName || 'MTS').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  if ($('staffAvatar')) {
+    $('staffAvatar').innerHTML = e.photo ? `<img src="${esc(e.photo)}" class="w-full h-full object-cover rounded-2xl">` : esc(initials);
+  }
+  if ($('staffName')) $('staffName').textContent = e.fullName || 'Mtaalamu';
+  if ($('staffProf')) $('staffProf').textContent = e.profession || '—';
+}
+
+async function staffHome(box) {
+  const me = await apiGet('api/wafanyakazi.php', { action: 'me' });
+  paintStaffHeader(me);
+  const e = me.employee || {};
+  const tools = (me.tools || []);
+  box.innerHTML = `
+    <div class="grid sm:grid-cols-3 gap-4">
+      <div class="card3d pop-emerald p-5">
+        <div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">${T('Open tasks', 'Kazi zilizo hai')}</div>
+        <div class="font-display font-bold text-3xl mt-1">${Number(me.openTasks) || 0}</div>
+      </div>
+      <div class="card3d pop-cyan p-5">
+        <div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">${T('Completed', 'Zilizokamilika')}</div>
+        <div class="font-display font-bold text-3xl mt-1">${Number(me.completedTasks) || 0}</div>
+      </div>
+      <div class="card3d pop-violet p-5">
+        <div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider">${T('Tools granted', 'Zana ulizopewa')}</div>
+        <div class="font-display font-bold text-3xl mt-1">${tools.length}</div>
+      </div>
+    </div>
+    <div class="glass rounded-3xl p-5 mt-5 border border-white/10">
+      <div class="font-bold text-[15px] mb-2"><i class="fa-solid fa-id-badge text-emerald-300 mr-2"></i>${T('Your record', 'Taarifa zako')}</div>
+      <div class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+        ${staffRow(T('Profession', 'Taaluma'), e.profession)}
+        ${staffRow(T('Level', 'Ngazi'), e.level)}
+        ${staffRow(T('Department', 'Idara'), e.department)}
+        ${staffRow(T('Region', 'Mkoa'), e.region || 'Tanzania')}
+        ${staffRow(T('Languages', 'Lugha'), e.languages)}
+        ${staffRow(T('Experience', 'Uzoefu'), (Number(e.experienceYears) || 0) + ' ' + T('years', 'miaka'))}
+      </div>
+      ${(e.skills || []).length ? `<div class="flex flex-wrap gap-1.5 mt-4">${e.skills.map(s => `<span class="chip text-white/60 text-[11px]">${esc(s)}</span>`).join('')}</div>` : ''}
+    </div>`;
+}
+
+function staffRow(k, v) {
+  return `<div class="flex justify-between gap-3 border-b border-white/5 py-1.5"><span class="text-white/45">${esc(k)}</span><span class="font-semibold text-right">${esc(v || '—')}</span></div>`;
+}
+
+async function staffTasks(box) {
+  const d = await apiGet('api/wafanyakazi.php', { action: 'my_tasks' });
+  const tasks = d.tasks || [];
+  if (!tasks.length) {
+    box.innerHTML = `<div class="glass rounded-3xl p-8 text-center text-white/50">${T('No work has been assigned to you yet. When the CEO assigns a client request to you, it appears here.', 'Hakuna kazi iliyopewa bado. CEO akikupa ombi la mteja, litaonekana hapa.')}</div>`;
+    return;
+  }
+  box.innerHTML = tasks.map(t => {
+    const r = t.request || {};
+    const st = r.status || 'Pending';
+    const bar = Math.max(0, Math.min(100, Number(t.progress) || 0));
+    return `<div class="glass rounded-3xl p-5 border border-white/10 mb-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="font-bold text-[15px]">${esc(r.title)}</div>
+          <div class="text-[12px] text-white/45 mt-0.5">${esc(r.trackingId)} • ${esc(r.service)} • ${esc(r.name)}</div>
+        </div>
+        <span class="badge status-${esc(st.replace(/\s/g, ''))}">${esc(st.toUpperCase())}</span>
+      </div>
+      <div class="h-2 rounded-full bg-white/10 mt-3 overflow-hidden"><div class="h-full grad-btn" style="width:${bar}%"></div></div>
+      <div class="text-[11.5px] text-white/45 mt-1">${bar}% ${T('complete', 'imekamilika')}</div>
+      ${t.note ? `<div class="text-[12.5px] text-white/60 mt-2 italic">${esc(t.note)}</div>` : ''}
+      <div class="flex flex-wrap gap-2 mt-4">
+        ${t.canStart ? `<button onclick="staffSetStatus('${esc(r.id)}','In Progress')" class="grad-btn px-4 py-2 rounded-xl text-[13px] font-bold"><i class="fa-solid fa-play mr-1"></i>${T('Start work', 'Anza kazi')}</button>` : ''}
+        ${t.canFinish ? `<button onclick="staffSetStatus('${esc(r.id)}','Completed')" class="px-4 py-2 rounded-xl text-[13px] font-bold border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10"><i class="fa-solid fa-check mr-1"></i>${T('Mark finished', 'Maliza kazi')}</button>` : ''}
+        <button onclick="staffTab('workspace')" class="px-4 py-2 rounded-xl text-[13px] font-bold border border-white/15 hover:bg-white/5"><i class="fa-solid fa-robot mr-1"></i>${T('Workspace', 'Eneo la kazi')}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function staffSetStatus(requestId, status) {
+  try {
+    const r = await apiPost('api/wafanyakazi.php', { action: 'task_update', requestId, status });
+    toast(status === 'In Progress' ? T('Work started ✓', 'Kazi imeanza ✓') : T('Marked finished — awaiting review ✓', 'Imekamilika — inasubiri ukaguzi ✓'), 'ok');
+    staffLoad();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function staffTools(box) {
+  const d = await apiGet('api/wafanyakazi.php', { action: 'my_tools' });
+  const tools = d.tools || [];
+  if (!tools.length) {
+    box.innerHTML = `<div class="glass rounded-3xl p-8 text-center text-white/50">${T('No tools have been granted to your job yet. The CEO assigns the tools each job needs.', 'Hakuna zana iliyopewa kazi yako bado. CEO hupanga zana zinazohitajika kwa kila kazi.')}</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="text-[12.5px] text-white/50 mb-4"><i class="fa-solid fa-lock mr-1 text-emerald-300"></i>${T('These are the only tools your job may use. Anything outside this list is refused by the platform.', 'Hizi ni zana pekee ambazo kazi yako inaweza kutumia. Kitu chochote nje ya orodha hii kinakataliwa na mfumo.')}</div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${tools.map(t => `
+      <div class="card3d pop-cyan p-4">
+        <div class="w-10 h-10 rounded-xl border border-white/10 flex items-center justify-center text-cyan-300"><i class="${esc(t.icon)}"></i></div>
+        <div class="font-bold text-[13.5px] mt-2">${esc(t.name)}</div>
+        <div class="text-[11.5px] text-white/45 mt-0.5">${esc(t.family)}</div>
+        ${t.agentic ? `<span class="chip text-emerald-300 text-[10px] mt-2"><i class="fa-solid fa-bolt"></i>${T('Agentic', 'Inajifanya')}</span>` : ''}
+      </div>`).join('')}</div>`;
+}
+
+async function staffWorkspace(box) {
+  const d = await apiGet('api/wafanyakazi.php', { action: 'workspace' });
+  const runs = d.runs || [];
+  box.innerHTML = `
+    <div class="glass rounded-3xl p-5 border border-white/10 mb-5">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl grad-btn flex items-center justify-center text-xl"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <div>
+          <div class="font-bold text-[15px]">${T('AI Workspace', 'Eneo la Kazi la AI')}</div>
+          <div class="text-[12px] text-white/50">${T('Give a granted tool a job and read the result — everything stays inside the platform.', 'Ipe zana uliyopewa kazi na usome matokeo — kila kitu kinabaki ndani ya mfumo.')}</div>
+        </div>
+      </div>
+    </div>
+    ${runs.length ? runs.map(r => `
+      <div class="glass rounded-3xl p-5 border border-white/10 mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="font-bold text-[14px]"><i class="fa-solid fa-robot text-cyan-300 mr-2"></i>${esc(r.agentName || 'Agent')}</div>
+          <span class="badge ${r.status === 'done' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30' : r.status === 'error' ? 'bg-red-500/15 text-red-300 border border-red-400/30' : 'bg-amber-500/15 text-amber-300 border border-amber-400/30'}">${esc(String(r.status || '').toUpperCase())}</span>
+        </div>
+        <div class="text-[12.5px] text-white/60 mt-2">${esc(r.task)}</div>
+        ${r.result ? `<div class="text-[12.5px] text-white/75 mt-3 whitespace-pre-wrap rounded-2xl bg-white/[.03] border border-white/10 p-3 max-h-72 overflow-auto">${esc(r.result)}</div>` : ''}
+        <div class="text-[11px] text-white/35 mt-2">${esc(r.provider)} ${esc(r.model)} • ${Number(r.steps) || 0} ${T('steps', 'hatua')}</div>
+      </div>`).join('') : `<div class="glass rounded-3xl p-8 text-center text-white/50">${T('No runs yet. When the CEO approves a request you are serving, the AI carries out the work and the result appears here.', 'Hakuna kazi iliyoendeshwa bado. CEO akikubali ombi unalolihudumia, AI hufanya kazi na matokeo huonekana hapa.')}</div>`}`;
+}
+
+function staffOffice(box) {
+  box.innerHTML = `
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="card3d pop-violet p-5">
+        <div class="w-11 h-11 rounded-2xl border border-white/10 flex items-center justify-center text-violet-300 text-lg"><i class="fa-solid fa-video"></i></div>
+        <div class="font-bold text-[14px] mt-3">${T('Live video call', 'Simu ya video')}</div>
+        <div class="text-[12px] text-white/50 mt-1">${T('Meet a client or a colleague face to face inside the platform.', 'Kutana na mteja au mwenzako ana kwa ana ndani ya mfumo.')}</div>
+        <button onclick="startCall && startCall()" class="grad-btn mt-3 px-4 py-2 rounded-xl text-[13px] font-bold">${T('Open call room', 'Fungua chumba cha simu')}</button>
+      </div>
+      <div class="card3d pop-emerald p-5">
+        <div class="w-11 h-11 rounded-2xl border border-white/10 flex items-center justify-center text-emerald-300 text-lg"><i class="fa-solid fa-comment-sms"></i></div>
+        <div class="font-bold text-[14px] mt-3">${T('Messages', 'Ujumbe')}</div>
+        <div class="text-[12px] text-white/50 mt-1">${T('SMS to a client goes through the platform, and every message is logged.', 'SMS kwa mteja hupitia mfumo, na kila ujumbe hurekodiwa.')}</div>
+        <button onclick="staffTab('tasks')" class="mt-3 px-4 py-2 rounded-xl text-[13px] font-bold border border-white/15 hover:bg-white/5">${T('Open tasks', 'Fungua kazi')}</button>
+      </div>
+    </div>`;
+}
+
+
+/* ================================================================
+   SECURITY SANDBOX — the admin view of the real scanner
+================================================================ */
+async function loadSandbox() {
+  const box = $('sandboxBox');
+  if (!box) return;
+  box.innerHTML = '<div class="text-white/40 text-[13px]"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Loading…</div>';
+  let sb;
+  try { sb = await apiGet('api/security.php', { action: 'sandbox' }); }
+  catch (e) { box.innerHTML = `<div class="text-red-300 text-[13px]">${esc(e.message)}</div>`; return; }
+  const doms = sb.authorisedDomains || [];
+  box.innerHTML = `
+    <div class="grid sm:grid-cols-[1fr_auto] gap-3 items-end">
+      <div>
+        <label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Authorised domain (client's written permission required)</label>
+        <input id="sbDomain" class="input mt-1 font-mono" placeholder="client-domain.co.tz">
+      </div>
+      <button onclick="authoriseDomain()" class="grad-btn px-5 py-3 rounded-xl font-bold text-[13px]"><i class="fa-solid fa-plus mr-1"></i>Authorise</button>
+    </div>
+    <div class="flex flex-wrap gap-1.5 mt-3">
+      ${doms.map(d => `<span class="chip text-cyan-300">${esc(d)}<button onclick="deauthoriseDomain('${esc(d)}')" class="ml-1.5 text-white/40 hover:text-red-300">×</button></span>`).join('') || '<span class="text-[12.5px] text-white/40">No domain is authorised — nothing can be scanned.</span>'}
+    </div>
+    <div class="grid gap-1.5 mt-4 text-[12.5px] text-white/60">
+      ${(sb.checks || []).map(c => `<div class="flex gap-2"><i class="fa-solid fa-check text-emerald-300 mt-0.5"></i><span>${esc(c)}</span></div>`).join('')}
+    </div>
+    <div class="rounded-xl border border-amber-400/25 bg-amber-500/[.05] p-3 mt-3 text-[12px] text-amber-200">
+      <i class="fa-solid fa-scale-balanced mr-1"></i>${esc(sb.rule || '')}
+    </div>
+    <div class="grid sm:grid-cols-[170px_1fr_auto] gap-2 mt-4">
+      <select id="sbKind" class="input">
+        <option value="headers">Security headers</option>
+        <option value="exposure">Exposure &amp; ports</option>
+        <option value="dns">DNS posture</option>
+        <option value="tls">TLS certificate</option>
+        <option value="dependencies">Dependencies</option>
+        <option value="code">Source code</option>
+        <option value="malware">Malware</option>
+      </select>
+      <input id="sbTarget" class="input font-mono text-[12.5px]" placeholder="client-domain.co.tz">
+      <button onclick="runScan()" class="px-5 py-3 rounded-xl font-bold text-[13px] border border-cyan-400/40 text-cyan-300 hover:bg-cyan-500/10"><i class="fa-solid fa-magnifying-glass mr-1"></i>Scan</button>
+    </div>
+    <pre id="sbOut" class="mt-3 p-3 rounded-xl bg-black/40 border border-white/10 text-[12px] text-white/80 max-h-80 overflow-auto hidden"></pre>`;
+}
+
+async function authoriseDomain() {
+  const d = ($('sbDomain') || {}).value || '';
+  if (!d.trim()) { toast('Give the domain.', 'err'); return; }
+  try {
+    await apiPost('api/security.php', { action: 'authorise_domain', domain: d.trim() });
+    toast('Domain authorised ✓', 'ok');
+    loadSandbox();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function deauthoriseDomain(d) {
+  try {
+    await apiPost('api/security.php', { action: 'deauthorise_domain', domain: d });
+    toast('Domain removed.', 'info');
+    loadSandbox();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function runScan() {
+  const kind = ($('sbKind') || {}).value || 'headers';
+  const target = ($('sbTarget') || {}).value || '';
+  const out = $('sbOut');
+  if (!out) return;
+  if (!target.trim()) { toast('Give the domain to scan.', 'err'); return; }
+  out.classList.remove('hidden');
+  out.textContent = 'Scanning… (this makes real network requests)';
+  try {
+    const r = await apiPost('api/security.php', { action: 'scan', kind, target, authorised: 'the CEO' });
+    out.textContent = r.evidence || '(no output)';
+  } catch (e) { out.textContent = e.message; }
+}
+
+/* ================================================================
+   RUNTIMES — run a snippet from the admin panel
+================================================================ */
+async function runSnippet() {
+  const lang = ($('rtLang') || {}).value || 'python';
+  const code = ($('rtCode') || {}).value || '';
+  const out = $('rtOut');
+  if (!out) return;
+  if (!code.trim()) { toast('Give the code to run.', 'err'); return; }
+  out.classList.remove('hidden');
+  out.textContent = 'Compiling and running…';
+  try {
+    const r = await apiPost('api/runtime.php', { action: 'run', language: lang, code });
+    out.textContent = `exit: ${r.ok ? 'success' : 'failure'} • ${r.ms} ms\n\n${r.output}`;
+  } catch (e) { out.textContent = e.message; }
+}

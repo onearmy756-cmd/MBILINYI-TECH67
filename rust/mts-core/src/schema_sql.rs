@@ -142,6 +142,8 @@ CREATE TABLE IF NOT EXISTS requests (
   priority    VARCHAR(40)   NOT NULL DEFAULT 'Normal',
   status      VARCHAR(40)   NOT NULL DEFAULT 'Pending',
   admin_note  TEXT          NOT NULL,
+  country     VARCHAR(80)   NOT NULL DEFAULT '',
+  region      VARCHAR(80)   NOT NULL DEFAULT '',
   created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (tracking_id),
   PRIMARY KEY (id)

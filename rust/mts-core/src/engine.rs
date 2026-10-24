@@ -71,8 +71,15 @@ pub fn init_tables() {
 /// needs, preferring an active agent in the right department. The manager's
 /// choice, when the model is available, wins over this.
 pub fn best_agent_for(service: &str, tool: &str) -> Option<db::Row> {
-    let all = db::rows("SELECT * FROM agents WHERE status='active' AND manager_id != ''", &[]);
-    let want: Vec<String> = service.to_lowercase().split(|c: char| !c.is_alphanumeric()).map(|s| s.to_string()).collect();
+    let all = db::rows(
+        "SELECT * FROM agents WHERE status='active' AND manager_id != ''",
+        &[],
+    );
+    let want: Vec<String> = service
+        .to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .map(|s| s.to_string())
+        .collect();
     let mut best: Option<(i64, db::Row)> = None;
     for a in all {
         let raw = util::s(a.get("tools").unwrap_or(&J::Null));
@@ -165,15 +172,28 @@ fn step_json(r: &db::Row) -> J {
     })
 }
 
-fn log_step(run_id: &str, step_no: i64, kind: &str, tool: &str, input: &str, output: &str, ok: bool) {
+fn log_step(
+    run_id: &str,
+    step_no: i64,
+    kind: &str,
+    tool: &str,
+    input: &str,
+    output: &str,
+    ok: bool,
+) {
     let _ = db::run(
         "INSERT INTO agent_steps (id, run_id, step_no, kind, tool, input, output, ok, created_at)
          VALUES (?,?,?,?,?,?,?,?,?)",
         &[
-            arg(json!(util::new_id("STP-"))), arg(json!(run_id)), arg(json!(step_no)),
-            arg(json!(kind)), arg(json!(tool)),
-            arg(json!(truncate(input, 4000))), arg(json!(truncate(output, 8000))),
-            arg(json!(if ok { 1 } else { 0 })), arg(json!(util::now())),
+            arg(json!(util::new_id("STP-"))),
+            arg(json!(run_id)),
+            arg(json!(step_no)),
+            arg(json!(kind)),
+            arg(json!(tool)),
+            arg(json!(truncate(input, 4000))),
+            arg(json!(truncate(output, 8000))),
+            arg(json!(if ok { 1 } else { 0 })),
+            arg(json!(util::now())),
         ],
     );
 }
@@ -209,6 +229,22 @@ fn open_run(agent: &db::Row, task: &str, request_id: &str, provider: &str, model
 /// touches the database only through short `db::` calls — no guard is ever held
 /// across an `await`.
 pub async fn run_job(agent_id: &str, task: &str, request_id: &str) -> J {
+    run_job_with_grant(agent_id, task, request_id, None).await
+}
+
+/// Run a job, optionally constrained to the tools a named worker's job allows.
+///
+/// The worker is the one who was hired for the service, and their grant is what
+/// their job needs. When a grant is given it is **intersected** with the agent's
+/// own grant: an agent may use a tool only when both hold it. That is the rule
+/// the CEO asked for — a worker may not use a tool outside their own job, and an
+/// agent may not exceed what it was given either.
+pub async fn run_job_with_grant(
+    agent_id: &str,
+    task: &str,
+    request_id: &str,
+    worker_grant: Option<Vec<String>>,
+) -> J {
     let Some(agent) = db::row("SELECT * FROM agents WHERE id = ?", &[arg(json!(agent_id))]) else {
         return json!({ "started": false, "error": "Agent not found." });
     };
@@ -228,7 +264,10 @@ pub async fn run_job(agent_id: &str, task: &str, request_id: &str) -> J {
         return json!({ "started": false, "runId": run_id, "error": msg });
     }
 
-    let grant = util::s(agent.get("tools").unwrap_or(&J::Null));
+    let grant = effective_grant(
+        &util::s(agent.get("tools").unwrap_or(&J::Null)),
+        worker_grant.as_deref(),
+    );
     let specs = specs_for(&grant);
     // The model sees tool names with underscores; map back to catalogue codes.
     let code_of = |n: &str| {
@@ -270,8 +309,20 @@ pub async fn run_job(agent_id: &str, task: &str, request_id: &str) -> J {
         for call in &turn.calls {
             let Some(code) = code_of(&call.name) else {
                 let note = format!("There is no tool called {}.", call.name);
-                log_step(&run_id, steps, "refuse", &call.name, &call.args.to_string(), &note, false);
-                results.push(Msg::ToolResult { id: call.id.clone(), name: call.name.clone(), content: note });
+                log_step(
+                    &run_id,
+                    steps,
+                    "refuse",
+                    &call.name,
+                    &call.args.to_string(),
+                    &note,
+                    false,
+                );
+                results.push(Msg::ToolResult {
+                    id: call.id.clone(),
+                    name: call.name.clone(),
+                    content: note,
+                });
                 assistant_calls.push(call.clone());
                 continue;
             };
@@ -283,18 +334,45 @@ pub async fn run_job(agent_id: &str, task: &str, request_id: &str) -> J {
                     util::s(agent.get("name").unwrap_or(&J::Null)),
                     code
                 );
-                log_step(&run_id, steps, "refuse", &code, &call.args.to_string(), &note, false);
-                results.push(Msg::ToolResult { id: call.id.clone(), name: call.name.clone(), content: note });
+                log_step(
+                    &run_id,
+                    steps,
+                    "refuse",
+                    &code,
+                    &call.args.to_string(),
+                    &note,
+                    false,
+                );
+                results.push(Msg::ToolResult {
+                    id: call.id.clone(),
+                    name: call.name.clone(),
+                    content: note,
+                });
                 assistant_calls.push(call.clone());
                 continue;
             }
             let out = runtime::run(&code, &call.args).await;
-            log_step(&run_id, steps, "tool", &code, &call.args.to_string(), &out.content, out.ok);
-            results.push(Msg::ToolResult { id: call.id.clone(), name: call.name.clone(), content: out.content });
+            log_step(
+                &run_id,
+                steps,
+                "tool",
+                &code,
+                &call.args.to_string(),
+                &out.content,
+                out.ok,
+            );
+            results.push(Msg::ToolResult {
+                id: call.id.clone(),
+                name: call.name.clone(),
+                content: out.content,
+            });
             assistant_calls.push(call.clone());
         }
 
-        msgs.push(Msg::Assistant { text: turn.text.clone(), calls: assistant_calls });
+        msgs.push(Msg::Assistant {
+            text: turn.text.clone(),
+            calls: assistant_calls,
+        });
         for r in results {
             msgs.push(r);
         }
@@ -321,8 +399,12 @@ fn finish(run_id: &str, status: &str, result: &str, error: &str, steps: i64) {
     let _ = db::run(
         "UPDATE agent_runs SET status=?, result=?, error=?, steps=?, ended_at=? WHERE id=?",
         &[
-            arg(json!(status)), arg(json!(truncate(result, 20000))), arg(json!(error)),
-            arg(json!(steps)), arg(json!(util::now())), arg(json!(run_id)),
+            arg(json!(status)),
+            arg(json!(truncate(result, 20000))),
+            arg(json!(error)),
+            arg(json!(steps)),
+            arg(json!(util::now())),
+            arg(json!(run_id)),
         ],
     );
 }
@@ -353,7 +435,8 @@ pub async fn manager_pick(service: &str, tool: &str, task: &str) -> Option<db::R
     if roster.is_empty() {
         return None;
     }
-    let system = "You are Magma Commander, the manager of the agent company at Mbilinyi Tech Solutions. \
+    let system =
+        "You are Magma Commander, the manager of the agent company at Mbilinyi Tech Solutions. \
                   Pick the one agent from the roster who should take a new job. \
                   Reply with the agent id and nothing else.";
     let user = format!(
@@ -370,7 +453,10 @@ pub async fn manager_pick(service: &str, tool: &str, task: &str) -> Option<db::R
             return Some(a);
         }
         // The model may have written a sentence around the id; find any id in it.
-        for r in db::rows("SELECT * FROM agents WHERE status='active' AND manager_id != ''", &[]) {
+        for r in db::rows(
+            "SELECT * FROM agents WHERE status='active' AND manager_id != ''",
+            &[],
+        ) {
             let id = util::s(r.get("id").unwrap_or(&J::Null));
             if !id.is_empty() && answer.contains(&id) {
                 return Some(r);
@@ -387,7 +473,11 @@ pub fn spawn(agent_id: String, task: String, request_id: String) {
         let outcome = run_job(&agent_id, &task, &request_id).await;
         // A finished run with a result is offered to the client's request as an
         // internal note the CEO can review before it goes out.
-        if outcome.get("started").and_then(|v| v.as_bool()).unwrap_or(false) {
+        if outcome
+            .get("started")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
             if let Some(result) = outcome.get("result").and_then(|v| v.as_str()) {
                 if !request_id.is_empty() && !result.trim().is_empty() {
                     let _ = db::run(
@@ -398,6 +488,61 @@ pub fn spawn(agent_id: String, task: String, request_id: String) {
             }
         }
     });
+}
+
+/// Run a job for a named worker, constrained to the tools their job allows, and
+/// write the outcome back onto the request so the CEO can review it before the
+/// client sees anything. This is what the CEO's approval triggers.
+pub fn spawn_with_tools(
+    agent_id: String,
+    task: String,
+    request_id: String,
+    worker_grant: Vec<String>,
+) {
+    tokio::spawn(async move {
+        let outcome = run_job_with_grant(&agent_id, &task, &request_id, Some(worker_grant)).await;
+        if outcome
+            .get("started")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            if let Some(result) = outcome.get("result").and_then(|v| v.as_str()) {
+                if !request_id.is_empty() && !result.trim().is_empty() {
+                    let _ = db::run(
+                        "UPDATE requests SET admin_note = ? WHERE id = ?",
+                        &[arg(json!(truncate(result, 4000))), arg(json!(request_id))],
+                    );
+                }
+            }
+            // Move the request along now that the work has been carried out; the
+            // client is told, and the CEO still reviews before delivery.
+            let _ = db::run(
+                "UPDATE requests SET status = 'In Progress' WHERE id = ? AND status = 'Approved'",
+                &[arg(json!(request_id))],
+            );
+        }
+    });
+}
+
+/// The tools an agent may actually use: its own grant, intersected with the
+/// worker's grant when the job came from a named worker. An empty intersection
+/// is returned as-is, so the caller can see that nothing was permitted rather
+/// than silently widening the grant to everything.
+pub fn effective_grant(agent_grant: &str, worker_grant: Option<&[String]>) -> String {
+    let held = tools::granted(agent_grant);
+    let allowed: Vec<String> = match worker_grant {
+        None => held,
+        Some(w) => {
+            if w.iter().any(|x| x == "all") {
+                held
+            } else {
+                held.into_iter()
+                    .filter(|t| w.iter().any(|x| x == t))
+                    .collect()
+            }
+        }
+    };
+    serde_json::to_string(&allowed).unwrap_or_else(|_| "[]".to_string())
 }
 
 #[cfg(test)]

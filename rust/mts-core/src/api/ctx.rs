@@ -16,6 +16,13 @@ use std::collections::HashMap;
 pub struct Ctx {
     pub session: Session,
     pub body: J,
+    /// The request body exactly as it arrived, before parsing.
+    ///
+    /// Signature checks need the original bytes: a re-serialised JSON object
+    /// has its keys reordered, and an HMAC computed over it will never match
+    /// what the sender signed. Storing the raw body is what makes webhook
+    /// verification possible at all.
+    pub raw: String,
     pub query: HashMap<String, String>,
     pub headers: HeaderMap,
 }
@@ -25,8 +32,14 @@ impl Ctx {
         let query = parse_query(req.uri().query().unwrap_or(""));
         let headers = req.headers().clone();
         let session = session::load(&headers);
-        let body = read_body(req).await;
-        Ctx { session, body, query, headers }
+        let (body, raw) = read_body(req).await;
+        Ctx {
+            session,
+            body,
+            raw,
+            query,
+            headers,
+        }
     }
 
     /// Body first, then query — the PHP `param()` order.
@@ -70,7 +83,9 @@ impl Ctx {
             // A suspended account is signed in but refused, and says so.
             None => {
                 if self.session.user_id.is_some() {
-                    Err(util::forbidden("This account is suspended. Contact 0796 752 645."))
+                    Err(util::forbidden(
+                        "This account is suspended. Contact 0796 752 645.",
+                    ))
                 } else {
                     Err(util::unauth())
                 }
@@ -119,25 +134,29 @@ fn urldecode(s: &str) -> String {
         .to_string()
 }
 
-async fn read_body(req: Request<Body>) -> J {
+/// The parsed body, and the original text it was parsed from.
+async fn read_body(req: Request<Body>) -> (J, String) {
     let bytes = match axum::body::to_bytes(req.into_body(), 8 * 1024 * 1024).await {
         Ok(b) => b,
-        Err(_) => return J::Null,
+        Err(_) => return (J::Null, String::new()),
     };
     if bytes.is_empty() {
-        return J::Null;
+        return (J::Null, String::new());
     }
+    // Lossy on purpose: a body that is not valid UTF-8 still has to be hashed
+    // for signature checks, and refusing it outright would break such senders.
+    let raw = String::from_utf8_lossy(&bytes).to_string();
     // JSON is what app.js sends; a form-encoded body is accepted too so a plain
     // HTML form still works.
     if let Ok(v) = serde_json::from_slice::<J>(&bytes) {
-        return v;
+        return (v, raw);
     }
-    let text = String::from_utf8_lossy(&bytes).to_string();
-    let map = parse_query(text.trim_start_matches('?'));
+    let map = parse_query(raw.trim_start_matches('?'));
     if map.is_empty() {
-        J::Null
+        (J::Null, raw)
     } else {
-        J::Object(map.into_iter().map(|(k, v)| (k, J::String(v))).collect())
+        let obj = J::Object(map.into_iter().map(|(k, v)| (k, J::String(v))).collect());
+        (obj, raw)
     }
 }
 

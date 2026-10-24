@@ -1,0 +1,119 @@
+name: CI
+
+# The Rust core is the platform: the PHP pages are a thin shell around it. So
+# the pipeline builds and tests the core, and checks the frontend syntax, on
+# every push and pull request.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust:
+    name: Build and test the Rust core
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # The language runtimes the platform advertises. Installing them here is
+      # what lets the runtime tests actually run a program rather than skip it.
+      - name: Install language runtimes
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 r-base elixir nodejs gcc golang-go
+
+      - name: Cache the cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/mts-core/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/mts-core/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Check formatting
+        working-directory: rust/mts-core
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        working-directory: rust/mts-core
+        run: cargo clippy --all-targets
+
+      - name: Build
+        working-directory: rust/mts-core
+        run: cargo build --release
+
+      - name: Test
+        working-directory: rust/mts-core
+        run: cargo test --release
+
+  frontend:
+    name: Check the frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The whole frontend is one script, so a syntax error there would take the
+      # portal down. This is the cheapest check that catches it.
+      - name: Check JavaScript syntax
+        run: node --check assets/app.js
+
+      - name: Check the templates parse
+        run: |
+          python3 - <<'PY'
+          import glob
+          import html.parser
+
+          class Check(html.parser.HTMLParser):
+              def error(self, message):
+                  raise SystemExit(message)
+
+          bad = []
+          for path in glob.glob('templates/*.html'):
+              try:
+                  Check().feed(open(path, encoding='utf-8').read())
+              except Exception as e:
+                  bad.append(f'{path}: {e}')
+          if bad:
+              print('\n'.join(bad))
+              raise SystemExit(1)
+          print(f'checked {len(glob.glob("templates/*.html"))} templates')
+          PY
+
+      - name: Check every template is a page the server can serve
+        run: |
+          python3 - <<'PY'
+          import glob, os, re
+          src = open('rust/mts-core/src/pages.rs', encoding='utf-8').read()
+          block = re.search(r'let known = \[(.*?)\];', src, re.S).group(1)
+          known = set(re.findall(r'"([a-z_]+)"', block))
+          # Every template on disk must be reachable, or it is dead markup.
+          orphans = [
+              os.path.basename(p)[:-5]
+              for p in glob.glob('templates/*.html')
+              if not os.path.basename(p).startswith('_')
+              and os.path.basename(p)[:-5] not in known
+          ]
+          if orphans:
+              print('templates that no route serves:', orphans)
+              raise SystemExit(1)
+          print(f'{len(known)} routes, no orphan templates')
+          PY

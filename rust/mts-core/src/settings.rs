@@ -23,8 +23,16 @@ pub fn all() -> HashMap<String, String> {
     }
     let mut out = HashMap::new();
     for r in db::rows("SELECT skey, svalue FROM settings", &[]) {
-        let k = r.get("skey").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let v = r.get("svalue").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let k = r
+            .get("skey")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let v = r
+            .get("svalue")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         if !k.is_empty() {
             out.insert(k, v);
         }
@@ -34,7 +42,10 @@ pub fn all() -> HashMap<String, String> {
 }
 
 pub fn get(key: &str, default: &str) -> String {
-    all().get(key).map(|s| s.clone()).unwrap_or_else(|| default.to_string())
+    all()
+        .get(key)
+        .map(|s| s.clone())
+        .unwrap_or_else(|| default.to_string())
 }
 
 pub fn num(key: &str, default: f64) -> f64 {
@@ -46,7 +57,10 @@ pub fn num(key: &str, default: f64) -> f64 {
 }
 
 pub fn flag(key: &str) -> bool {
-    matches!(get(key, "").trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on")
+    matches!(
+        get(key, "").trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    )
 }
 
 pub fn set(key: &str, value: &str) {
@@ -88,11 +102,19 @@ pub fn as_json() -> J {
 pub fn payment_details() -> J {
     let sw = {
         let s = get("pay_instructions_sw", "");
-        if s.is_empty() { get("pay_instructions", "") } else { s }
+        if s.is_empty() {
+            get("pay_instructions", "")
+        } else {
+            s
+        }
     };
     let en = {
         let s = get("pay_instructions_en", "");
-        if s.is_empty() { get("pay_instructions", "") } else { s }
+        if s.is_empty() {
+            get("pay_instructions", "")
+        } else {
+            s
+        }
     };
     json!({
         "bank": {
@@ -116,11 +138,26 @@ pub fn payment_details() -> J {
 }
 
 pub const CATALOGUE_KEYS: [&str; 21] = [
-    "custom_software", "system_analysis", "it_consultancy", "maintenance",
-    "cybersecurity", "forensics", "ai_chatbots", "ai_finetune", "cloud_devops",
-    "brela", "tra_tax", "troubleshooting", "windows_os", "email_setup",
-    "gov_eservices", "software_install",
-    "graphics_design", "cv_writing", "mobile_desktop_app", "iot_gaming",
+    "custom_software",
+    "system_analysis",
+    "it_consultancy",
+    "maintenance",
+    "cybersecurity",
+    "forensics",
+    "ai_chatbots",
+    "ai_finetune",
+    "cloud_devops",
+    "brela",
+    "tra_tax",
+    "troubleshooting",
+    "windows_os",
+    "email_setup",
+    "gov_eservices",
+    "software_install",
+    "graphics_design",
+    "cv_writing",
+    "mobile_desktop_app",
+    "iot_gaming",
     "industry_solutions",
 ];
 
@@ -165,9 +202,8 @@ fn is_tz_only_in(label: &str, keys: &[String]) -> bool {
     if key.is_empty() {
         return false;
     }
-    keys.iter().any(|k| {
-        key.contains(&squash(k)) || tz_aliases(k).iter().any(|a| key.contains(a))
-    })
+    keys.iter()
+        .any(|k| key.contains(&squash(k)) || tz_aliases(k).iter().any(|a| key.contains(a)))
 }
 
 pub fn service_hidden() -> Vec<String> {
@@ -195,19 +231,97 @@ pub fn service_visibility() -> J {
 /// figure in Admin → Settings and the pricing page follows immediately.
 pub fn service_price_list() -> Vec<J> {
     let catalogue: [(&str, &str, &str, &str, &str); 13] = [
-        ("website_basic", "Basic / starter website (up to 5 pages)", "Tovuti ya msingi (kurasa hadi 5)", "/project", ""),
-        ("website_business", "Business website (custom design, CMS)", "Tovuti ya kampuni (muundo maalum, CMS)", "/project", ""),
-        ("ecommerce", "Online shop / e-commerce with payments", "Duka la mtandaoni lenye malipo", "/project", ""),
-        ("mobile_app", "Mobile app (Android + iOS)", "Programu ya simu (Android + iOS)", "/project", ""),
-        ("custom_system", "Custom business system (ERP / school / pharmacy)", "Mfumo maalum wa biashara (ERP / shule / duka)", "/project", ""),
-        ("whatsapp_bot", "WhatsApp / SMS chatbot (Swahili + English)", "Chatbot ya WhatsApp / SMS (Kiswahili + Kiingereza)", "/project", ""),
-        ("ai_finetune", "AI fine-tuning on your own data (RAG / LoRA)", "Kurekebisha AI kwa data yako (RAG / LoRA)", "/project", ""),
-        ("security_audit", "Cyber-security audit (OWASP Top-10)", "Ukaguzi wa usalama (OWASP Top-10)", "/one-time", "cybersecurity"),
-        ("pentest", "Penetration test (manual + automated)", "Mtihani wa uvamizi (manual + automated)", "/system", "cybersecurity"),
-        ("maintenance", "Software maintenance & SLA (Starter)", "Matengenezo ya programu na SLA (Starter)", "/month", ""),
-        ("brela", "BRELA business / company registration", "Usajili wa biashara / kampuni ya BRELA", "/service", ""),
-        ("tra_tax", "TRA tax services (TIN, VAT, PAYE, returns)", "Huduma za kodi za TRA (TIN, VAT, PAYE)", "/service", ""),
-        ("forensics", "Digital forensics & cyber-crime investigation", "Uchunguzi wa kidijitali na uhalifu wa mtandao", "/case", "forensics"),
+        (
+            "website_basic",
+            "Basic / starter website (up to 5 pages)",
+            "Tovuti ya msingi (kurasa hadi 5)",
+            "/project",
+            "",
+        ),
+        (
+            "website_business",
+            "Business website (custom design, CMS)",
+            "Tovuti ya kampuni (muundo maalum, CMS)",
+            "/project",
+            "",
+        ),
+        (
+            "ecommerce",
+            "Online shop / e-commerce with payments",
+            "Duka la mtandaoni lenye malipo",
+            "/project",
+            "",
+        ),
+        (
+            "mobile_app",
+            "Mobile app (Android + iOS)",
+            "Programu ya simu (Android + iOS)",
+            "/project",
+            "",
+        ),
+        (
+            "custom_system",
+            "Custom business system (ERP / school / pharmacy)",
+            "Mfumo maalum wa biashara (ERP / shule / duka)",
+            "/project",
+            "",
+        ),
+        (
+            "whatsapp_bot",
+            "WhatsApp / SMS chatbot (Swahili + English)",
+            "Chatbot ya WhatsApp / SMS (Kiswahili + Kiingereza)",
+            "/project",
+            "",
+        ),
+        (
+            "ai_finetune",
+            "AI fine-tuning on your own data (RAG / LoRA)",
+            "Kurekebisha AI kwa data yako (RAG / LoRA)",
+            "/project",
+            "",
+        ),
+        (
+            "security_audit",
+            "Cyber-security audit (OWASP Top-10)",
+            "Ukaguzi wa usalama (OWASP Top-10)",
+            "/one-time",
+            "cybersecurity",
+        ),
+        (
+            "pentest",
+            "Penetration test (manual + automated)",
+            "Mtihani wa uvamizi (manual + automated)",
+            "/system",
+            "cybersecurity",
+        ),
+        (
+            "maintenance",
+            "Software maintenance & SLA (Starter)",
+            "Matengenezo ya programu na SLA (Starter)",
+            "/month",
+            "",
+        ),
+        (
+            "brela",
+            "BRELA business / company registration",
+            "Usajili wa biashara / kampuni ya BRELA",
+            "/service",
+            "",
+        ),
+        (
+            "tra_tax",
+            "TRA tax services (TIN, VAT, PAYE, returns)",
+            "Huduma za kodi za TRA (TIN, VAT, PAYE)",
+            "/service",
+            "",
+        ),
+        (
+            "forensics",
+            "Digital forensics & cyber-crime investigation",
+            "Uchunguzi wa kidijitali na uhalifu wa mtandao",
+            "/case",
+            "forensics",
+        ),
     ];
     let mut out = Vec::new();
     for (code, en, sw, period, svc) in catalogue {
@@ -227,7 +341,7 @@ pub fn service_price_list() -> Vec<J> {
 
 /// Fill only blanks, so an admin edit is never overwritten on boot.
 pub fn seed_defaults() {
-    let defaults: [(&str, &str); 24] = [
+    let defaults: [(&str, &str); 42] = [
         ("pay_bank_name", "NMB Bank"),
         ("pay_bank_account", "51710099563"),
         ("pay_bank_holder", "JACKSON MBILINYI"),
@@ -257,6 +371,37 @@ pub fn seed_defaults() {
         ("sms_api_key", ""),
         ("sms_secret", ""),
         ("sms_sender_id", ""),
+        // The SMTP server the platform sends mail through. Empty means "not
+        // configured"; mail is then refused rather than silently dropped.
+        ("smtp_host", ""),
+        ("smtp_port", "587"),
+        ("smtp_user", ""),
+        ("smtp_pass", ""),
+        ("smtp_from", ""),
+        ("smtp_sender_name", "Mbilinyi Tech Solutions"),
+        // Stripe's webhook signing secret, so a callback can be authenticated
+        // rather than believed.
+        ("gw_stripe_webhook_secret", ""),
+        ("gw_stripe_enabled", ""),
+        // The company account the money settles into once escrow releases.
+        ("company_account_name", "Mbilinyi Tech Solutions"),
+        ("company_bank", "NMB Bank"),
+        ("company_account_no", "51710099563"),
+        ("company_swift", "NMBTZTZ"),
+        ("company_mobile", "0796752645"),
+        // The public base URL, used for Stripe redirects and canonical links.
+        ("platform_url", ""),
+        // Where the CEO's alerts go. A request, an inbound message or a contract
+        // to sign is announced to both of these, so the CEO can decide from a
+        // phone. Empty means that channel is simply not used.
+        ("admin_alert_phone", "0796752645"),
+        ("admin_alert_email", ""),
+        // The domains the security sandbox may probe. Empty means nothing is
+        // scanned: the client's written permission comes first, always.
+        ("security_authorised_domains", ""),
+        // The company account money settles into once the client accepts the
+        // delivery and escrow releases.
+        ("company_settlement_account", "51710099563"),
     ];
     let have = all();
     for (k, v) in defaults {
@@ -279,6 +424,14 @@ mod tests {
     }
 
     #[test]
+    fn the_tz_only_list_is_configurable_and_sane() {
+        crate::test_bootstrap();
+        let ks = tz_only_keys();
+        assert!(ks.contains(&"brela".to_string()));
+        assert!(ks.contains(&"tra_tax".to_string()));
+    }
+
+    #[test]
     fn tz_only_matches_by_label_not_exact_spelling() {
         // The grid sends a long human label, not the catalogue key.
         assert!(is_tz_only_in("BRELA & Business Registration", &keys()));
@@ -295,7 +448,10 @@ mod tests {
             "AI Fine-Tuning",
             "Cybersecurity Services",
         ] {
-            assert!(!is_tz_only_in(label, &keys()), "{label} must be available worldwide");
+            assert!(
+                !is_tz_only_in(label, &keys()),
+                "{label} must be available worldwide"
+            );
         }
     }
 
@@ -309,10 +465,16 @@ mod tests {
     fn catalogue_covers_every_service_the_ui_offers() {
         // A service missing from the catalogue cannot be switched off by the CEO.
         for k in [
-            "graphics_design", "cv_writing", "mobile_desktop_app", "iot_gaming",
+            "graphics_design",
+            "cv_writing",
+            "mobile_desktop_app",
+            "iot_gaming",
             "industry_solutions",
         ] {
-            assert!(CATALOGUE_KEYS.contains(&k), "{k} is missing from CATALOGUE_KEYS");
+            assert!(
+                CATALOGUE_KEYS.contains(&k),
+                "{k} is missing from CATALOGUE_KEYS"
+            );
         }
     }
 }

@@ -22,7 +22,12 @@ pub struct Outcome {
 }
 
 fn fail(msg: impl Into<String>) -> Outcome {
-    Outcome { ok: false, reference: String::new(), message: msg.into(), redirect: None }
+    Outcome {
+        ok: false,
+        reference: String::new(),
+        message: msg.into(),
+        redirect: None,
+    }
 }
 
 fn settled_msg() -> String {
@@ -45,8 +50,8 @@ fn whole(amount: f64) -> i64 {
 /// as-is. Everything else is sent in cents, so the figure is multiplied by 100.
 /// Sending TZS as cents would charge a hundred times the invoice.
 const ZERO_DECIMAL: &[&str] = &[
-    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND",
-    "VUV", "XAF", "XOF", "XPF", "TZS",
+    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV",
+    "XAF", "XOF", "XPF", "TZS",
 ];
 
 /// The amount in the smallest unit Stripe expects for this currency.
@@ -68,6 +73,99 @@ fn stripe_api_base() -> String {
     } else {
         b.trim_end_matches('/').to_string()
     }
+}
+
+/// The webhook signing secret (`whsec_…`), which is what lets a callback be
+/// trusted. Without it a webhook is only a claim, so verification is refused
+/// rather than waved through.
+fn stripe_webhook_secret() -> String {
+    settings::get("gw_stripe_webhook_secret", "")
+}
+
+/// Is the Stripe integration switched on with credentials the platform holds?
+pub fn stripe_configured() -> bool {
+    !settings::get("gw_stripe_secret", "").trim().is_empty()
+}
+
+/// Does the platform hold a webhook secret, so callbacks can be authenticated?
+pub fn stripe_webhook_ready() -> bool {
+    !stripe_webhook_secret().trim().is_empty()
+}
+
+/// Verify a Stripe webhook signature using the stored secret.
+///
+/// Returns `Ok(())` only when the signature is genuine.
+pub fn verify_stripe_webhook(header: &str, body: &str) -> Result<(), String> {
+    let secret = stripe_webhook_secret();
+    if secret.trim().is_empty() {
+        return Err(
+            "No Stripe webhook secret is stored, so the callback cannot be authenticated.".into(),
+        );
+    }
+    verify_stripe_signature(&secret, header, body)
+}
+
+/// Verify a Stripe webhook signature against a given secret.
+///
+/// Stripe sends `Stripe-Signature: t=<unix>,v1=<hmac-sha256 hex>`, where the
+/// HMAC is over `"<t>.<raw body>"` keyed with the endpoint's `whsec_…` secret.
+/// The comparison is constant-time and the timestamp is bounded, so a captured
+/// callback cannot be replayed later. The secret is a parameter so the check can
+/// be exercised without a database.
+pub fn verify_stripe_signature(secret: &str, header: &str, body: &str) -> Result<(), String> {
+    if secret.trim().is_empty() {
+        return Err(
+            "No Stripe webhook secret is stored, so the callback cannot be authenticated.".into(),
+        );
+    }
+    let (mut t, mut v1) = (String::new(), String::new());
+    for part in header.split(',') {
+        let part = part.trim();
+        if let Some(x) = part.strip_prefix("t=") {
+            t = x.trim().to_string();
+        } else if let Some(x) = part.strip_prefix("v1=") {
+            v1 = x.trim().to_string();
+        }
+    }
+    if t.is_empty() || v1.is_empty() {
+        return Err("The Stripe-Signature header is missing its timestamp or v1 signature.".into());
+    }
+    // Reject a timestamp more than five minutes from now, in either direction.
+    let ts: i64 = t
+        .parse()
+        .map_err(|_| "The Stripe-Signature timestamp is not a number.".to_string())?;
+    let now = chrono::Utc::now().timestamp();
+    if (now - ts).abs() > 300 {
+        return Err("The Stripe callback is too old to trust.".into());
+    }
+    let signed = format!("{t}.{body}");
+    let expected = stripe_hmac_hex(secret, signed.as_bytes());
+    // Constant-time compare: a byte-by-byte `==` would leak the correct prefix.
+    if constant_time_eq(expected.as_bytes(), v1.as_bytes()) {
+        Ok(())
+    } else {
+        Err("The Stripe signature does not match. The callback was refused.".into())
+    }
+}
+
+fn stripe_hmac_hex(secret: &str, msg: &[u8]) -> String {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let mut mac = match Hmac::<Sha256>::new_from_slice(secret.as_bytes()) {
+        Ok(m) => m,
+        Err(_) => return String::new(),
+    };
+    mac.update(msg);
+    hex::encode(mac.finalize().into_bytes())
+}
+
+/// Compare two byte slices without an early exit on the first difference.
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    use subtle::ConstantTimeEq;
+    if a.len() != b.len() {
+        return false;
+    }
+    a.ct_eq(b).into()
 }
 
 /// Read the first path that yields a non-empty scalar. Providers differ in how
@@ -161,7 +259,9 @@ const MPESA: Provider = Provider {
 };
 
 fn base_of(p: &Provider) -> String {
-    settings::get(p.url_key, p.default_url).trim_end_matches('/').to_string()
+    settings::get(p.url_key, p.default_url)
+        .trim_end_matches('/')
+        .to_string()
 }
 
 async fn post_bearer(url: &str, key: &str, body: J) -> Result<(u16, J), String> {
@@ -175,7 +275,10 @@ async fn post_bearer(url: &str, key: &str, body: J) -> Result<(u16, J), String> 
         .map_err(|e| format!("Network error: {e}"))?;
     let code = res.status().as_u16();
     let text = res.text().await.unwrap_or_default();
-    Ok((code, serde_json::from_str(&text).unwrap_or(json!({ "raw": text }))))
+    Ok((
+        code,
+        serde_json::from_str(&text).unwrap_or(json!({ "raw": text })),
+    ))
 }
 
 async fn get_bearer(url: &str, key: &str) -> Result<(u16, J), String> {
@@ -187,7 +290,10 @@ async fn get_bearer(url: &str, key: &str) -> Result<(u16, J), String> {
         .map_err(|e| format!("Network error: {e}"))?;
     let code = res.status().as_u16();
     let text = res.text().await.unwrap_or_default();
-    Ok((code, serde_json::from_str(&text).unwrap_or(json!({ "raw": text }))))
+    Ok((
+        code,
+        serde_json::from_str(&text).unwrap_or(json!({ "raw": text })),
+    ))
 }
 
 /// The shared body shape for a mobile-money collection.
@@ -248,11 +354,19 @@ pub async fn initiate(
                     let r = pick(&v, p.initiate_ref);
                     Outcome {
                         ok: true,
-                        reference: if r.is_empty() { reference.to_string() } else { r },
+                        reference: if r.is_empty() {
+                            reference.to_string()
+                        } else {
+                            r
+                        },
                         message: "Approve the payment prompt on your phone.".into(),
                         redirect: {
                             let u = pick(&v, &["data.paymentUrl", "paymentUrl"]);
-                            if u.is_empty() { None } else { Some(u) }
+                            if u.is_empty() {
+                                None
+                            } else {
+                                Some(u)
+                            }
                         },
                     }
                 }
@@ -329,7 +443,11 @@ fn bank_instructions(
     send_currency: &str,
     reference: &str,
 ) -> String {
-    let cur = if invoice_currency.is_empty() { "TZS" } else { invoice_currency };
+    let cur = if invoice_currency.is_empty() {
+        "TZS"
+    } else {
+        invoice_currency
+    };
     let (bank, account, holder, swift) = match gateway {
         "bank_local" => (
             settings::get("gw_bank_name", ""),
@@ -365,7 +483,9 @@ fn bank_instructions(
             " Send the equivalent in {send_currency} at the prevailing rate."
         ));
     }
-    out.push_str(&format!(" Quote reference {reference} so the payment is matched automatically."));
+    out.push_str(&format!(
+        " Quote reference {reference} so the payment is matched automatically."
+    ));
     out
 }
 
@@ -379,8 +499,20 @@ async fn initiate_beem(amount: f64, currency: &str, phone: &str, reference: &str
     }
     let base = settings::get("gw_beem_url", "https://apiotp.beem.africa/v1");
     let url = format!("{}/payments/collect", base.trim_end_matches('/'));
-    let body = collect_body(amount, currency, phone, reference, &settings::get("gw_beem_account", ""));
-    match client().post(&url).basic_auth(&key, Some(&secret)).json(&body).send().await {
+    let body = collect_body(
+        amount,
+        currency,
+        phone,
+        reference,
+        &settings::get("gw_beem_account", ""),
+    );
+    match client()
+        .post(&url)
+        .basic_auth(&key, Some(&secret))
+        .json(&body)
+        .send()
+        .await
+    {
         Ok(r) => {
             let code = r.status().as_u16();
             let v: J = r.json().await.unwrap_or(json!({}));
@@ -388,12 +520,19 @@ async fn initiate_beem(amount: f64, currency: &str, phone: &str, reference: &str
                 let x = pick(&v, &["transaction_id", "data.transaction_id", "reference"]);
                 Outcome {
                     ok: true,
-                    reference: if x.is_empty() { reference.to_string() } else { x },
+                    reference: if x.is_empty() {
+                        reference.to_string()
+                    } else {
+                        x
+                    },
                     message: "Approve the payment prompt on your phone.".into(),
                     redirect: None,
                 }
             } else {
-                fail(format!("Beem refused the charge (HTTP {code}): {}", pick(&v, &["message", "error", "raw"])))
+                fail(format!(
+                    "Beem refused the charge (HTTP {code}): {}",
+                    pick(&v, &["message", "error", "raw"])
+                ))
             }
         }
         Err(e) => fail(format!("Network error: {e}")),
@@ -407,8 +546,17 @@ async fn verify_beem(reference: &str) -> Outcome {
         return fail("Beem is not configured.");
     }
     let base = settings::get("gw_beem_url", "https://apiotp.beem.africa/v1");
-    let url = format!("{}/payments/status/{}", base.trim_end_matches('/'), reference);
-    match client().get(&url).basic_auth(&key, Some(&secret)).send().await {
+    let url = format!(
+        "{}/payments/status/{}",
+        base.trim_end_matches('/'),
+        reference
+    );
+    match client()
+        .get(&url)
+        .basic_auth(&key, Some(&secret))
+        .send()
+        .await
+    {
         Ok(r) => {
             let v: J = r.json().await.unwrap_or(json!({}));
             let status = pick(&v, &["status", "data.status"]).to_uppercase();
@@ -416,7 +564,11 @@ async fn verify_beem(reference: &str) -> Outcome {
             Outcome {
                 ok,
                 reference: reference.to_string(),
-                message: if ok { settled_msg() } else { format!("Beem reports status {status}.") },
+                message: if ok {
+                    settled_msg()
+                } else {
+                    format!("Beem reports status {status}.")
+                },
                 redirect: None,
             }
         }
@@ -444,7 +596,10 @@ async fn initiate_stripe(amount: f64, currency: &str, reference: &str) -> Outcom
         ("success_url", success.as_str()),
         ("cancel_url", cancel.as_str()),
         ("line_items[0][price_data][currency]", cur),
-        ("line_items[0][price_data][product_data][name]", "Mbilinyi Tech Solutions"),
+        (
+            "line_items[0][price_data][product_data][name]",
+            "Mbilinyi Tech Solutions",
+        ),
         ("line_items[0][price_data][unit_amount]", minor_s.as_str()),
         ("line_items[0][quantity]", "1"),
         ("client_reference_id", reference),
@@ -470,7 +625,10 @@ async fn initiate_stripe(amount: f64, currency: &str, reference: &str) -> Outcom
                     redirect: if u.is_empty() { None } else { Some(u) },
                 }
             } else {
-                fail(format!("Stripe refused the charge (HTTP {code}): {}", pick(&v, &["error.message", "message", "raw"])))
+                fail(format!(
+                    "Stripe refused the charge (HTTP {code}): {}",
+                    pick(&v, &["error.message", "message", "raw"])
+                ))
             }
         }
         Err(e) => fail(format!("Network error: {e}")),
@@ -490,7 +648,11 @@ async fn verify_stripe(reference: &str) -> Outcome {
             Outcome {
                 ok: paid,
                 reference: reference.to_string(),
-                message: if paid { settled_msg() } else { "Stripe has not recorded a payment yet.".into() },
+                message: if paid {
+                    settled_msg()
+                } else {
+                    "Stripe has not recorded a payment yet.".into()
+                },
                 redirect: None,
             }
         }
@@ -504,7 +666,11 @@ async fn paypal_token() -> Result<(String, String), String> {
     let id = settings::get("gw_paypal_client", "");
     let secret = settings::get("gw_paypal_secret", "");
     let live = settings::flag("gw_paypal_live");
-    let base = if live { "https://api-m.paypal.com" } else { "https://api-m.sandbox.paypal.com" };
+    let base = if live {
+        "https://api-m.paypal.com"
+    } else {
+        "https://api-m.sandbox.paypal.com"
+    };
     let res = client()
         .post(format!("{base}/v1/oauth2/token"))
         .basic_auth(&id, Some(&secret))
@@ -548,7 +714,10 @@ async fn initiate_paypal(amount: f64, currency: &str, reference: &str) -> Outcom
                 let link = v
                     .get("links")
                     .and_then(|l| l.as_array())
-                    .and_then(|a| a.iter().find(|x| x.get("rel").and_then(|r| r.as_str()) == Some("approve")))
+                    .and_then(|a| {
+                        a.iter()
+                            .find(|x| x.get("rel").and_then(|r| r.as_str()) == Some("approve"))
+                    })
                     .and_then(|x| x.get("href"))
                     .and_then(|h| h.as_str())
                     .map(str::to_string);
@@ -559,7 +728,10 @@ async fn initiate_paypal(amount: f64, currency: &str, reference: &str) -> Outcom
                     redirect: link,
                 }
             } else {
-                fail(format!("PayPal refused the charge (HTTP {code}): {}", pick(&v, &["message", "raw"])))
+                fail(format!(
+                    "PayPal refused the charge (HTTP {code}): {}",
+                    pick(&v, &["message", "raw"])
+                ))
             }
         }
         Err(e) => fail(format!("Network error: {e}")),
@@ -580,7 +752,11 @@ async fn verify_paypal(reference: &str) -> Outcome {
             Outcome {
                 ok,
                 reference: reference.to_string(),
-                message: if ok { settled_msg() } else { format!("PayPal reports {status}.") },
+                message: if ok {
+                    settled_msg()
+                } else {
+                    format!("PayPal reports {status}.")
+                },
                 redirect: None,
             }
         }
@@ -619,5 +795,83 @@ mod tests {
         assert_eq!(stripe_minor(1000.0, "JPY"), 1000);
         assert_eq!(stripe_minor(1000.0, "UGX"), 1000);
         assert_eq!(stripe_minor(1000.0, "KRW"), 1000);
+    }
+
+    /// Build the header Stripe would send, so the verifier can be exercised
+    /// against a genuine signature rather than a guess.
+    fn signed_header(secret: &str, body: &str, ts: i64) -> String {
+        let signed = format!("{ts}.{body}");
+        format!("t={ts},v1={}", stripe_hmac_hex(secret, signed.as_bytes()))
+    }
+
+    #[test]
+    fn a_genuine_webhook_signature_verifies() {
+        let body = r#"{"type":"checkout.session.completed","id":"evt_1"}"#;
+        let now = chrono::Utc::now().timestamp();
+        let header = signed_header("whsec_test_secret", body, now);
+        assert!(verify_stripe_signature("whsec_test_secret", &header, body).is_ok());
+    }
+
+    #[test]
+    fn a_forged_or_stale_webhook_is_refused() {
+        let body = r#"{"id":"evt_2"}"#;
+        let now = chrono::Utc::now().timestamp();
+        // The right shape but the wrong key.
+        let wrong = signed_header("whsec_attacker", body, now);
+        assert!(verify_stripe_signature("whsec_test_secret", &wrong, body).is_err());
+        // A genuine signature replayed an hour later.
+        let old = signed_header("whsec_test_secret", body, now - 3600);
+        assert!(verify_stripe_signature("whsec_test_secret", &old, body).is_err());
+        // A body that does not match what was signed.
+        let genuine = signed_header("whsec_test_secret", body, now);
+        assert!(
+            verify_stripe_signature("whsec_test_secret", &genuine, r#"{"id":"evt_tampered"}"#)
+                .is_err()
+        );
+    }
+
+    /// The bytes that were signed must be the bytes that are verified.
+    ///
+    /// This is the regression test for a real bug: the webhook handler used to
+    /// hash a re-serialised JSON object, and `serde_json` writes object keys in
+    /// sorted order. Stripe sends keys in its own order, so a genuine callback
+    /// was rejected every time. The raw body must be kept and used verbatim.
+    #[test]
+    fn a_signature_must_be_checked_against_the_original_bytes() {
+        let secret = "whsec_round_trip";
+        // Key order here is deliberate: "type" before "id" is not sorted order.
+        let raw = r#"{"type":"checkout.session.completed","id":"evt_1","data":{"amount":500}}"#;
+        let header = signed_header(secret, raw, chrono::Utc::now().timestamp());
+        assert!(
+            verify_stripe_signature(secret, &header, raw).is_ok(),
+            "a signature over the original bytes must verify"
+        );
+
+        // The same payload after a JSON round-trip is reordered, so it must not
+        // verify against the original signature.
+        let parsed: serde_json::Value = serde_json::from_str(raw).unwrap();
+        let reserialised = parsed.to_string();
+        assert_ne!(
+            raw, reserialised,
+            "the round-trip should have reordered keys"
+        );
+        assert!(
+            verify_stripe_signature(secret, &header, &reserialised).is_err(),
+            "a re-serialised body must not verify — that was the bug"
+        );
+    }
+
+    #[test]
+    fn no_secret_means_no_trust() {
+        let now = chrono::Utc::now().timestamp();
+        let header = signed_header("anything", "body", now);
+        assert!(verify_stripe_signature("", &header, "body").is_err());
+    }
+
+    #[test]
+    fn the_comparison_never_leaks_a_prefix() {
+        assert!(constant_time_eq(b"abcdef", b"abcdef"));
+        assert!(!constant_time_eq(b"abcdef", b"abcdeX"));
+        assert!(!constant_time_eq(b"abc", b"abcdef"));
     }
 }

@@ -91,7 +91,11 @@ pub async fn settings_handler(c: &Ctx) -> Response {
             let Some(def) = crate::payments::find(&key) else {
                 return bad("Unknown gateway.");
             };
-            let want = if c.p("enabled").is_empty() { "1".to_string() } else { c.p("enabled") };
+            let want = if c.p("enabled").is_empty() {
+                "1".to_string()
+            } else {
+                c.p("enabled")
+            };
             // A gateway cannot be switched on until every credential is present,
             // because without them the funds have nowhere to settle.
             if want == "1" {
@@ -123,9 +127,16 @@ pub async fn settings_handler(c: &Ctx) -> Response {
             if !matches!(key.as_str(), "google" | "github") {
                 return bad("Unknown provider.");
             }
-            let want = if c.p("enabled").is_empty() { "1".to_string() } else { c.p("enabled") };
+            let want = if c.p("enabled").is_empty() {
+                "1".to_string()
+            } else {
+                c.p("enabled")
+            };
             if want == "1" {
-                for s in [format!("oauth_{key}_client_id"), format!("oauth_{key}_client_secret")] {
+                for s in [
+                    format!("oauth_{key}_client_id"),
+                    format!("oauth_{key}_client_secret"),
+                ] {
                     if settings::get(&s, "").trim().is_empty() {
                         return bad(&format!("Add the {key} client id and secret first."));
                     }
@@ -255,7 +266,11 @@ pub async fn users(c: &Ctx) -> Response {
                 let newid = util::new_id("U-");
                 let pass = {
                     let p = c.p("password");
-                    if p.is_empty() { util::token_hex(8) } else { p }
+                    if p.is_empty() {
+                        util::token_hex(8)
+                    } else {
+                        p
+                    }
                 };
                 let _ = db::run(
                     "INSERT INTO users (id, name, email, phone, company, password_hash, role, status, created_at)
@@ -285,7 +300,10 @@ pub async fn users(c: &Ctx) -> Response {
                 if !pass.is_empty() {
                     let _ = db::run(
                         "UPDATE users SET password_hash = ? WHERE id = ?",
-                        &[arg(json!(bcrypt::hash(&pass, 10).unwrap_or_default())), arg(json!(id))],
+                        &[
+                            arg(json!(bcrypt::hash(&pass, 10).unwrap_or_default())),
+                            arg(json!(id)),
+                        ],
                     );
                 }
                 ok(json!({ "id": id, "saved": true }))
@@ -304,7 +322,10 @@ pub async fn users(c: &Ctx) -> Response {
             if id == "U-DEMO" {
                 return bad("The owner account cannot be deleted.");
             }
-            let admins = db::scalar_i64("SELECT count(*) FROM users WHERE role = 'admin' AND id <> ?", &[arg(json!(id))]);
+            let admins = db::scalar_i64(
+                "SELECT count(*) FROM users WHERE role = 'admin' AND id <> ?",
+                &[arg(json!(id))],
+            );
             let target_is_admin = db::row("SELECT role FROM users WHERE id = ?", &[arg(json!(id))])
                 .and_then(|r| r.get("role").and_then(|v| v.as_str()).map(str::to_string))
                 .unwrap_or_default();
@@ -325,8 +346,15 @@ pub async fn users(c: &Ctx) -> Response {
             let cur = db::row("SELECT status FROM users WHERE id = ?", &[arg(json!(id))])
                 .and_then(|r| r.get("status").and_then(|v| v.as_str()).map(str::to_string))
                 .unwrap_or_else(|| "Active".to_string());
-            let next = if cur == "Active" { "Suspended" } else { "Active" };
-            let _ = db::run("UPDATE users SET status = ? WHERE id = ?", &[arg(json!(next)), arg(json!(id))]);
+            let next = if cur == "Active" {
+                "Suspended"
+            } else {
+                "Active"
+            };
+            let _ = db::run(
+                "UPDATE users SET status = ? WHERE id = ?",
+                &[arg(json!(next)), arg(json!(id))],
+            );
             ok(json!({ "status": next }))
         }
         "toggle_role" => {
@@ -345,7 +373,10 @@ pub async fn users(c: &Ctx) -> Response {
                 .and_then(|r| r.get("role").and_then(|v| v.as_str()).map(str::to_string))
                 .unwrap_or_else(|| "client".to_string());
             let next = if cur == "admin" { "client" } else { "admin" };
-            let _ = db::run("UPDATE users SET role = ? WHERE id = ?", &[arg(json!(next)), arg(json!(id))]);
+            let _ = db::run(
+                "UPDATE users SET role = ? WHERE id = ?",
+                &[arg(json!(next)), arg(json!(id))],
+            );
             ok(json!({ "role": next }))
         }
         "impersonate" => {
@@ -361,7 +392,8 @@ pub async fn users(c: &Ctx) -> Response {
             };
             let sess = crate::session::login(&id);
             let mut res = ok(json!({ "user": map::user(&u), "impersonating": true }));
-            if let Ok(v) = axum::http::HeaderValue::from_str(&crate::session::set_cookie(&sess.id)) {
+            if let Ok(v) = axum::http::HeaderValue::from_str(&crate::session::set_cookie(&sess.id))
+            {
                 res.headers_mut().insert(axum::http::header::SET_COOKIE, v);
             }
             res

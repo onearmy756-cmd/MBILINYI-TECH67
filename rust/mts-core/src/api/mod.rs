@@ -13,12 +13,12 @@ pub mod oauth;
 pub mod pay;
 pub mod reports;
 
+use crate::api::ctx::Ctx;
+use crate::util::{bad, not_found, server_error};
 use axum::body::Body;
 use axum::http::Request;
 use axum::response::Response;
-use crate::api::ctx::Ctx;
 use serde_json::json;
-use crate::util::{bad, not_found, server_error};
 
 pub async fn dispatch(name: &str, req: Request<Body>) -> Response {
     let c = Ctx::build(req).await;
@@ -51,6 +51,9 @@ pub async fn dispatch(name: &str, req: Request<Body>) -> Response {
         "tools" => crate::tools::handle(&c).await,
         "ofisi" | "office" => crate::ofisi::handle(&c).await,
         "security" => crate::security::handle(&c).await,
+        // The runtimes the platform can actually compile and run code in, and
+        // the sandbox posture. Reported so capability is never assumed.
+        "runtime" => crate::runtime_api::handle(&c).await,
         _ => return not_found("Unknown endpoint."),
     };
     result

@@ -38,10 +38,50 @@ pub fn run() {
 
     /* users */
     for (id, name, email, phone, company, pw, role, status, created) in [
-        ("U-ADMIN", "Jackson Mbilinyi", "mbilinyitech@gmail.com", "0796752645", "Mbilinyi Tech Solutions", admin_pw.as_str(), "admin", "Active", "2024-01-15 08:00:00"),
-        ("U-DEMO", "Amina Juma", "demo@client.com", "0712345678", "Amina Pharmacy Ltd", demo_pw.as_str(), "client", "Active", "2025-08-02 09:00:00"),
-        ("U-1002", "Baraka Mwansa", "baraka@kilimo.co.tz", "0755123456", "Kilimo Fresh", demo_pw.as_str(), "client", "Active", "2025-11-10 09:00:00"),
-        ("U-1003", "Sarah Nkya", "sarah@edu.go.tz", "0767890123", "Moshi Academy", demo_pw.as_str(), "client", "Suspended", "2026-01-05 09:00:00"),
+        (
+            "U-ADMIN",
+            "Jackson Mbilinyi",
+            "mbilinyitech@gmail.com",
+            "0796752645",
+            "Mbilinyi Tech Solutions",
+            admin_pw.as_str(),
+            "admin",
+            "Active",
+            "2024-01-15 08:00:00",
+        ),
+        (
+            "U-DEMO",
+            "Amina Juma",
+            "demo@client.com",
+            "0712345678",
+            "Amina Pharmacy Ltd",
+            demo_pw.as_str(),
+            "client",
+            "Active",
+            "2025-08-02 09:00:00",
+        ),
+        (
+            "U-1002",
+            "Baraka Mwansa",
+            "baraka@kilimo.co.tz",
+            "0755123456",
+            "Kilimo Fresh",
+            demo_pw.as_str(),
+            "client",
+            "Active",
+            "2025-11-10 09:00:00",
+        ),
+        (
+            "U-1003",
+            "Sarah Nkya",
+            "sarah@edu.go.tz",
+            "0767890123",
+            "Moshi Academy",
+            demo_pw.as_str(),
+            "client",
+            "Suspended",
+            "2026-01-05 09:00:00",
+        ),
     ] {
         insert_if_absent(
             "users",
@@ -49,8 +89,14 @@ pub fn run() {
             "INSERT INTO users (id,name,email,phone,company,password_hash,role,status,created_at)
              VALUES (?,?,?,?,?,?,?,?,?)",
             &[
-                arg(json!(id)), arg(json!(name)), arg(json!(email)), arg(json!(phone)),
-                arg(json!(company)), arg(json!(pw)), arg(json!(role)), arg(json!(status)),
+                arg(json!(id)),
+                arg(json!(name)),
+                arg(json!(email)),
+                arg(json!(phone)),
+                arg(json!(company)),
+                arg(json!(pw)),
+                arg(json!(role)),
+                arg(json!(status)),
                 arg(json!(created)),
             ],
         );
@@ -143,10 +189,14 @@ pub fn run() {
         "INSERT INTO tickets (id,user_id,name,email,subject,message,status,created_at)
          VALUES (?,?,?,?,?,?,?,?)",
         &[
-            arg(json!("T-1")), arg(json!("U-DEMO")), arg(json!("Amina Juma")), arg(json!("demo@client.com")),
+            arg(json!("T-1")),
+            arg(json!("U-DEMO")),
+            arg(json!("Amina Juma")),
+            arg(json!("demo@client.com")),
             arg(json!("Can I pay in two installments?")),
             arg(json!("Hello, is it possible to split the payment 50/50?")),
-            arg(json!("Open")), arg(json!("2026-09-25 08:00:00")),
+            arg(json!("Open")),
+            arg(json!("2026-09-25 08:00:00")),
         ],
     );
     insert_if_absent(
@@ -154,8 +204,12 @@ pub fn run() {
         "TR-1",
         "INSERT INTO ticket_replies (id,ticket_id,by_name,body,created_at) VALUES (?,?,?,?,?)",
         &[
-            arg(json!("TR-1")), arg(json!("T-1")), arg(json!("Jackson Mbilinyi (CEO)")),
-            arg(json!("Yes — 50% to start, 50% on delivery. I will reflect this on your invoice.")),
+            arg(json!("TR-1")),
+            arg(json!("T-1")),
+            arg(json!("Jackson Mbilinyi (CEO)")),
+            arg(json!(
+                "Yes — 50% to start, 50% on delivery. I will reflect this on your invoice."
+            )),
             arg(json!("2026-09-26 10:00:00")),
         ],
     );

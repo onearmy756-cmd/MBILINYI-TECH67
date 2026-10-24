@@ -82,7 +82,11 @@ fn redirect_uri(p: &Provider) -> String {
     } else {
         base
     };
-    format!("{}/api/oauth?action=callback&provider={}", base.trim_end_matches('/'), p.key)
+    format!(
+        "{}/api/oauth?action=callback&provider={}",
+        base.trim_end_matches('/'),
+        p.key
+    )
 }
 
 pub async fn handle(c: &Ctx) -> Response {
@@ -106,7 +110,11 @@ fn start(c: &Ctx) -> Response {
     let state = util::token_hex(16);
     let _ = db::run(
         "INSERT INTO oauth_states (id, provider, created_at) VALUES (?,?,?)",
-        &[arg(json!(state)), arg(json!(p.key)), arg(json!(util::now()))],
+        &[
+            arg(json!(state)),
+            arg(json!(p.key)),
+            arg(json!(util::now())),
+        ],
     );
     let url = format!(
         "{}?client_id={}&redirect_uri={}&scope={}&state={}&response_type=code",
@@ -135,11 +143,17 @@ async fn callback(c: &Ctx) -> Response {
         return bad("The provider returned no code.");
     }
     // The state must be one we issued, so a callback from elsewhere is refused.
-    let known = db::row("SELECT id FROM oauth_states WHERE id = ? AND provider = ?", &[arg(json!(state)), arg(json!(key))]);
+    let known = db::row(
+        "SELECT id FROM oauth_states WHERE id = ? AND provider = ?",
+        &[arg(json!(state)), arg(json!(key))],
+    );
     if known.is_none() {
         return bad("This sign-in attempt has expired. Start again.");
     }
-    let _ = db::run("DELETE FROM oauth_states WHERE id = ?", &[arg(json!(state))]);
+    let _ = db::run(
+        "DELETE FROM oauth_states WHERE id = ?",
+        &[arg(json!(state))],
+    );
 
     let client_id = settings::get(p.id_setting, "");
     let client_secret = settings::get(p.secret_setting, "");
@@ -160,7 +174,10 @@ async fn callback(c: &Ctx) -> Response {
         Ok(r) => r.json().await.unwrap_or(json!({})),
         Err(e) => return bad(&format!("Could not reach the provider: {e}")),
     };
-    let access = token.get("access_token").and_then(|v| v.as_str()).unwrap_or("");
+    let access = token
+        .get("access_token")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     if access.is_empty() {
         return bad("The provider did not return an access token.");
     }
@@ -180,7 +197,11 @@ async fn callback(c: &Ctx) -> Response {
         .or_else(|| prof.get("id"))
         .map(util::s)
         .unwrap_or_default();
-    let email = prof.get("email").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+    let email = prof
+        .get("email")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_lowercase();
     let name = prof
         .get("name")
         .or_else(|| prof.get("login"))
@@ -191,7 +212,9 @@ async fn callback(c: &Ctx) -> Response {
         return bad("The provider returned no account id.");
     }
     if email.is_empty() {
-        return bad("The provider returned no email address. Make your email public and try again.");
+        return bad(
+            "The provider returned no email address. Make your email public and try again.",
+        );
     }
 
     // An existing link wins, then an existing account with that email, and only
@@ -200,10 +223,21 @@ async fn callback(c: &Ctx) -> Response {
         "SELECT user_id FROM oauth_links WHERE provider = ? AND subject = ?",
         &[arg(json!(key)), arg(json!(subject))],
     ) {
-        Some(l) => l.get("user_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        None => match db::row("SELECT id FROM users WHERE lower(email) = ?", &[arg(json!(email))]) {
+        Some(l) => l
+            .get("user_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        None => match db::row(
+            "SELECT id FROM users WHERE lower(email) = ?",
+            &[arg(json!(email))],
+        ) {
             Some(u) => {
-                let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let uid = u
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 let _ = db::run(
                     "INSERT INTO oauth_links (id, user_id, provider, subject, created_at) VALUES (?,?,?,?,?)",
                     &[

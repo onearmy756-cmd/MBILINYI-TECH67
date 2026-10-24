@@ -20,12 +20,20 @@ mod call;
 mod db;
 mod engine;
 mod engine_api;
+mod hardening;
+mod langrun;
 mod llm;
 mod llm_api;
+mod mail;
+mod notify;
 mod ofisi;
 mod pages;
 mod payments;
+mod pdf;
+mod pqc;
 mod runtime;
+mod runtime_api;
+mod sandbox;
 mod schema_sql;
 mod security;
 mod seed;
@@ -76,8 +84,10 @@ async fn static_file(path: &str) -> Response {
             let ct = HeaderValue::from_static(mime_of(clean));
             let mut res = Response::new(Body::from(bytes));
             res.headers_mut().insert(header::CONTENT_TYPE, ct);
-            res.headers_mut()
-                .insert(header::CACHE_CONTROL, HeaderValue::from_static("public, max-age=3600"));
+            res.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=3600"),
+            );
             res
         }
         Err(_) => (StatusCode::NOT_FOUND, "404 Not Found").into_response(),
@@ -106,6 +116,140 @@ fn query_of(uri: &axum::http::Uri) -> String {
     }
 }
 
+/// The health endpoint: what a load balancer or an uptime monitor asks. It
+/// reports the facts a monitor needs — the database answers, the schema is in
+/// place, the process is up — and nothing that would help an attacker.
+async fn health() -> Response {
+    let db_ok = db::scalar_i64("SELECT 1", &[]) == 1;
+    let tables = db::scalar_i64(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'",
+        &[],
+    );
+    let ai = crate::llm::ready();
+    let sms = crate::sms::configured();
+    let mail_ok = crate::mail::status()
+        .get("configured")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let status = if db_ok && tables > 20 {
+        "ok"
+    } else {
+        "degraded"
+    };
+    let code = if status == "ok" {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+    (
+        code,
+        [("Content-Type", "application/json; charset=utf-8")],
+        serde_json::json!({
+            "status": status,
+            "database": db_ok,
+            "tables": tables,
+            "channels": { "ai": ai, "sms": sms, "email": mail_ok },
+            "time": util::now(),
+        })
+        .to_string(),
+    )
+        .into_response()
+}
+
+/// The inbound SMS callback. The provider posts here; the payload is handed to
+/// the office module, which checks the shared secret and files the message in
+/// the admin's inbox.
+async fn inbound_sms(req: Request<Body>) -> Response {
+    let c = api::ctx::Ctx::build(req).await;
+    crate::ofisi::inbound_webhook(&c)
+}
+
+/// The Stripe webhook. The signature is verified inside the payments module
+/// before the event is acted on.
+async fn stripe_webhook(req: Request<Body>) -> Response {
+    let c = api::ctx::Ctx::build(req).await;
+    crate::api::pay::stripe_webhook(&c).await
+}
+
+/// A generated PDF: `/api/pdf/<kind>/<id>`, where kind is `invoice`, `receipt`
+/// or `contract`. The document is built from the record on every request, so it
+/// always reflects the current state of the row.
+async fn pdf_doc(req: Request<Body>) -> Response {
+    let path = req.uri().path().to_string();
+    let mut parts = path.trim_start_matches("/api/pdf/").splitn(2, '/');
+    let kind = parts.next().unwrap_or("").to_string();
+    let id = parts.next().unwrap_or("").to_string();
+    let c = api::ctx::Ctx::build(req).await;
+
+    // An invoice and a contract are private: the caller must own it or be admin.
+    let doc = match kind.as_str() {
+        "invoice" | "receipt" => {
+            let Some(inv) = db::row(
+                "SELECT user_id FROM invoices WHERE id = ?",
+                &[db::from_json(serde_json::json!(id))],
+            ) else {
+                return (StatusCode::NOT_FOUND, "Invoice not found").into_response();
+            };
+            if !owns(
+                &c,
+                util::s(inv.get("user_id").unwrap_or(&serde_json::Value::Null)),
+            ) {
+                return (StatusCode::FORBIDDEN, "Not your invoice").into_response();
+            }
+            pdf::invoice(&id, kind == "receipt")
+        }
+        "contract" => {
+            let Some(ct) = db::row(
+                "SELECT tracking_id FROM contracts WHERE id = ?",
+                &[db::from_json(serde_json::json!(id))],
+            ) else {
+                return (StatusCode::NOT_FOUND, "Contract not found").into_response();
+            };
+            let trk = util::s(ct.get("tracking_id").unwrap_or(&serde_json::Value::Null));
+            let owner = db::row(
+                "SELECT user_id FROM requests WHERE tracking_id = ?",
+                &[db::from_json(serde_json::json!(trk))],
+            )
+            .map(|r| util::s(r.get("user_id").unwrap_or(&serde_json::Value::Null)))
+            .unwrap_or_default();
+            if !owns(&c, owner) {
+                return (StatusCode::FORBIDDEN, "Not your contract").into_response();
+            }
+            pdf::contract(&id)
+        }
+        _ => None,
+    };
+    let Some(bytes) = doc else {
+        return (StatusCode::NOT_FOUND, "No such document").into_response();
+    };
+    let filename = format!("{kind}-{id}.pdf");
+    (
+        StatusCode::OK,
+        [
+            ("Content-Type", "application/pdf"),
+            (
+                "Content-Disposition",
+                Box::leak(format!("inline; filename=\"{filename}\"").into_boxed_str()) as &str,
+            ),
+            ("Cache-Control", "no-store"),
+        ],
+        bytes,
+    )
+        .into_response()
+}
+
+/// May the caller read a record owned by `owner_id`? An admin may; a signed-in
+/// user may read their own; nobody else may.
+fn owns(c: &api::ctx::Ctx, owner_id: String) -> bool {
+    let Some(u) = c.user() else {
+        return false;
+    };
+    if u.get("role").and_then(|v| v.as_str()) == Some("admin") {
+        return true;
+    }
+    u.get("id").and_then(|v| v.as_str()) == Some(owner_id.as_str())
+}
+
 /// Any page the site serves. Mirrors `router.php`:
 ///   `/pricing/`   -> 301 `/pricing`
 ///   `/pricing.php`-> 301 `/pricing` (GET/HEAD only, so a POST keeps its body)
@@ -130,7 +274,12 @@ async fn page_dispatch(req: Request<Body>) -> Response {
     // A trailing slash resolves to the clean URL.
     if path.len() > 1 && path.ends_with('/') {
         let target = format!("{}{}", path.trim_end_matches('/'), query_of(&uri));
-        return (StatusCode::MOVED_PERMANENTLY, [(header::LOCATION, target)], "").into_response();
+        return (
+            StatusCode::MOVED_PERMANENTLY,
+            [(header::LOCATION, target)],
+            "",
+        )
+            .into_response();
     }
 
     // `/page.php` resolves to the clean URL, but only for GET/HEAD: redirecting
@@ -144,7 +293,12 @@ async fn page_dispatch(req: Request<Body>) -> Response {
                 stem.to_string()
             };
             let target = format!("{target}{}", query_of(&uri));
-            return (StatusCode::MOVED_PERMANENTLY, [(header::LOCATION, target)], "").into_response();
+            return (
+                StatusCode::MOVED_PERMANENTLY,
+                [(header::LOCATION, target)],
+                "",
+            )
+                .into_response();
         }
     }
 
@@ -173,6 +327,14 @@ pub fn bootstrap() {
     if let Err(e) = db::ensure_column("invoices", "currency", "VARCHAR(8) NOT NULL DEFAULT ''") {
         eprintln!("[warn] invoices.currency migration: {e}");
     }
+    for (col, decl) in [
+        ("country", "VARCHAR(80) NOT NULL DEFAULT ''"),
+        ("region", "VARCHAR(80) NOT NULL DEFAULT ''"),
+    ] {
+        if let Err(e) = db::ensure_column("requests", col, decl) {
+            eprintln!("[warn] requests.{col} migration: {e}");
+        }
+    }
     crate::api::oauth::init_tables();
     wafanyakazi::init_tables();
     ajira::init_tables();
@@ -180,11 +342,41 @@ pub fn bootstrap() {
     engine::init_tables();
     ofisi::init_tables();
     security::init_tables();
+    mail::init_tables();
+    pqc::init_tables();
+    pdf_init_ok();
     settings::seed_defaults();
     seed::run();
     agents::seed();
     ofisi::seed();
     session::sweep();
+}
+
+/// A database for the test process. `db::open` may only run once per process,
+/// so a `Once` guards it and every test that touches a table calls this first.
+#[cfg(test)]
+pub fn test_bootstrap() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let path = std::env::temp_dir().join(format!("mts-test-{}.sqlite", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("sqlite-wal"));
+        let _ = std::fs::remove_file(path.with_extension("sqlite-shm"));
+        if let Err(e) = db::open(path.to_str().expect("temp path")) {
+            eprintln!("[test] cannot open the test database: {e}");
+            return;
+        }
+        bootstrap();
+    });
+}
+
+/// Touch the PDF module so a broken layout crate fails loudly at boot rather
+/// than the first time a client asks for a receipt.
+fn pdf_init_ok() {
+    let probe = pdf::build("probe", "", &[], "");
+    if !probe.starts_with(b"%PDF") {
+        eprintln!("[warn] the PDF writer did not produce a valid document at boot");
+    }
 }
 
 #[tokio::main]
@@ -201,8 +393,21 @@ async fn main() {
     let app = Router::new()
         .route("/ws/call/:room", get(call::ws_call))
         .route("/api/*name", get(api_dispatch).post(api_dispatch))
+        // The SMS provider's inbound callback, and Stripe's webhook: both are
+        // called by a third party, so they are separate paths that carry their
+        // own authentication rather than a session.
+        .route("/api/inbound/sms", get(inbound_sms).post(inbound_sms))
+        .route(
+            "/api/webhook/stripe",
+            get(stripe_webhook).post(stripe_webhook),
+        )
+        .route("/api/pdf/:kind/:id", get(pdf_doc))
+        .route("/api/health", get(health))
         .route("/*path", get(page_dispatch).post(page_dispatch))
-        .fallback(get(page_dispatch).post(page_dispatch));
+        .fallback(get(page_dispatch).post(page_dispatch))
+        // Security headers on every response, and the rate limits on the
+        // endpoints worth guessing at.
+        .layer(axum::middleware::from_fn(hardening::layer));
 
     let addr = format!("0.0.0.0:{port}");
     let listener = match tokio::net::TcpListener::bind(&addr).await {

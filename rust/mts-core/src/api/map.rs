@@ -142,7 +142,11 @@ pub fn invoice(r: &db::Row) -> J {
     // platform's own currency at the time, which is the current default.
     let cur = {
         let stored = gs(r, "currency");
-        if stored.is_empty() { crate::settings::get("pay_currency", "TZS") } else { stored }
+        if stored.is_empty() {
+            crate::settings::get("pay_currency", "TZS")
+        } else {
+            stored
+        }
     };
     json!({
         "id": gs(r, "id"),
@@ -478,4 +482,3 @@ pub fn region(r: &db::Row) -> J {
         "createdAt": iso_of(r, "created_at"),
     })
 }
-

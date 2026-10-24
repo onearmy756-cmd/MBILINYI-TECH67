@@ -29,15 +29,22 @@ fn page_description() -> String {
 
 fn title_for(name: &str) -> String {
     match name {
-        "index" => "Mbilinyi Tech Solutions — Custom Software, AI & Security | Jackson Mbilinyi, CEO".into(),
+        "index" => {
+            "Mbilinyi Tech Solutions — Custom Software, AI & Security | Jackson Mbilinyi, CEO"
+                .into()
+        }
         "services" => "Services — Custom Software, AI, Security | Mbilinyi Tech Solutions".into(),
         "stack" => "Tech Stack — What We Build With | Mbilinyi Tech Solutions".into(),
         "ai" => "AI & Fine-Tuning — Build Your Own AI | Mbilinyi Tech Solutions".into(),
-        "pricing" => "Pricing — Transparent, Admin-Published Rates | Mbilinyi Tech Solutions".into(),
+        "pricing" => {
+            "Pricing — Transparent, Admin-Published Rates | Mbilinyi Tech Solutions".into()
+        }
         "process" => "How It Works — From Request to Delivery | Mbilinyi Tech Solutions".into(),
         "work" => "Our Work — Portfolio | Mbilinyi Tech Solutions".into(),
         "track" => "Track Your Request | Mbilinyi Tech Solutions".into(),
-        "contact" => "Contact — Let's Build Something Extraordinary | Mbilinyi Tech Solutions".into(),
+        "contact" => {
+            "Contact — Let's Build Something Extraordinary | Mbilinyi Tech Solutions".into()
+        }
         "auth" => "Mbilinyi Tech Solutions — Client Portal | Sign In".into(),
         "client" => "Mbilinyi Tech Solutions — Client Portal".into(),
         "admin" => "Mbilinyi Tech Solutions — Admin Control Center".into(),
@@ -49,10 +56,12 @@ fn title_for(name: &str) -> String {
         "privacy" => "Privacy Policy | Mbilinyi Tech Solutions".into(),
         "refund" => "Refund Policy | Mbilinyi Tech Solutions".into(),
         "feedback" => "Feedback | Mbilinyi Tech Solutions".into(),
-        "reports" => "Reports | Mbilinyi Tech Solutions".into(),
-        "community" => "Community | Mbilinyi Tech Solutions".into(),
+        "reports" => "Reports — Proof of Work | Mbilinyi Tech Solutions".into(),
+        "community" => "Community — Builders, Learners & Partners | Mbilinyi Tech Solutions".into(),
+        "faq" => "Frequently Asked Questions | Mbilinyi Tech Solutions".into(),
         "careers" => "Careers (Ajira) — Apply & Be Assessed | Mbilinyi Tech Solutions".into(),
         "staff" => "Our Experts — The People Who Serve You | Mbilinyi Tech Solutions".into(),
+        "mtaalamu" => "Staff Portal — Your Tasks & Tools | Mbilinyi Tech Solutions".into(),
         _ => "Mbilinyi Tech Solutions".into(),
     }
 }
@@ -367,6 +376,12 @@ fn footer(globals_html: &str, country: &str) -> String {
       <a href="privacy" class="hover:text-cyan-300 transition" data-en="Privacy Policy" data-sw="Sera ya Faragha">Privacy Policy</a>
       <span class="text-white/20">•</span>
       <a href="feedback" class="hover:text-cyan-300 transition" data-en="Feedback" data-sw="Maoni">Feedback</a>
+      <span class="text-white/20">•</span>
+      <a href="reports" class="hover:text-cyan-300 transition" data-en="Reports" data-sw="Ripoti">Reports</a>
+      <span class="text-white/20">•</span>
+      <a href="faq" class="hover:text-cyan-300 transition" data-en="FAQ" data-sw="Maswali">FAQ</a>
+      <span class="text-white/20">•</span>
+      <a href="community" class="hover:text-cyan-300 transition" data-en="Community" data-sw="Jamii">Community</a>
     </div>
     <div class="text-[12px] text-white/35">&copy; {year} <span data-en="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified" data-sw="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Imejengwa kwa viwango vya uzalishaji • Imethibitishwa BRELA na TIN">Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified</span></div>
     <div class="mt-3 flex items-center justify-center gap-2 text-[11.5px] text-white/45">
@@ -425,8 +440,16 @@ fn footer(globals_html: &str, country: &str) -> String {
             ""
         },
         globals = globals_html,
-        tzcls = if country == "TZ" { "font-bold text-cyan-300" } else { "hover:text-cyan-300" },
-        intlcls = if country == "TZ" { "hover:text-cyan-300" } else { "font-bold text-cyan-300" },
+        tzcls = if country == "TZ" {
+            "font-bold text-cyan-300"
+        } else {
+            "hover:text-cyan-300"
+        },
+        intlcls = if country == "TZ" {
+            "hover:text-cyan-300"
+        } else {
+            "font-bold text-cyan-300"
+        },
     )
 }
 
@@ -449,9 +472,32 @@ fn template_dir() -> String {
 /// Serve one page.
 pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
     let known = [
-        "index", "services", "stack", "ai", "pricing", "process", "work", "track", "contact",
-        "auth", "client", "admin", "news", "team", "deploy", "setup", "terms", "privacy",
-        "refund", "feedback", "reports", "community", "faq", "careers", "staff",
+        "index",
+        "services",
+        "stack",
+        "ai",
+        "pricing",
+        "process",
+        "work",
+        "track",
+        "contact",
+        "auth",
+        "client",
+        "admin",
+        "news",
+        "team",
+        "deploy",
+        "setup",
+        "terms",
+        "privacy",
+        "refund",
+        "feedback",
+        "reports",
+        "community",
+        "faq",
+        "careers",
+        "staff",
+        "mtaalamu",
     ];
     if !known.contains(&name) {
         return (StatusCode::NOT_FOUND, "404 Not Found").into_response();
@@ -461,7 +507,7 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
     // than showing an empty portal.
     let session = crate::session::load(headers);
     let me = crate::session::current_user(&session);
-    if matches!(name, "client" | "admin") && me.is_none() {
+    if matches!(name, "client" | "admin" | "mtaalamu") && me.is_none() {
         return (
             StatusCode::FOUND,
             [(header::LOCATION, format!("/auth?returnTo={name}"))],
@@ -471,7 +517,11 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
     }
     if name == "auth" {
         if let Some(u) = &me {
-            let to = if u.get("role").and_then(|v| v.as_str()) == Some("admin") { "/admin" } else { "/client" };
+            let to = if u.get("role").and_then(|v| v.as_str()) == Some("admin") {
+                "/admin"
+            } else {
+                "/client"
+            };
             return (StatusCode::FOUND, [(header::LOCATION, to.to_string())], "").into_response();
         }
     }
@@ -499,12 +549,17 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
         head = head(&page, &title_for(&page)),
         header = header,
         body = body,
-        footer = footer(&globals(&page, &session.csrf, &me, &visitor_country(headers)), &visitor_country(headers)),
+        footer = footer(
+            &globals(&page, &session.csrf, &me, &visitor_country(headers)),
+            &visitor_country(headers)
+        ),
     );
 
     let mut res = Response::new(Body::from(html));
-    res.headers_mut()
-        .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
+    res.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/html; charset=utf-8"),
+    );
     res.headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     if let Ok(v) = HeaderValue::from_str(&crate::session::set_cookie(&session.id)) {

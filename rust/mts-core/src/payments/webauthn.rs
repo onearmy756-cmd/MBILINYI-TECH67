@@ -54,17 +54,23 @@ pub fn cbor(input: &[u8], off: &mut usize) -> Result<CborValue, String> {
             v
         }
         25 => {
-            let b = input.get(*off..*off + 2).ok_or("CBOR: truncated 2-byte length.")?;
+            let b = input
+                .get(*off..*off + 2)
+                .ok_or("CBOR: truncated 2-byte length.")?;
             *off += 2;
             u16::from_be_bytes([b[0], b[1]]) as u64
         }
         26 => {
-            let b = input.get(*off..*off + 4).ok_or("CBOR: truncated 4-byte length.")?;
+            let b = input
+                .get(*off..*off + 4)
+                .ok_or("CBOR: truncated 4-byte length.")?;
             *off += 4;
             u32::from_be_bytes([b[0], b[1], b[2], b[3]]) as u64
         }
         27 => {
-            let b = input.get(*off..*off + 8).ok_or("CBOR: truncated 8-byte length.")?;
+            let b = input
+                .get(*off..*off + 8)
+                .ok_or("CBOR: truncated 8-byte length.")?;
             *off += 8;
             u64::from_be_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]])
         }
@@ -76,13 +82,19 @@ pub fn cbor(input: &[u8], off: &mut usize) -> Result<CborValue, String> {
         1 => Ok(CborValue::Int(-1 - arg as i64)),
         2 => {
             let end = *off + arg as usize;
-            let v = input.get(*off..end).ok_or("CBOR: truncated byte string.")?.to_vec();
+            let v = input
+                .get(*off..end)
+                .ok_or("CBOR: truncated byte string.")?
+                .to_vec();
             *off = end;
             Ok(CborValue::Bytes(v))
         }
         3 => {
             let end = *off + arg as usize;
-            let v = input.get(*off..end).ok_or("CBOR: truncated text string")?.to_vec();
+            let v = input
+                .get(*off..end)
+                .ok_or("CBOR: truncated text string")?
+                .to_vec();
             *off = end;
             Ok(CborValue::Text(String::from_utf8_lossy(&v).to_string()))
         }
@@ -172,8 +184,14 @@ fn cose_to_point(cose: &CborValue) -> Result<Vec<u8>, String> {
     if crv != 1 {
         return Err("This passkey does not use the P-256 curve.".into());
     }
-    let x = cose.get(-2).map(|v| v.as_bytes()).ok_or("COSE: no x coordinate.")?;
-    let y = cose.get(-3).map(|v| v.as_bytes()).ok_or("COSE: no y coordinate.")?;
+    let x = cose
+        .get(-2)
+        .map(|v| v.as_bytes())
+        .ok_or("COSE: no x coordinate.")?;
+    let y = cose
+        .get(-3)
+        .map(|v| v.as_bytes())
+        .ok_or("COSE: no y coordinate.")?;
     let mut out = vec![0x04];
     out.extend_from_slice(&x);
     out.extend_from_slice(&y);
@@ -218,8 +236,14 @@ fn parse_auth_data(ad: &[u8]) -> Result<AuthData, String> {
     Ok(out)
 }
 
-fn check_client_data(json: &str, want_type: &str, challenge: &str, origin: &str) -> Result<(), String> {
-    let v: serde_json::Value = serde_json::from_str(json).map_err(|_| "Malformed clientDataJSON.".to_string())?;
+fn check_client_data(
+    json: &str,
+    want_type: &str,
+    challenge: &str,
+    origin: &str,
+) -> Result<(), String> {
+    let v: serde_json::Value =
+        serde_json::from_str(json).map_err(|_| "Malformed clientDataJSON.".to_string())?;
     let t = v.get("type").and_then(|x| x.as_str()).unwrap_or("");
     if t != want_type {
         return Err(format!("Wrong clientData type: expected {want_type}."));
@@ -244,7 +268,8 @@ pub fn verify_registration(
     rp_id: &str,
     transports: &[String],
 ) -> Result<Registration, String> {
-    let cd = String::from_utf8(b64u_dec(client_data_json)?).map_err(|_| "clientDataJSON is not UTF-8.".to_string())?;
+    let cd = String::from_utf8(b64u_dec(client_data_json)?)
+        .map_err(|_| "clientDataJSON is not UTF-8.".to_string())?;
     check_client_data(&cd, "webauthn.create", challenge, origin)?;
 
     let raw = b64u_dec(attestation_object)?;
@@ -291,7 +316,8 @@ pub fn verify_assertion(
     origin: &str,
     rp_id: &str,
 ) -> Result<u32, String> {
-    let cd = String::from_utf8(b64u_dec(client_data_json)?).map_err(|_| "clientDataJSON is not UTF-8.".to_string())?;
+    let cd = String::from_utf8(b64u_dec(client_data_json)?)
+        .map_err(|_| "clientDataJSON is not UTF-8.".to_string())?;
     check_client_data(&cd, "webauthn.get", challenge, origin)?;
 
     let ad = b64u_dec(authenticator_data)?;
@@ -309,7 +335,8 @@ pub fn verify_assertion(
     let mut signed = ad.clone();
     signed.extend_from_slice(&cd_hash);
 
-    let point = hex::decode(public_key_hex).map_err(|_| "Stored passkey key is unreadable.".to_string())?;
+    let point =
+        hex::decode(public_key_hex).map_err(|_| "Stored passkey key is unreadable.".to_string())?;
     let key = VerifyingKey::from_sec1_bytes(&point)
         .map_err(|_| "Stored passkey key is not valid.".to_string())?;
     let sig_raw = b64u_dec(signature)?;
@@ -323,7 +350,9 @@ pub fn verify_assertion(
     let new = parsed.sign_count;
     if new != 0 || stored_sign_count != 0 {
         if (new as i64) <= stored_sign_count {
-            return Err("This passkey looks cloned. Sign in another way and re-register it.".into());
+            return Err(
+                "This passkey looks cloned. Sign in another way and re-register it.".into(),
+            );
         }
     }
     Ok(new)
@@ -351,9 +380,15 @@ mod tests {
         let mut off = 0;
         assert_eq!(cbor(&[0x19, 0x01, 0x00], &mut off).unwrap().as_i64(), 256);
         let mut off = 0;
-        assert_eq!(cbor(&[0x63, b'a', b'b', b'c'], &mut off).unwrap().as_str(), "abc");
+        assert_eq!(
+            cbor(&[0x63, b'a', b'b', b'c'], &mut off).unwrap().as_str(),
+            "abc"
+        );
         let mut off = 0;
-        assert_eq!(cbor(&[0x43, 1, 2, 3], &mut off).unwrap().as_bytes(), vec![1, 2, 3]);
+        assert_eq!(
+            cbor(&[0x43, 1, 2, 3], &mut off).unwrap().as_bytes(),
+            vec![1, 2, 3]
+        );
         let mut off = 0;
         let arr = cbor(&[0x82, 0x01, 0x02], &mut off).unwrap();
         match arr {

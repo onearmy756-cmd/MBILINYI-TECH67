@@ -18,14 +18,23 @@ fn arg(v: J) -> Value {
 }
 
 const STATUSES: [&str; 7] = [
-    "Pending", "Under Review", "Quoted", "Approved", "In Progress", "Completed", "Rejected",
+    "Pending",
+    "Under Review",
+    "Quoted",
+    "Approved",
+    "In Progress",
+    "Completed",
+    "Rejected",
 ];
 
 fn owned(c: &Ctx, table: &str, id: &str) -> Option<db::Row> {
     let Ok(u) = c.require_user() else { return None };
     let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("");
     let role = u.get("role").and_then(|v| v.as_str()).unwrap_or("");
-    let row = db::row(&format!("SELECT * FROM {table} WHERE id = ?"), &[arg(json!(id))])?;
+    let row = db::row(
+        &format!("SELECT * FROM {table} WHERE id = ?"),
+        &[arg(json!(id))],
+    )?;
     if role == "admin" {
         return Some(row);
     }
@@ -43,9 +52,19 @@ pub async fn requests(c: &Ctx) -> Response {
     match c.action().as_str() {
         "create" => req_create(c),
         "mine" => {
-            let Ok(u) = c.require_user() else { return util::unauth() };
-            let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let email = u.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let Ok(u) = c.require_user() else {
+                return util::unauth();
+            };
+            let uid = u
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let email = u
+                .get("email")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let rows = db::rows(
                 "SELECT * FROM requests WHERE user_id = ? OR lower(email) = ? ORDER BY created_at DESC",
                 &[arg(json!(uid)), arg(json!(email))],
@@ -106,7 +125,10 @@ pub async fn requests(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
-            let _ = db::run("DELETE FROM requests WHERE id = ?", &[arg(json!(c.p("id")))]);
+            let _ = db::run(
+                "DELETE FROM requests WHERE id = ?",
+                &[arg(json!(c.p("id")))],
+            );
             ok(json!({ "deleted": true }))
         }
         _ => bad("Unknown requests action."),
@@ -136,11 +158,25 @@ fn req_create(c: &Ctx) -> Response {
     // BRELA, TRA and government e-services exist only in Tanzania. The grid
     // hides them abroad, but a crafted request must be refused too.
     if settings::is_tz_only(&service) && crate::pages::country_from_headers(&c.headers) != "TZ" {
-        return bad("This service is available in Tanzania only. / Huduma hii inapatikana Tanzania tu.");
+        return bad(
+            "This service is available in Tanzania only. / Huduma hii inapatikana Tanzania tu.",
+        );
     }
     if title.is_empty() || desc.chars().count() < 15 {
         return bad("Add project title + detailed requirements (15+ chars).");
     }
+
+    // Where the request came from. The browser sends the country it resolved and
+    // the client may name their region; both are recorded so growth is real.
+    let country = {
+        let given = c.p("country").trim().to_string();
+        if given.is_empty() {
+            crate::ofisi::country_name(&crate::pages::country_from_headers(&c.headers))
+        } else {
+            given
+        }
+    };
+    let region = c.p("region").trim().to_string();
 
     // Submitting as a guest creates an account and signs the person in, so the
     // tracking page they land on is already theirs. An existing account with the
@@ -154,9 +190,10 @@ fn req_create(c: &Ctx) -> Response {
     // browser holds the session the request was filed under.
     let mut new_session: Option<String> = None;
     if uid.is_empty() {
-        if let Some(existing) =
-            db::row("SELECT * FROM users WHERE lower(email) = ?", &[arg(json!(email))])
-        {
+        if let Some(existing) = db::row(
+            "SELECT * FROM users WHERE lower(email) = ?",
+            &[arg(json!(email))],
+        ) {
             if existing.get("status").and_then(|v| v.as_str()) != Some("Active") {
                 return bad("This account is suspended. Contact 0796 752 645.");
             }
@@ -208,8 +245,8 @@ fn req_create(c: &Ctx) -> Response {
     let tracking = unique_tracking();
     let _ = db::run(
         "INSERT INTO requests (id, tracking_id, user_id, name, email, phone, company, service, title,
-                               description, tech, service_details, platform, budget, deadline, priority, status, admin_note, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                               description, tech, service_details, platform, budget, deadline, priority, status, admin_note, country, region, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         &[
             arg(json!(id)), arg(json!(tracking)), arg(json!(uid)), arg(json!(name)),
             arg(json!(email)), arg(json!(phone)), arg(json!(c.p("company"))),
@@ -218,9 +255,14 @@ fn req_create(c: &Ctx) -> Response {
             arg(json!(if c.p("platform").is_empty() { "Web Application".into() } else { c.p("platform") })),
             arg(json!(c.p("budget"))), arg(json!(c.p("deadline"))),
             arg(json!(if c.p("priority").is_empty() { "Normal".into() } else { c.p("priority") })),
-            arg(json!("Pending")), arg(json!("")), arg(json!(util::now())),
+            arg(json!("Pending")), arg(json!("")),
+            arg(json!(country)), arg(json!(region)), arg(json!(util::now())),
         ],
     );
+
+    // Record where the work came from, so the growth view counts real requests
+    // rather than the seeded catalogue of places the platform can serve.
+    crate::ofisi::note_request(&country, &region);
 
     // Route the request to the worker who serves this service, so the client is
     // served by a named person from the moment they submit. With no worker for
@@ -244,6 +286,12 @@ fn req_create(c: &Ctx) -> Response {
     let request = db::row("SELECT * FROM requests WHERE id = ?", &[arg(json!(id))])
         .map(|r| map::request(&r))
         .unwrap_or(J::Null);
+    // Tell the client their request landed and the CEO that a decision is
+    // waiting, by SMS and by mail. The admin's inbox is where the CEO approves
+    // and signs, so this is what starts that.
+    if let Some(r) = db::row("SELECT * FROM requests WHERE id = ?", &[arg(json!(id))]) {
+        crate::notify::request_created(&r);
+    }
     let user = db::row("SELECT * FROM users WHERE id = ?", &[arg(json!(uid))])
         .map(|r| map::user(&r))
         .unwrap_or(J::Null);
@@ -266,7 +314,12 @@ fn unique_tracking() -> String {
     for _ in 0..40 {
         let n = (rand::random::<u32>() % 10000) as u32;
         let candidate = format!("MTS-2026-{n:04}");
-        if db::row("SELECT id FROM requests WHERE tracking_id = ?", &[arg(json!(candidate))]).is_none() {
+        if db::row(
+            "SELECT id FROM requests WHERE tracking_id = ?",
+            &[arg(json!(candidate))],
+        )
+        .is_none()
+        {
             return candidate;
         }
     }
@@ -289,19 +342,86 @@ fn req_set_status(c: &Ctx) -> Response {
         return bad("Unknown status.");
     }
     if matches!(status.as_str(), "In Progress" | "Completed") {
-        let Some(req) = db::row("SELECT tracking_id FROM requests WHERE id = ?", &[arg(json!(id))]) else {
+        let Some(req) = db::row(
+            "SELECT tracking_id FROM requests WHERE id = ?",
+            &[arg(json!(id))],
+        ) else {
             return err("Request not found.", 404);
         };
-        let trk = req.get("tracking_id").and_then(|v| v.as_str()).unwrap_or("");
+        let trk = req
+            .get("tracking_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if let Some(block) = deposit_block(trk) {
             return bad(&block);
         }
     }
-    let _ = db::run("UPDATE requests SET status = ? WHERE id = ?", &[arg(json!(status)), arg(json!(id))]);
+    let _ = db::run(
+        "UPDATE requests SET status = ? WHERE id = ?",
+        &[arg(json!(status)), arg(json!(id))],
+    );
     match db::row("SELECT * FROM requests WHERE id = ?", &[arg(json!(id))]) {
-        Some(r) => ok(json!({ "request": map::request(&r) })),
+        Some(r) => {
+            // Tell the client where their work has got to. The client asked to
+            // watch the progress, so every move is announced.
+            notify_status(&r, &status);
+            // When the CEO approves a request, the work starts for real: the
+            // assigned worker's agent picks the job up without another prompt.
+            if status == "Approved" {
+                start_approved_work(&r);
+            }
+            ok(json!({ "request": map::request(&r) }))
+        }
         None => err("Request not found.", 404),
     }
+}
+
+/// Tell the client their request moved, in the language they use.
+fn notify_status(req: &db::Row, status: &str) {
+    let phone = util::s(req.get("phone").unwrap_or(&J::Null));
+    if phone.trim().is_empty() {
+        return;
+    }
+    let tracking = util::s(req.get("tracking_id").unwrap_or(&J::Null));
+    let service = util::s(req.get("service").unwrap_or(&J::Null));
+    let message = match status {
+        "Under Review" => format!("Ombi lako {tracking} ({service}) linakaguliwa. Tutakujulisha hatua inayofuata."),
+        "Quoted" => format!("Nukuu ya ombi lako {tracking} imetumwa. Ingia kwenye portal kuisoma na kukubali."),
+        "Approved" => format!("Ombi lako {tracking} limeidhinishwa. Kazi inaanza; utaona maendeleo kwenye portal."),
+        "In Progress" => format!("Kazi ya ombi lako {tracking} inaendelea. Fuatilia maendeleo kwenye portal."),
+        "Completed" => format!("Kazi ya ombi lako {tracking} imekamilika. Ingia portal kukagua na kukubali uwasilishaji."),
+        "Rejected" => format!("Ombi lako {tracking} halikuweza kuendelea. Wasiliana nasi kwa 0796 752 645."),
+        _ => format!("Hali ya ombi lako {tracking} sasa ni {status}."),
+    };
+    crate::notify::sms(
+        &phone,
+        &message,
+        &tracking,
+        &format!("status_{}", status.to_lowercase().replace(' ', "_")),
+    );
+}
+
+/// The CEO approved a request, so the assigned worker's agent starts the job.
+/// Nothing here runs if no agent or worker is in place — the request simply
+/// waits, and the admin sees why.
+fn start_approved_work(req: &db::Row) {
+    let rid = util::s(req.get("id").unwrap_or(&J::Null));
+    let service = util::s(req.get("service").unwrap_or(&J::Null));
+    let title = util::s(req.get("title").unwrap_or(&J::Null));
+    let tracking = util::s(req.get("tracking_id").unwrap_or(&J::Null));
+    // Which worker serves this service, and what tools their job may use.
+    let Some(emp) = crate::wafanyakazi::pick_for_service(&service) else {
+        return;
+    };
+    let tools = crate::tools::granted(&util::s(emp.get("tools").unwrap_or(&J::Null)));
+    let task = format!(
+        "Serve client request {tracking}: {title}. Service: {service}. \
+         Carry out the work end to end, run the tests the service needs, and write the report the client will read."
+    );
+    // The agent that holds the tools for this job; the manager picks when the
+    // worker's grant names none.
+    let agent_id = crate::agents::pick_for_tools(&tools);
+    crate::engine::spawn_with_tools(agent_id, task, rid, tools);
 }
 
 /* ---------------------------- quotes ---------------------------- */
@@ -309,9 +429,19 @@ fn req_set_status(c: &Ctx) -> Response {
 pub async fn quotes(c: &Ctx) -> Response {
     match c.action().as_str() {
         "mine" => {
-            let Ok(u) = c.require_user() else { return util::unauth() };
-            let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let email = u.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let Ok(u) = c.require_user() else {
+                return util::unauth();
+            };
+            let uid = u
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let email = u
+                .get("email")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let rows = db::rows(
                 "SELECT q.* FROM quotes q LEFT JOIN requests r ON r.tracking_id = q.tracking_id
                  WHERE q.user_id = ? OR lower(r.email) = ? ORDER BY q.created_at DESC",
@@ -334,7 +464,10 @@ pub async fn quotes(c: &Ctx) -> Response {
             }
             match owned(c, "quotes", &id) {
                 Some(_) => {
-                    let _ = db::run("UPDATE quotes SET status = ? WHERE id = ?", &[arg(json!(status)), arg(json!(id))]);
+                    let _ = db::run(
+                        "UPDATE quotes SET status = ? WHERE id = ?",
+                        &[arg(json!(status)), arg(json!(id))],
+                    );
                     match db::row("SELECT * FROM quotes WHERE id = ?", &[arg(json!(id))]) {
                         Some(r) => ok(json!({ "quote": map::quote(&r) })),
                         None => err("Quote not found.", 404),
@@ -387,14 +520,23 @@ fn quote_save(c: &Ctx) -> Response {
         .sum();
     let vat = (subtotal * 0.18).round();
     let total = subtotal + vat;
-    let trk = db::row("SELECT tracking_id, user_id FROM requests WHERE id = ?", &[arg(json!(request_id))])
-        .map(|r| {
-            (
-                r.get("tracking_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                r.get("user_id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            )
-        })
-        .unwrap_or_default();
+    let trk = db::row(
+        "SELECT tracking_id, user_id FROM requests WHERE id = ?",
+        &[arg(json!(request_id))],
+    )
+    .map(|r| {
+        (
+            r.get("tracking_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            r.get("user_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+        )
+    })
+    .unwrap_or_default();
     let existing = c.p("id");
     let id = if existing.is_empty() || existing == "new" {
         let newid = util::new_id("Q-");
@@ -433,8 +575,14 @@ fn quote_save(c: &Ctx) -> Response {
 pub async fn contracts(c: &Ctx) -> Response {
     match c.action().as_str() {
         "mine" => {
-            let Ok(u) = c.require_user() else { return util::unauth() };
-            let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let Ok(u) = c.require_user() else {
+                return util::unauth();
+            };
+            let uid = u
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let rows = db::rows(
                 "SELECT c.* FROM contracts c JOIN requests r ON r.tracking_id = c.tracking_id
                  WHERE r.user_id = ? ORDER BY c.created_at DESC",
@@ -466,7 +614,10 @@ pub async fn contracts(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
-            let _ = db::run("DELETE FROM contracts WHERE id = ?", &[arg(json!(c.p("id")))]);
+            let _ = db::run(
+                "DELETE FROM contracts WHERE id = ?",
+                &[arg(json!(c.p("id")))],
+            );
             ok(json!({ "deleted": true }))
         }
         _ => bad("Unknown contracts action."),
@@ -481,11 +632,21 @@ fn contract_create(c: &Ctx) -> Response {
         return e;
     }
     let request_id = c.p("requestId");
-    let Some(req) = db::row("SELECT * FROM requests WHERE id = ?", &[arg(json!(request_id))]) else {
+    let Some(req) = db::row(
+        "SELECT * FROM requests WHERE id = ?",
+        &[arg(json!(request_id))],
+    ) else {
         return err("Request not found.", 404);
     };
-    let trk = req.get("tracking_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let quote = db::row("SELECT * FROM quotes WHERE request_id = ? ORDER BY created_at DESC", &[arg(json!(request_id))]);
+    let trk = req
+        .get("tracking_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let quote = db::row(
+        "SELECT * FROM quotes WHERE request_id = ? ORDER BY created_at DESC",
+        &[arg(json!(request_id))],
+    );
     let total = quote
         .as_ref()
         .and_then(|q| q.get("total").and_then(|v| v.as_f64()))
@@ -495,7 +656,11 @@ fn contract_create(c: &Ctx) -> Response {
         .and_then(|q| q.get("id").and_then(|v| v.as_str()).map(str::to_string))
         .unwrap_or_default();
     let id = util::new_id("C-");
-    let title = req.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let title = req
+        .get("title")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     let _ = db::run(
         "INSERT INTO contracts (id, request_id, quote_id, tracking_id, client_name, project_title, scope, duration, total, status, created_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -527,16 +692,28 @@ fn create_deposit_invoice_row(tracking: &str, total: f64) -> bool {
     if already > 0 {
         return false;
     }
-    let uid = db::row("SELECT user_id FROM requests WHERE tracking_id = ?", &[arg(json!(tracking))])
-        .and_then(|r| r.get("user_id").and_then(|v| v.as_str()).map(str::to_string))
-        .unwrap_or_default();
+    let uid = db::row(
+        "SELECT user_id FROM requests WHERE tracking_id = ?",
+        &[arg(json!(tracking))],
+    )
+    .and_then(|r| {
+        r.get("user_id")
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+    })
+    .unwrap_or_default();
     let _ = db::run(
         "INSERT INTO invoices (id, tracking_id, user_id, title, amount, status, method, created_at)
          VALUES (?,?,?,?,?,?,?,?)",
         &[
-            arg(json!(util::new_id("INV-"))), arg(json!(tracking)), arg(json!(uid)),
-            arg(json!("Project — 50% Deposit")), arg(json!((total / 2.0).round())),
-            arg(json!("Unpaid")), arg(json!("M-Pesa / Bank")), arg(json!(util::now())),
+            arg(json!(util::new_id("INV-"))),
+            arg(json!(tracking)),
+            arg(json!(uid)),
+            arg(json!("Project — 50% Deposit")),
+            arg(json!((total / 2.0).round())),
+            arg(json!("Unpaid")),
+            arg(json!("M-Pesa / Bank")),
+            arg(json!(util::now())),
         ],
     );
     true
@@ -565,7 +742,10 @@ fn deposit_info(c: &Ctx) -> Response {
         return util::unauth();
     };
     let id = c.p("id");
-    let Some(ct) = db::row("SELECT tracking_id FROM contracts WHERE id = ?", &[arg(json!(id))]) else {
+    let Some(ct) = db::row(
+        "SELECT tracking_id FROM contracts WHERE id = ?",
+        &[arg(json!(id))],
+    ) else {
         return err("Contract not found.", 404);
     };
     let trk = ct.get("tracking_id").and_then(|v| v.as_str()).unwrap_or("");
@@ -582,7 +762,9 @@ fn deposit_info(c: &Ctx) -> Response {
                 "amount": i.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0),
             }
         })),
-        None => ok(json!({ "deposit": { "paid": false, "invoiceId": "", "status": "none", "amount": 0 } })),
+        None => ok(
+            json!({ "deposit": { "paid": false, "invoiceId": "", "status": "none", "amount": 0 } }),
+        ),
     }
 }
 
@@ -599,14 +781,18 @@ fn contract_update(c: &Ctx) -> Response {
         return err("Contract not found.", 404);
     };
     if ct.get("client_sig").map(|v| !v.is_null()).unwrap_or(false) {
-        return bad("Contract is locked: the client already signed. The agreed price can no longer change.");
+        return bad(
+            "Contract is locked: the client already signed. The agreed price can no longer change.",
+        );
     }
     let _ = db::run(
         "UPDATE contracts SET project_title=?, scope=?, duration=?, total=? WHERE id=?",
         &[
-            arg(json!(c.p("projectTitle"))), arg(json!(c.p("scope"))),
+            arg(json!(c.p("projectTitle"))),
+            arg(json!(c.p("scope"))),
             arg(json!(c.p("duration"))),
-            arg(json!(c.p("total").parse::<f64>().unwrap_or(0.0))), arg(json!(id)),
+            arg(json!(c.p("total").parse::<f64>().unwrap_or(0.0))),
+            arg(json!(id)),
         ],
     );
     match db::row("SELECT * FROM contracts WHERE id = ?", &[arg(json!(id))]) {
@@ -630,7 +816,9 @@ fn sign(c: &Ctx, who: &str) -> Response {
         return err("Contract not found.", 404);
     };
     if who == "client" {
-        let Ok(u) = c.require_user() else { return util::unauth() };
+        let Ok(u) = c.require_user() else {
+            return util::unauth();
+        };
         let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("");
         let owns = db::scalar_i64(
             "SELECT count(*) FROM contracts c JOIN requests r ON r.tracking_id = c.tracking_id
@@ -645,14 +833,21 @@ fn sign(c: &Ctx, who: &str) -> Response {
         }
         let _ = db::run(
             "UPDATE contracts SET client_sig=?, client_signed_at=?, status=? WHERE id=?",
-            &[arg(json!(sig)), arg(json!(util::now())), arg(json!("Client Signed")), arg(json!(id))],
+            &[
+                arg(json!(sig)),
+                arg(json!(util::now())),
+                arg(json!("Client Signed")),
+                arg(json!(id)),
+            ],
         );
     } else {
         if let Err(e) = c.require_admin() {
             return e;
         }
         if ct.get("client_sig").map(|v| v.is_null()).unwrap_or(true) {
-            return bad("The client has not signed yet — the client signs first, then you countersign.");
+            return bad(
+                "The client has not signed yet — the client signs first, then you countersign.",
+            );
         }
         if ct.get("admin_sig").map(|v| !v.is_null()).unwrap_or(false) {
             return bad("This contract has already been countersigned.");
@@ -664,7 +859,12 @@ fn sign(c: &Ctx, who: &str) -> Response {
         }
         let _ = db::run(
             "UPDATE contracts SET admin_sig=?, admin_signed_at=?, status=? WHERE id=?",
-            &[arg(json!(sig)), arg(json!(util::now())), arg(json!("Signed")), arg(json!(id))],
+            &[
+                arg(json!(sig)),
+                arg(json!(util::now())),
+                arg(json!("Signed")),
+                arg(json!(id)),
+            ],
         );
     }
     match db::row("SELECT * FROM contracts WHERE id = ?", &[arg(json!(id))]) {
@@ -678,9 +878,19 @@ fn sign(c: &Ctx, who: &str) -> Response {
 pub async fn invoices(c: &Ctx) -> Response {
     match c.action().as_str() {
         "mine" => {
-            let Ok(u) = c.require_user() else { return util::unauth() };
-            let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let email = u.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let Ok(u) = c.require_user() else {
+                return util::unauth();
+            };
+            let uid = u
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let email = u
+                .get("email")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let rows = db::rows(
                 "SELECT i.* FROM invoices i LEFT JOIN requests r ON r.tracking_id = i.tracking_id
                  WHERE i.user_id = ? OR lower(r.email) = ? ORDER BY i.created_at DESC",
@@ -692,13 +902,16 @@ pub async fn invoices(c: &Ctx) -> Response {
             if let Err(e) = c.require_csrf() {
                 return e;
             }
-            let Ok(u) = c.require_user() else { return util::unauth() };
+            let Ok(u) = c.require_user() else {
+                return util::unauth();
+            };
             let id = c.p("id");
             let reference = c.p("ref");
             if reference.len() < 4 {
                 return bad("Enter transaction reference code.");
             }
-            let Some(row) = db::row("SELECT * FROM invoices WHERE id = ?", &[arg(json!(id))]) else {
+            let Some(row) = db::row("SELECT * FROM invoices WHERE id = ?", &[arg(json!(id))])
+            else {
                 return err("Invoice not found.", 404);
             };
             let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("");
@@ -712,7 +925,11 @@ pub async fn invoices(c: &Ctx) -> Response {
             let method = row.get("method").and_then(|v| v.as_str()).unwrap_or("");
             let _ = db::run(
                 "UPDATE invoices SET status = ?, method = ? WHERE id = ?",
-                &[arg(json!("Paid")), arg(json!(format!("{method} • Ref {reference}"))), arg(json!(id))],
+                &[
+                    arg(json!("Paid")),
+                    arg(json!(format!("{method} • Ref {reference}"))),
+                    arg(json!(id)),
+                ],
             );
             match db::row("SELECT * FROM invoices WHERE id = ?", &[arg(json!(id))]) {
                 Some(r) => ok(json!({ "invoice": map::invoice(&r) })),
@@ -734,12 +951,20 @@ pub async fn invoices(c: &Ctx) -> Response {
                 return e;
             }
             let id = c.p("id");
-            let new_id = if id.is_empty() || id == "new" { util::new_id("INV-") } else { id.clone() };
+            let new_id = if id.is_empty() || id == "new" {
+                util::new_id("INV-")
+            } else {
+                id.clone()
+            };
             // An invoice records the currency it was written in, so a later
             // change to the platform default never reinterprets an old figure.
             let cur = {
                 let want = c.p("currency");
-                if want.is_empty() { settings::get("pay_currency", "TZS") } else { want }
+                if want.is_empty() {
+                    settings::get("pay_currency", "TZS")
+                } else {
+                    want
+                }
             };
             if id.is_empty() || id == "new" {
                 let _ = db::run(
@@ -773,7 +998,10 @@ pub async fn invoices(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
-            let _ = db::run("DELETE FROM invoices WHERE id = ?", &[arg(json!(c.p("id")))]);
+            let _ = db::run(
+                "DELETE FROM invoices WHERE id = ?",
+                &[arg(json!(c.p("id")))],
+            );
             ok(json!({ "deleted": true }))
         }
         "mark_paid" => {
@@ -784,7 +1012,10 @@ pub async fn invoices(c: &Ctx) -> Response {
                 return e;
             }
             let id = c.p("id");
-            let _ = db::run("UPDATE invoices SET status = ? WHERE id = ?", &[arg(json!("Paid")), arg(json!(id))]);
+            let _ = db::run(
+                "UPDATE invoices SET status = ? WHERE id = ?",
+                &[arg(json!("Paid")), arg(json!(id))],
+            );
             match db::row("SELECT * FROM invoices WHERE id = ?", &[arg(json!(id))]) {
                 Some(r) => ok(json!({ "invoice": map::invoice(&r) })),
                 None => err("Invoice not found.", 404),
@@ -835,9 +1066,19 @@ pub async fn tickets(c: &Ctx) -> Response {
             }
         }
         "mine" => {
-            let Ok(u) = c.require_user() else { return util::unauth() };
-            let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let email = u.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let Ok(u) = c.require_user() else {
+                return util::unauth();
+            };
+            let uid = u
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let email = u
+                .get("email")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let rows = db::rows(
                 "SELECT * FROM tickets WHERE user_id = ? OR lower(email) = ? ORDER BY created_at DESC",
                 &[arg(json!(uid)), arg(json!(email))],
@@ -861,7 +1102,10 @@ pub async fn tickets(c: &Ctx) -> Response {
                 return e;
             }
             let id = c.p("id");
-            let _ = db::run("DELETE FROM ticket_replies WHERE ticket_id = ?", &[arg(json!(id))]);
+            let _ = db::run(
+                "DELETE FROM ticket_replies WHERE ticket_id = ?",
+                &[arg(json!(id))],
+            );
             let _ = db::run("DELETE FROM tickets WHERE id = ?", &[arg(json!(id))]);
             ok(json!({ "deleted": true }))
         }
@@ -881,7 +1125,10 @@ pub async fn tickets(c: &Ctx) -> Response {
             } else {
                 "Open"
             };
-            let _ = db::run("UPDATE tickets SET status = ? WHERE id = ?", &[arg(json!(next)), arg(json!(id))]);
+            let _ = db::run(
+                "UPDATE tickets SET status = ? WHERE id = ?",
+                &[arg(json!(next)), arg(json!(id))],
+            );
             ok(json!({ "status": next }))
         }
         _ => bad("Unknown tickets action."),
@@ -893,7 +1140,9 @@ fn ticket_reply(c: &Ctx, admin: bool) -> Response {
     if let Err(e) = c.require_csrf() {
         return e;
     }
-    let Ok(u) = c.require_user() else { return util::unauth() };
+    let Ok(u) = c.require_user() else {
+        return util::unauth();
+    };
     let id = c.p("id");
     let text = c.p("text");
     if text.is_empty() {
@@ -913,11 +1162,20 @@ fn ticket_reply(c: &Ctx, admin: bool) -> Response {
     let by = if admin {
         "Jackson Mbilinyi (CEO)".to_string()
     } else {
-        format!("{} (Client)", u.get("name").and_then(|v| v.as_str()).unwrap_or(""))
+        format!(
+            "{} (Client)",
+            u.get("name").and_then(|v| v.as_str()).unwrap_or("")
+        )
     };
     let _ = db::run(
         "INSERT INTO ticket_replies (id, ticket_id, by_name, body, created_at) VALUES (?,?,?,?,?)",
-        &[arg(json!(util::new_id("TR-"))), arg(json!(id)), arg(json!(by)), arg(json!(text)), arg(json!(util::now()))],
+        &[
+            arg(json!(util::new_id("TR-"))),
+            arg(json!(id)),
+            arg(json!(by)),
+            arg(json!(text)),
+            arg(json!(util::now())),
+        ],
     );
     match db::row("SELECT * FROM tickets WHERE id = ?", &[arg(json!(id))]) {
         Some(r) => ok(json!({ "ticket": map::ticket(&r) })),
@@ -956,7 +1214,10 @@ pub async fn news(c: &Ctx) -> Response {
             let rows = db::rows(sql, &[]);
             ok(json!({ "news": rows.iter().map(map::news).collect::<Vec<_>>() }))
         }
-        "get" => match db::row("SELECT * FROM news_posts WHERE id = ?", &[arg(json!(c.p("id")))]) {
+        "get" => match db::row(
+            "SELECT * FROM news_posts WHERE id = ?",
+            &[arg(json!(c.p("id")))],
+        ) {
             Some(r) => ok(json!({ "post": map::news(&r) })),
             None => err("Post not found.", 404),
         },
@@ -974,7 +1235,10 @@ pub async fn news(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
-            let _ = db::run("DELETE FROM news_posts WHERE id = ?", &[arg(json!(c.p("id")))]);
+            let _ = db::run(
+                "DELETE FROM news_posts WHERE id = ?",
+                &[arg(json!(c.p("id")))],
+            );
             ok(json!({ "deleted": true }))
         }
         _ => bad("Unknown news action."),
@@ -1098,7 +1362,10 @@ fn content_save(c: &Ctx, table: &str, fields: &[&str], prefix: &str) -> Response
         ok(json!({ "id": new_id, "saved": true }))
     } else {
         let sets: Vec<String> = fields.iter().map(|f| format!("{f} = ?")).collect();
-        let sql = format!("UPDATE {table} SET {}, updated_at = ? WHERE id = ?", sets.join(", "));
+        let sql = format!(
+            "UPDATE {table} SET {}, updated_at = ? WHERE id = ?",
+            sets.join(", ")
+        );
         let mut args: Vec<Value> = fields.iter().map(|f| arg(json!(c.p(f)))).collect();
         args.push(arg(json!(util::now())));
         args.push(arg(json!(id)));
@@ -1115,21 +1382,47 @@ fn toggle_field(c: &Ctx, table: &str, field: &str) -> Response {
         return e;
     }
     let id = c.p("id");
-    let cur = db::row(&format!("SELECT {field} FROM {table} WHERE id = ?"), &[arg(json!(id))])
-        .and_then(|r| r.get(field).and_then(|v| v.as_str()).map(str::to_string))
-        .unwrap_or_default();
-    let next = if cur == "1" || cur.eq_ignore_ascii_case("true") { "0" } else { "1" };
-    let _ = db::run(&format!("UPDATE {table} SET {field} = ? WHERE id = ?"), &[arg(json!(next)), arg(json!(id))]);
+    let cur = db::row(
+        &format!("SELECT {field} FROM {table} WHERE id = ?"),
+        &[arg(json!(id))],
+    )
+    .and_then(|r| r.get(field).and_then(|v| v.as_str()).map(str::to_string))
+    .unwrap_or_default();
+    let next = if cur == "1" || cur.eq_ignore_ascii_case("true") {
+        "0"
+    } else {
+        "1"
+    };
+    let _ = db::run(
+        &format!("UPDATE {table} SET {field} = ? WHERE id = ?"),
+        &[arg(json!(next)), arg(json!(id))],
+    );
     ok(json!({ "value": next }))
 }
 
 pub async fn portfolio(c: &Ctx) -> Response {
     match c.action().as_str() {
         "list" => {
-            let rows = db::rows("SELECT * FROM portfolio_projects ORDER BY created_at DESC", &[]);
+            let rows = db::rows(
+                "SELECT * FROM portfolio_projects ORDER BY created_at DESC",
+                &[],
+            );
             ok(json!({ "projects": rows.iter().map(map::portfolio).collect::<Vec<_>>() }))
         }
-        "add" | "update" => content_save(c, "portfolio_projects", &["title", "category", "image_url", "description", "stat_label", "link_url", "sort_order"], "P-"),
+        "add" | "update" => content_save(
+            c,
+            "portfolio_projects",
+            &[
+                "title",
+                "category",
+                "image_url",
+                "description",
+                "stat_label",
+                "link_url",
+                "sort_order",
+            ],
+            "P-",
+        ),
         "delete" => {
             if let Err(e) = c.require_csrf() {
                 return e;
@@ -1137,7 +1430,10 @@ pub async fn portfolio(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
-            let _ = db::run("DELETE FROM portfolio_projects WHERE id = ?", &[arg(json!(c.p("id")))]);
+            let _ = db::run(
+                "DELETE FROM portfolio_projects WHERE id = ?",
+                &[arg(json!(c.p("id")))],
+            );
             ok(json!({ "deleted": true }))
         }
         _ => bad("Unknown portfolio action."),
@@ -1158,7 +1454,10 @@ pub async fn testimonials(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
-            let _ = db::run("DELETE FROM testimonials WHERE id = ?", &[arg(json!(c.p("id")))]);
+            let _ = db::run(
+                "DELETE FROM testimonials WHERE id = ?",
+                &[arg(json!(c.p("id")))],
+            );
             ok(json!({ "deleted": true }))
         }
         _ => bad("Unknown testimonials action."),
@@ -1171,7 +1470,23 @@ pub async fn team(c: &Ctx) -> Response {
             let rows = db::rows("SELECT * FROM team_members ORDER BY created_at ASC", &[]);
             ok(json!({ "team": rows.iter().map(map::team).collect::<Vec<_>>() }))
         }
-        "add" | "update" => content_save(c, "team_members", &["name", "role", "role_sw", "bio", "bio_sw", "image_url", "email", "phone", "linkedin", "sort_order"], "TM-"),
+        "add" | "update" => content_save(
+            c,
+            "team_members",
+            &[
+                "name",
+                "role",
+                "role_sw",
+                "bio",
+                "bio_sw",
+                "image_url",
+                "email",
+                "phone",
+                "linkedin",
+                "sort_order",
+            ],
+            "TM-",
+        ),
         "toggle" => toggle_field(c, "team_members", "is_active"),
         "delete" => {
             if let Err(e) = c.require_csrf() {
@@ -1180,7 +1495,10 @@ pub async fn team(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
-            let _ = db::run("DELETE FROM team_members WHERE id = ?", &[arg(json!(c.p("id")))]);
+            let _ = db::run(
+                "DELETE FROM team_members WHERE id = ?",
+                &[arg(json!(c.p("id")))],
+            );
             ok(json!({ "deleted": true }))
         }
         _ => bad("Unknown team action."),
@@ -1200,13 +1518,26 @@ pub async fn track(c: &Ctx) -> Response {
     ) else {
         return err("No request found with that tracking ID.", 404);
     };
-    let trk = req.get("tracking_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let quote = db::row("SELECT * FROM quotes WHERE tracking_id = ? ORDER BY created_at DESC", &[arg(json!(trk))]);
-    let contract = db::row("SELECT * FROM contracts WHERE tracking_id = ? ORDER BY created_at DESC", &[arg(json!(trk))]);
-    let invoices: Vec<J> = db::rows("SELECT * FROM invoices WHERE tracking_id = ? ORDER BY created_at DESC", &[arg(json!(trk))])
-        .iter()
-        .map(map::invoice)
-        .collect();
+    let trk = req
+        .get("tracking_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let quote = db::row(
+        "SELECT * FROM quotes WHERE tracking_id = ? ORDER BY created_at DESC",
+        &[arg(json!(trk))],
+    );
+    let contract = db::row(
+        "SELECT * FROM contracts WHERE tracking_id = ? ORDER BY created_at DESC",
+        &[arg(json!(trk))],
+    );
+    let invoices: Vec<J> = db::rows(
+        "SELECT * FROM invoices WHERE tracking_id = ? ORDER BY created_at DESC",
+        &[arg(json!(trk))],
+    )
+    .iter()
+    .map(map::invoice)
+    .collect();
     ok(json!({
         "request": map::request(&req),
         "quote": quote.as_ref().map(map::quote),
@@ -1228,27 +1559,39 @@ pub async fn dashboard(c: &Ctx) -> Response {
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0)
             };
-            let paid = sum("SELECT COALESCE(SUM(amount),0) AS s FROM invoices WHERE status = 'Paid'");
-            let unpaid = sum("SELECT COALESCE(SUM(amount),0) AS s FROM invoices WHERE status <> 'Paid'");
-            let pipeline = sum("SELECT COALESCE(SUM(total),0) AS s FROM quotes WHERE status <> 'Rejected'");
+            let paid =
+                sum("SELECT COALESCE(SUM(amount),0) AS s FROM invoices WHERE status = 'Paid'");
+            let unpaid =
+                sum("SELECT COALESCE(SUM(amount),0) AS s FROM invoices WHERE status <> 'Paid'");
+            let pipeline =
+                sum("SELECT COALESCE(SUM(total),0) AS s FROM quotes WHERE status <> 'Rejected'");
             let pending = db::scalar_i64(
                 "SELECT count(*) FROM requests WHERE status IN ('Pending','Under Review')",
                 &[],
             );
             let by_service = {
                 let mut m = serde_json::Map::new();
-                for r in db::rows("SELECT service, count(*) AS c FROM requests GROUP BY service", &[]) {
+                for r in db::rows(
+                    "SELECT service, count(*) AS c FROM requests GROUP BY service",
+                    &[],
+                ) {
                     m.insert(
-                        r.get("service").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        r.get("service")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
                         json!(r.get("c").and_then(|v| v.as_i64()).unwrap_or(0)),
                     );
                 }
                 J::Object(m)
             };
-            let recent: Vec<J> = db::rows("SELECT * FROM requests ORDER BY created_at DESC LIMIT 3", &[])
-                .iter()
-                .map(map::request)
-                .collect();
+            let recent: Vec<J> = db::rows(
+                "SELECT * FROM requests ORDER BY created_at DESC LIMIT 3",
+                &[],
+            )
+            .iter()
+            .map(map::request)
+            .collect();
             ok(json!({
                 "revenue": paid,
                 "pipeline": pipeline,
@@ -1269,7 +1612,9 @@ pub async fn dashboard(c: &Ctx) -> Response {
             let total = db::scalar_i64("SELECT count(*) FROM visitor_logs", &[]);
             let today = db::scalar_i64(
                 "SELECT count(*) FROM visitor_logs WHERE substr(visit_date,1,10) = ?",
-                &[arg(json!(chrono::Local::now().format("%Y-%m-%d").to_string()))],
+                &[arg(json!(chrono::Local::now()
+                    .format("%Y-%m-%d")
+                    .to_string()))],
             );
             ok(json!({ "total": total, "today": today }))
         }

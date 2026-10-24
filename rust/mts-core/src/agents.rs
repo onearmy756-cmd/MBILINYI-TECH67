@@ -39,36 +39,198 @@ struct Role {
 /// headcount, so a hundred agents means a hundred seats with real work, not
 /// padding.
 const ROLES: &[Role] = &[
-    Role { title: "Software Engineer", department: "software", speciality: "Web & API engineering", tools: &["code_studio", "version_forge", "build_pipeline", "test_runner", "api_forge", "db_forge"] },
-    Role { title: "Mobile Engineer", department: "software", speciality: "Android & iOS", tools: &["code_studio", "mobile_forge", "test_runner", "deployer"] },
-    Role { title: "Desktop Engineer", department: "software", speciality: "Desktop installers", tools: &["code_studio", "desktop_forge", "build_pipeline"] },
-    Role { title: "DevOps Engineer", department: "software", speciality: "CI/CD & deployment", tools: &["build_pipeline", "deployer", "firewall_manager", "test_runner"] },
-    Role { title: "Game Developer", department: "software", speciality: "Games & 3D", tools: &["game_forge", "code_studio", "card_3d"] },
-    Role { title: "IoT Engineer", department: "software", speciality: "Firmware & telemetry", tools: &["iot_forge", "code_studio", "test_runner"] },
-    Role { title: "Systems Engineer", department: "software", speciality: "Operating systems", tools: &["os_forge", "code_studio", "build_pipeline"] },
-    Role { title: "Security Analyst", department: "security", speciality: "Penetration testing", tools: &["pentest", "vuln_scanner", "owasp_audit"] },
-    Role { title: "Threat Hunter", department: "security", speciality: "Threat intelligence", tools: &["vuln_scanner", "malware_scan", "forensics"] },
-    Role { title: "Cryptographer", department: "security", speciality: "ECDSA & key custody", tools: &["crypto_suite", "quantum_guard", "firewall_manager"] },
-    Role { title: "Incident Responder", department: "security", speciality: "Forensics & recovery", tools: &["forensics", "malware_scan", "pentest"] },
-    Role { title: "AI Fine-Tuning Engineer", department: "ai", speciality: "Model fine-tuning", tools: &["ai_finetune", "dataset_forge", "model_eval"] },
-    Role { title: "Chatbot Engineer", department: "ai", speciality: "Chatbots", tools: &["chatbot_builder", "prompt_studio", "custom_ai"] },
-    Role { title: "Custom AI Engineer", department: "ai", speciality: "Purpose-built AI", tools: &["custom_ai", "ai_finetune", "model_eval"] },
-    Role { title: "ML Engineer", department: "ai", speciality: "Data & evaluation", tools: &["dataset_forge", "model_eval", "ai_finetune"] },
-    Role { title: "Agent Orchestrator", department: "ai", speciality: "Work distribution", tools: &["agent_orchestrator", "analytics"] },
-    Role { title: "Graphic Designer", department: "marketing", speciality: "Brand & graphics", tools: &["graphics_design", "ui_kit", "card_3d"] },
-    Role { title: "UI/UX Designer", department: "marketing", speciality: "Product design", tools: &["ui_kit", "graphics_design"] },
-    Role { title: "Copywriter", department: "marketing", speciality: "Content & CVs", tools: &["cv_builder", "graphics_design"] },
-    Role { title: "Growth Marketer", department: "marketing", speciality: "Campaigns & leads", tools: &["marketing_manager", "analytics", "email_suite"] },
-    Role { title: "Finance Officer", department: "finance", speciality: "Revenue & escrow", tools: &["finance_manager", "escrow_ledger", "invoice_forge"] },
-    Role { title: "Payments Officer", department: "finance", speciality: "Gateways & payouts", tools: &["payments_gateway", "escrow_ledger", "invoice_forge"] },
-    Role { title: "Contract Officer", department: "finance", speciality: "Contracts & e-signature", tools: &["contract_forge", "crypto_suite", "invoice_forge"] },
-    Role { title: "HR Officer", department: "hr", speciality: "Hiring & assessment", tools: &["hr_manager", "cv_builder", "report_engine"] },
-    Role { title: "Recruiter", department: "hr", speciality: "Talent sourcing", tools: &["hr_manager", "cv_builder", "email_suite"] },
-    Role { title: "Client Success Officer", department: "employee", speciality: "Client communication", tools: &["sms_gateway", "email_suite", "meeting_room"] },
-    Role { title: "Project Coordinator", department: "employee", speciality: "Delivery tracking", tools: &["report_engine", "meeting_room", "analytics"] },
-    Role { title: "Analyst", department: "employee", speciality: "Reporting & analytics", tools: &["report_engine", "analytics"] },
-    Role { title: "Meeting Scribe", department: "employee", speciality: "Minutes & action items", tools: &["ai_scribe", "meeting_room", "email_suite"] },
-    Role { title: "Tanzania Services Officer", department: "employee", speciality: "BRELA, TRA & e-services", tools: &["brela_tz", "tra_tz", "gov_tz"] },
+    Role {
+        title: "Software Engineer",
+        department: "software",
+        speciality: "Web & API engineering",
+        tools: &[
+            "code_studio",
+            "version_forge",
+            "build_pipeline",
+            "test_runner",
+            "api_forge",
+            "db_forge",
+        ],
+    },
+    Role {
+        title: "Mobile Engineer",
+        department: "software",
+        speciality: "Android & iOS",
+        tools: &["code_studio", "mobile_forge", "test_runner", "deployer"],
+    },
+    Role {
+        title: "Desktop Engineer",
+        department: "software",
+        speciality: "Desktop installers",
+        tools: &["code_studio", "desktop_forge", "build_pipeline"],
+    },
+    Role {
+        title: "DevOps Engineer",
+        department: "software",
+        speciality: "CI/CD & deployment",
+        tools: &[
+            "build_pipeline",
+            "deployer",
+            "firewall_manager",
+            "test_runner",
+        ],
+    },
+    Role {
+        title: "Game Developer",
+        department: "software",
+        speciality: "Games & 3D",
+        tools: &["game_forge", "code_studio", "card_3d"],
+    },
+    Role {
+        title: "IoT Engineer",
+        department: "software",
+        speciality: "Firmware & telemetry",
+        tools: &["iot_forge", "code_studio", "test_runner"],
+    },
+    Role {
+        title: "Systems Engineer",
+        department: "software",
+        speciality: "Operating systems",
+        tools: &["os_forge", "code_studio", "build_pipeline"],
+    },
+    Role {
+        title: "Security Analyst",
+        department: "security",
+        speciality: "Penetration testing",
+        tools: &["pentest", "vuln_scanner", "owasp_audit"],
+    },
+    Role {
+        title: "Threat Hunter",
+        department: "security",
+        speciality: "Threat intelligence",
+        tools: &["vuln_scanner", "malware_scan", "forensics"],
+    },
+    Role {
+        title: "Cryptographer",
+        department: "security",
+        speciality: "ECDSA & key custody",
+        tools: &["crypto_suite", "quantum_guard", "firewall_manager"],
+    },
+    Role {
+        title: "Incident Responder",
+        department: "security",
+        speciality: "Forensics & recovery",
+        tools: &["forensics", "malware_scan", "pentest"],
+    },
+    Role {
+        title: "AI Fine-Tuning Engineer",
+        department: "ai",
+        speciality: "Model fine-tuning",
+        tools: &["ai_finetune", "dataset_forge", "model_eval"],
+    },
+    Role {
+        title: "Chatbot Engineer",
+        department: "ai",
+        speciality: "Chatbots",
+        tools: &["chatbot_builder", "prompt_studio", "custom_ai"],
+    },
+    Role {
+        title: "Custom AI Engineer",
+        department: "ai",
+        speciality: "Purpose-built AI",
+        tools: &["custom_ai", "ai_finetune", "model_eval"],
+    },
+    Role {
+        title: "ML Engineer",
+        department: "ai",
+        speciality: "Data & evaluation",
+        tools: &["dataset_forge", "model_eval", "ai_finetune"],
+    },
+    Role {
+        title: "Agent Orchestrator",
+        department: "ai",
+        speciality: "Work distribution",
+        tools: &["agent_orchestrator", "analytics"],
+    },
+    Role {
+        title: "Graphic Designer",
+        department: "marketing",
+        speciality: "Brand & graphics",
+        tools: &["graphics_design", "ui_kit", "card_3d"],
+    },
+    Role {
+        title: "UI/UX Designer",
+        department: "marketing",
+        speciality: "Product design",
+        tools: &["ui_kit", "graphics_design"],
+    },
+    Role {
+        title: "Copywriter",
+        department: "marketing",
+        speciality: "Content & CVs",
+        tools: &["cv_builder", "graphics_design"],
+    },
+    Role {
+        title: "Growth Marketer",
+        department: "marketing",
+        speciality: "Campaigns & leads",
+        tools: &["marketing_manager", "analytics", "email_suite"],
+    },
+    Role {
+        title: "Finance Officer",
+        department: "finance",
+        speciality: "Revenue & escrow",
+        tools: &["finance_manager", "escrow_ledger", "invoice_forge"],
+    },
+    Role {
+        title: "Payments Officer",
+        department: "finance",
+        speciality: "Gateways & payouts",
+        tools: &["payments_gateway", "escrow_ledger", "invoice_forge"],
+    },
+    Role {
+        title: "Contract Officer",
+        department: "finance",
+        speciality: "Contracts & e-signature",
+        tools: &["contract_forge", "crypto_suite", "invoice_forge"],
+    },
+    Role {
+        title: "HR Officer",
+        department: "hr",
+        speciality: "Hiring & assessment",
+        tools: &["hr_manager", "cv_builder", "report_engine"],
+    },
+    Role {
+        title: "Recruiter",
+        department: "hr",
+        speciality: "Talent sourcing",
+        tools: &["hr_manager", "cv_builder", "email_suite"],
+    },
+    Role {
+        title: "Client Success Officer",
+        department: "employee",
+        speciality: "Client communication",
+        tools: &["sms_gateway", "email_suite", "meeting_room"],
+    },
+    Role {
+        title: "Project Coordinator",
+        department: "employee",
+        speciality: "Delivery tracking",
+        tools: &["report_engine", "meeting_room", "analytics"],
+    },
+    Role {
+        title: "Analyst",
+        department: "employee",
+        speciality: "Reporting & analytics",
+        tools: &["report_engine", "analytics"],
+    },
+    Role {
+        title: "Meeting Scribe",
+        department: "employee",
+        speciality: "Minutes & action items",
+        tools: &["ai_scribe", "meeting_room", "email_suite"],
+    },
+    Role {
+        title: "Tanzania Services Officer",
+        department: "employee",
+        speciality: "BRELA, TRA & e-services",
+        tools: &["brela_tz", "tra_tz", "gov_tz"],
+    },
 ];
 
 pub fn init_tables() {
@@ -103,8 +265,13 @@ pub fn seed() {
     let now = util::now();
     // The manager first, so every agent can point at it.
     let manager_id = util::new_id("AGT-");
-    let manager_tools = serde_json::to_string(&vec!["magma_commander", "agent_orchestrator", "analytics", "report_engine"])
-        .unwrap_or_else(|_| "[]".into());
+    let manager_tools = serde_json::to_string(&vec![
+        "magma_commander",
+        "agent_orchestrator",
+        "analytics",
+        "report_engine",
+    ])
+    .unwrap_or_else(|_| "[]".into());
     let _ = db::run(
         "INSERT INTO agents (id, name, role, department, speciality, tools, model, autonomy, manager_id, status, created_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -147,6 +314,36 @@ fn manager_id() -> String {
     .unwrap_or_default()
 }
 
+/// Pick the agent that holds the tools a job needs. When the worker's grant
+/// names tools, the agent that holds the most of them is chosen, so a job for a
+/// cybersecurity worker goes to the agent holding the security tools. When the
+/// grant is empty the manager seat takes it, and it routes onward itself.
+pub fn pick_for_tools(worker_tools: &[String]) -> String {
+    let all = db::rows(
+        "SELECT * FROM agents WHERE status = 'active' AND manager_id != ''",
+        &[],
+    );
+    if worker_tools.is_empty() || all.is_empty() {
+        return manager_id();
+    }
+    let mut best: Option<(i64, String)> = None;
+    for a in all {
+        let held = crate::tools::granted(&util::s(a.get("tools").unwrap_or(&J::Null)));
+        let overlap = worker_tools
+            .iter()
+            .filter(|t| held.iter().any(|h| h == *t))
+            .count() as i64;
+        if overlap == 0 {
+            continue;
+        }
+        let id = util::s(a.get("id").unwrap_or(&J::Null));
+        if best.as_ref().map(|(s, _)| overlap > *s).unwrap_or(true) {
+            best = Some((overlap, id));
+        }
+    }
+    best.map(|(_, id)| id).unwrap_or_else(manager_id)
+}
+
 pub async fn handle(c: &Ctx) -> Response {
     match c.action().as_str() {
         "list" => {
@@ -173,7 +370,10 @@ pub async fn handle(c: &Ctx) -> Response {
             .into_iter()
             .map(|r| json!({ "department": util::s(r.get("department").unwrap_or(&J::Null)), "count": util::i(r.get("n").unwrap_or(&J::Null)) }))
             .collect::<Vec<_>>();
-            let with_tools = db::scalar_i64("SELECT COUNT(*) FROM agents WHERE tools != '[]' AND tools != ''", &[]);
+            let with_tools = db::scalar_i64(
+                "SELECT COUNT(*) FROM agents WHERE tools != '[]' AND tools != ''",
+                &[],
+            );
             ok(json!({
                 "total": total,
                 "manager": manager_id(),
@@ -182,7 +382,10 @@ pub async fn handle(c: &Ctx) -> Response {
                 "agentic": true,
             }))
         }
-        "get" => match db::row("SELECT * FROM agents WHERE id = ?", &[arg(json!(c.p("id")))]) {
+        "get" => match db::row(
+            "SELECT * FROM agents WHERE id = ?",
+            &[arg(json!(c.p("id")))],
+        ) {
             Some(r) => ok(json!({ "agent": map::agent(&r) })),
             None => err("Agent not found.", 404),
         },
@@ -210,12 +413,19 @@ fn set_tools(c: &Ctx) -> Response {
         .unwrap_or_default();
     for t in &codes {
         if !tools::known(t) {
-            return bad(&format!("Unknown tool: {t}. Only platform tools may be assigned."));
+            return bad(&format!(
+                "Unknown tool: {t}. Only platform tools may be assigned."
+            ));
         }
     }
     let _ = db::run(
         "UPDATE agents SET tools = ? WHERE id = ?",
-        &[arg(json!(serde_json::to_string(&codes).unwrap_or_else(|_| "[]".into()))), arg(json!(id))],
+        &[
+            arg(json!(
+                serde_json::to_string(&codes).unwrap_or_else(|_| "[]".into())
+            )),
+            arg(json!(id)),
+        ],
     );
     ok(json!({ "tools": codes }))
 }
@@ -232,7 +442,10 @@ fn toggle(c: &Ctx) -> Response {
         .and_then(|r| r.get("status").and_then(|v| v.as_str()).map(str::to_string))
         .unwrap_or_default();
     let next = if cur == "active" { "paused" } else { "active" };
-    let _ = db::run("UPDATE agents SET status = ? WHERE id = ?", &[arg(json!(next)), arg(json!(id))]);
+    let _ = db::run(
+        "UPDATE agents SET status = ? WHERE id = ?",
+        &[arg(json!(next)), arg(json!(id))],
+    );
     ok(json!({ "status": next }))
 }
 

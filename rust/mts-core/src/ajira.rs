@@ -202,7 +202,10 @@ fn opening_delete(c: &Ctx) -> Response {
     if let Err(e) = c.require_admin() {
         return e;
     }
-    let _ = db::run("DELETE FROM job_openings WHERE id = ?", &[arg(json!(c.p("id")))]);
+    let _ = db::run(
+        "DELETE FROM job_openings WHERE id = ?",
+        &[arg(json!(c.p("id")))],
+    );
     ok(json!({ "deleted": true }))
 }
 
@@ -223,7 +226,10 @@ fn apply(c: &Ctx) -> Response {
     let job = if job_id.is_empty() {
         None
     } else {
-        db::row("SELECT * FROM job_openings WHERE id = ?", &[arg(json!(job_id))])
+        db::row(
+            "SELECT * FROM job_openings WHERE id = ?",
+            &[arg(json!(job_id))],
+        )
     };
     let job_title = job
         .as_ref()
@@ -273,14 +279,20 @@ fn assess(c: &Ctx) -> Response {
         return e;
     }
     let id = c.p("id");
-    let Some(app) = db::row("SELECT * FROM job_applications WHERE id = ?", &[arg(json!(id))]) else {
+    let Some(app) = db::row(
+        "SELECT * FROM job_applications WHERE id = ?",
+        &[arg(json!(id))],
+    ) else {
         return err("Application not found.", 404);
     };
     let theory = util::i(&c.pv("theoreticalScore")).clamp(0, 100);
     let practical = util::i(&c.pv("practicalScore")).clamp(0, 100);
     let (tw, pw) = {
         let job_id = util::s(app.get("job_id").unwrap_or(&J::Null));
-        match db::row("SELECT theoretical_weight, practical_weight FROM job_openings WHERE id = ?", &[arg(json!(job_id))]) {
+        match db::row(
+            "SELECT theoretical_weight, practical_weight FROM job_openings WHERE id = ?",
+            &[arg(json!(job_id))],
+        ) {
             Some(j) => (
                 util::i(j.get("theoretical_weight").unwrap_or(&J::Null)),
                 util::i(j.get("practical_weight").unwrap_or(&J::Null)),
@@ -330,15 +342,27 @@ fn hire(c: &Ctx) -> Response {
         return e;
     }
     let id = c.p("id");
-    let Some(app) = db::row("SELECT * FROM job_applications WHERE id = ?", &[arg(json!(id))]) else {
+    let Some(app) = db::row(
+        "SELECT * FROM job_applications WHERE id = ?",
+        &[arg(json!(id))],
+    ) else {
         return err("Application not found.", 404);
     };
     // The role comes from the vacancy, so the new employee serves the right
     // service from their first day.
     let job_id = util::s(app.get("job_id").unwrap_or(&J::Null));
-    let job = db::row("SELECT * FROM job_openings WHERE id = ?", &[arg(json!(job_id))]);
-    let department = job.as_ref().map(|j| util::s(j.get("department").unwrap_or(&J::Null))).unwrap_or_else(|| "employee".into());
-    let service = job.as_ref().map(|j| util::s(j.get("service").unwrap_or(&J::Null))).unwrap_or_default();
+    let job = db::row(
+        "SELECT * FROM job_openings WHERE id = ?",
+        &[arg(json!(job_id))],
+    );
+    let department = job
+        .as_ref()
+        .map(|j| util::s(j.get("department").unwrap_or(&J::Null)))
+        .unwrap_or_else(|| "employee".into());
+    let service = job
+        .as_ref()
+        .map(|j| util::s(j.get("service").unwrap_or(&J::Null)))
+        .unwrap_or_default();
     let emp_id = util::new_id("EMP-");
     let now = util::now();
     let services_json = if service.is_empty() {
@@ -368,12 +392,21 @@ fn hire(c: &Ctx) -> Response {
         "UPDATE job_applications SET status='Hired', updated_at=? WHERE id=?",
         &[arg(json!(now)), arg(json!(id))],
     );
+    // Give the new worker a portal account, so the tools and the jobs their
+    // role allows are reachable the moment they are hired.
+    let linked = crate::wafanyakazi::link_account(
+        &emp_id,
+        &util::s(app.get("email").unwrap_or(&J::Null)),
+        &util::s(app.get("full_name").unwrap_or(&J::Null)),
+    )
+    .is_some();
     ok(json!({
         "hired": true,
         "employeeId": emp_id,
         "employee": util::s(app.get("full_name").unwrap_or(&J::Null)),
         "department": department,
         "service": service,
+        "portalAccount": linked,
     }))
 }
 
@@ -384,6 +417,9 @@ fn delete_application(c: &Ctx) -> Response {
     if let Err(e) = c.require_admin() {
         return e;
     }
-    let _ = db::run("DELETE FROM job_applications WHERE id = ?", &[arg(json!(c.p("id")))]);
+    let _ = db::run(
+        "DELETE FROM job_applications WHERE id = ?",
+        &[arg(json!(c.p("id")))],
+    );
     ok(json!({ "deleted": true }))
 }

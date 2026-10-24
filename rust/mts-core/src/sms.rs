@@ -27,8 +27,16 @@ fn arg(v: J) -> Value {
 
 /// The gateways, for the admin picker.
 pub const GATEWAYS: &[(&str, &str, &str)] = &[
-    ("beem", "Beem (Tanzania)", "https://apisms.beem.africa/v1/send"),
-    ("africastalking", "Africa's Talking", "https://api.africastalking.com/version1/messaging"),
+    (
+        "beem",
+        "Beem (Tanzania)",
+        "https://apisms.beem.africa/v1/send",
+    ),
+    (
+        "africastalking",
+        "Africa's Talking",
+        "https://api.africastalking.com/version1/messaging",
+    ),
     ("twilio", "Twilio", ""),
     ("generic", "Generic HTTP endpoint", ""),
 ];
@@ -60,7 +68,11 @@ fn from_settings() -> Gateway {
             b.trim().to_string()
         } else {
             std::env::var("SMS_BASE_URL").unwrap_or_else(|_| {
-                GATEWAYS.iter().find(|(k, _, _)| *k == name).map(|(_, _, u)| u.to_string()).unwrap_or_default()
+                GATEWAYS
+                    .iter()
+                    .find(|(k, _, _)| *k == name)
+                    .map(|(_, _, u)| u.to_string())
+                    .unwrap_or_default()
             })
         }
     };
@@ -124,11 +136,22 @@ pub async fn send(phone: &str, message: &str) -> SendResult {
     }
     let to = normalise_phone(phone);
     if to.is_empty() {
-        return SendResult { ok: false, detail: "That phone number has no digits.".into() };
+        return SendResult {
+            ok: false,
+            detail: "That phone number has no digits.".into(),
+        };
     }
-    let client = match reqwest::Client::builder().timeout(Duration::from_secs(30)).build() {
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+    {
         Ok(c) => c,
-        Err(e) => return SendResult { ok: false, detail: format!("cannot build the HTTP client: {e}") },
+        Err(e) => {
+            return SendResult {
+                ok: false,
+                detail: format!("cannot build the HTTP client: {e}"),
+            }
+        }
     };
 
     let outcome = match g.name.as_str() {
@@ -152,9 +175,15 @@ async fn finish(res: reqwest::Response, name: &str) -> Sent {
     let body = res.text().await.unwrap_or_default();
     let short: String = body.chars().take(300).collect();
     if status.is_success() {
-        Ok(format!("{name} accepted the message (HTTP {}). {short}", status.as_u16()))
+        Ok(format!(
+            "{name} accepted the message (HTTP {}). {short}",
+            status.as_u16()
+        ))
     } else {
-        Err(format!("{name} refused it (HTTP {}): {short}", status.as_u16()))
+        Err(format!(
+            "{name} refused it (HTTP {}): {short}",
+            status.as_u16()
+        ))
     }
 }
 
@@ -197,7 +226,11 @@ async fn send_at(client: &reqwest::Client, g: &Gateway, to: &str, msg: &str) -> 
 async fn send_twilio(client: &reqwest::Client, g: &Gateway, to: &str, msg: &str) -> Sent {
     let sid = &g.api_key;
     let url = format!("https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json");
-    let from = if g.sender.is_empty() { "MBILINYI" } else { &g.sender };
+    let from = if g.sender.is_empty() {
+        "MBILINYI"
+    } else {
+        &g.sender
+    };
     let res = client
         .post(url)
         .basic_auth(sid, Some(&g.secret))
@@ -235,7 +268,10 @@ pub async fn send_and_record(log_id: &str, phone: &str, message: &str) {
     let status = if result.ok { "sent" } else { "failed" };
     let _ = db::run(
         "UPDATE sms_log SET status = ? WHERE id = ?",
-        &[arg(json!(format!("{status}: {}", result.detail))), arg(json!(log_id))],
+        &[
+            arg(json!(format!("{status}: {}", result.detail))),
+            arg(json!(log_id)),
+        ],
     );
 }
 

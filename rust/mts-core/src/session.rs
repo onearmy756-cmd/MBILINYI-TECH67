@@ -57,8 +57,15 @@ pub fn load(headers: &HeaderMap) -> Session {
             );
             return Session {
                 id,
-                user_id: r.get("user_id").and_then(|v| v.as_str()).map(str::to_string),
-                csrf: r.get("csrf").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                user_id: r
+                    .get("user_id")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                csrf: r
+                    .get("csrf")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
             };
         }
     }
@@ -70,9 +77,18 @@ fn new_session() -> Session {
     let csrf = util::token_hex(32);
     let _ = db::run(
         "INSERT INTO sessions (id, user_id, csrf, created_at, seen_at) VALUES (?, NULL, ?, ?, ?)",
-        &db::args(vec![json!(id), json!(csrf), json!(util::now()), json!(util::now())]),
+        &db::args(vec![
+            json!(id),
+            json!(csrf),
+            json!(util::now()),
+            json!(util::now()),
+        ]),
     );
-    Session { id, user_id: None, csrf }
+    Session {
+        id,
+        user_id: None,
+        csrf,
+    }
 }
 
 /// Sign in: a fresh session id and a fresh CSRF token, exactly as
@@ -97,11 +113,18 @@ pub fn login(user_id: &str) -> Session {
             json!(util::now()),
         ]),
     );
-    Session { id, user_id: Some(user_id.to_string()), csrf }
+    Session {
+        id,
+        user_id: Some(user_id.to_string()),
+        csrf,
+    }
 }
 
 pub fn logout(id: &str) {
-    let _ = db::run("DELETE FROM sessions WHERE id = ?", &db::args(vec![json!(id)]));
+    let _ = db::run(
+        "DELETE FROM sessions WHERE id = ?",
+        &db::args(vec![json!(id)]),
+    );
 }
 
 pub fn set_cookie(id: &str) -> String {
@@ -116,7 +139,10 @@ pub fn clear_cookie() -> String {
 /// every caller inherits the rule.
 pub fn current_user(sess: &Session) -> Option<db::Row> {
     let uid = sess.user_id.as_ref()?;
-    let u = db::row("SELECT * FROM users WHERE id = ?", &db::args(vec![json!(uid)]))?;
+    let u = db::row(
+        "SELECT * FROM users WHERE id = ?",
+        &db::args(vec![json!(uid)]),
+    )?;
     let status = u.get("status").and_then(|v| v.as_str()).unwrap_or("Active");
     if status != "Active" {
         return None;
@@ -138,7 +164,10 @@ pub fn sweep() {
     let cutoff = (chrono::Local::now() - chrono::Duration::days(14))
         .format("%Y-%m-%d %H:%M:%S")
         .to_string();
-    let _ = db::run("DELETE FROM sessions WHERE seen_at < ?", &db::args(vec![json!(cutoff)]));
+    let _ = db::run(
+        "DELETE FROM sessions WHERE seen_at < ?",
+        &db::args(vec![json!(cutoff)]),
+    );
 }
 
 /// Args helper re-exported so modules need only import `session`.
