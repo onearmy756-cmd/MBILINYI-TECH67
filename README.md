@@ -26,10 +26,17 @@ Environment: `MTS_DB` (SQLite path, default `storage/mts.sqlite`), `MTS_PORT`
 created, so a fresh clone runs with no setup.
 
 ```bash
-cargo test          # 87 unit tests
+cargo test          # 97 unit tests
 cargo fmt --all -- --check
 cargo clippy --all-targets
 ```
+
+## The phone and desktop apps
+
+The platform also ships as an installable app for Android, iOS, Windows, macOS
+and Linux. Each one opens the live site, so an installed copy always runs the
+current build. Build steps, icons and the calls setup are in
+[BUILD.md](BUILD.md).
 
 ## Paying in USD or TZS (Stripe + mobile money)
 
