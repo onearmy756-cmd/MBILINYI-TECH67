@@ -127,3 +127,34 @@ exists in that org that I may use. Then change the apex A record to Fly's IP.
   the invoice `deposit_info` names, not the newest from `admin_list`.
 * Lesson: when a Rust port disagrees with PHP only in production, diff the
   *query* (ORDER BY / LIKE pattern / LIMIT), not just the route list.
+
+## Security tools — verified working, two real bugs fixed (2026-10-24)
+The platform's security tooling is real, not decorative: `security.php` actions
+`status/public_key/sign/verify/log/logo_*/company_account/sandbox/
+authorise_domain/deauthorise_domain/scan`, plus the sandbox checks
+`headers exposure dns tls dependencies code malware`. Exercised every one
+against the live app with an admin session — all answer with real evidence
+(real HTTP response, real DoH lookups, real TLS handshake, real file walk).
+
+Bugs found while testing (both fixed, 110 tests pass, redeployed):
+* **Posture lied about TLS.** `hardening::posture()` and `security status` derive
+  `https`/`Strict-Transport-Security` from `settings::get("platform_url")`, which
+  was seeded `""` and never filled — so a live HTTPS site reported
+  `https:false, HSTS:false` while the middleware genuinely sent HSTS (curl
+  confirmed the header). Fix: `seed_platform_url_from_env()` at boot, from
+  `MTS_PUBLIC_URL` or `SITE_URL`, only when the setting is empty. An explicit
+  admin value still wins. Same empty setting was making Stripe's success/cancel
+  URLs relative.
+* **The malware scan could never match its own signature.** `scan_malware` used
+  `scan_dir`, which filters to a source-code extension list and reads UTF-8 text
+  only. The one digest it ships (EICAR) has a `.txt`/`.com` name, and a binary
+  payload is not valid UTF-8 — so both were silently skipped and the scan always
+  reported "Files hashed: N, Findings: 0". Fix: new `walk_files` walks EVERY
+  file (shared size/count/skip limits); `scan_dir` keeps the extension filter for
+  the source audit, `scan_malware` reads raw bytes and matches lossily. Verified
+  a planted EICAR file now reports `Findings: 1`.
+* Scope rule verified: `exposure` refuses with `data.ok:false` unless the domain
+  is in `security_authorised_domains` AND the caller names who authorised it.
+  Note the envelope is still `ok:true`; the refusal is `data.ok:false` +
+  `data.evidence`. `dependencies` legitimately reports `ok:false` when no
+  manifest (Cargo.toml/package.json/...) exists under the target.

@@ -42,6 +42,15 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   (both rows share a `created_at` second); latency on Fly separates them. When a
   Rust port disagrees with PHP only in production, diff the *query*
   (ORDER BY / LIKE / LIMIT), not just the route list.
+- **Security tools all work** (verified live): `security.php` actions + the
+  sandbox checks `headers/exposure/dns/tls/dependencies/code/malware`. Two real
+  bugs found and fixed: (1) posture reported `https:false`/HSTS off because
+  `platform_url` was seeded empty — now seeded from `MTS_PUBLIC_URL`/`SITE_URL`
+  at boot; (2) the malware scan used `scan_dir` (source extensions only, UTF-8
+  text), so its own EICAR signature could never match and binary payloads were
+  skipped — now `walk_files` visits every file and hashes raw bytes.
+  Scope rule: `exposure` refuses via `data.ok:false` (envelope stays `ok:true`)
+  unless the domain is authorised AND the caller names who approved it.
 
 ## Facts worth keeping
 - Repo `onearmy756-cmd/MBILINYI-TECH67`, default branch **master** (a stale
