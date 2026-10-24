@@ -113,3 +113,40 @@ source. Most of it was already live; two runtime bugs were real and are fixed.
 - `smoke.sh` is green when the only `ok:false` lines are the four intentional
   refusals (steps 8, 11, 12d, 13). Count `^== ` steps (26) rather than trusting
   a single grep.
+
+## Emailed-code sign-in path (2026-10-23)
+`auth.rs` was missing `verify-login-otp` and `resend-login-otp`, and `login`
+never created a code — yet the frontend login modal opens on the "Emailed Code"
+tab by default, so EVERY sign-in failed at step two with "Unknown auth action."
+This was the login bug found during the browser demo.
+
+Ported from `api/auth.php` (lines 44-195) to match the PHP reference exactly:
+- `otp_pepper()` reads `MTS_OTP_PEPPER` (default `MTS_OTP_2026_PEPPER_DAR`).
+- `otp_hash(code,email)` = hex(sha256("code|email|pepper")).
+- `otp_code()` = `format!("{:06}", gen_range(0..1_000_000u32))` — 6 digits, all
+  million values reachable. Do NOT use `util::new_id`'s 3 random bytes here.
+- `otp_issue()` DELETEs prior login rows for the email, then INSERTs with a
+  10-minute expiry, returning the plaintext code.
+- `login` calls `otp_issue` + `mail::send_login_code` (the fn already existed in
+  `mail.rs` and was never called by anything).
+- `verify_login_otp` compares via `crate::payments::constant_time_eq`, checks
+  expiry, sets `used_at`, then `finish_login` (a new shared helper extracted
+  from `verify_login_pin`, which now also calls it).
+- `otp_debug(code)` returns Some only if `OTP_SHOW_IN_RESPONSE` is set and != "0".
+
+Verified live in the browser end-to-end (work-1 → /auth → email+password →
+6-digit code → /admin, full 27-tab panel). Security probe results:
+wrong code rejected; replay → "No pending code"; resend rotates the code and
+kills the old one; unknown email → "No account with this email."; missing CSRF
+token rejected; rate limiter kicks in after several attempts.
+Production check: with `OTP_SHOW_IN_RESPONSE` unset, `otp_debug_only` is `null`.
+
+Also fixed `visitor_stats` (api/data.rs) to return `yesterday`/`this_week`/
+`this_month` — the dashboard read them but the handler sent only total/today, so
+the Visitors card printed "undefined". Counts are now per distinct session_id.
+
+`serve.sh`: `elixir --version` HANGS (boots an Erlang VM that doesn't exit) —
+wrapped in `timeout 15`. It also left `erl_crash.dump`; git-ignored.
+
+Tests: `cargo test` 109 pass (3 new in `api::auth::tests`). `smoke.sh` 26/26
+(4 intentional refusals). Commit `185a0a7`, pushed to origin/master.

@@ -51,5 +51,23 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   email, not just `user_id`.
 - Keep ONE `templates/` dir at the repo root; the duplicate under
   `rust/mts-core/templates` drifted and was deleted.
+- **The Rust core silently lagged the PHP reference on routes.** `auth.rs` had
+  no `verify-login-otp`/`resend-login-otp` while the login modal OPENS on the
+  Emailed Code tab, so every sign-in died at "Unknown auth action." Fix pattern:
+  `grep -oE "case '[a-z-]+'" api/*.php | sort -u` vs the Rust `match c.action()`
+  arms — diff them whenever a feature "works in PHP but not in the core".
+  `login` must ALSO create the code; having the verify route is not enough.
+- Login codes: hash = sha256(`code|email|MTS_OTP_PEPPER`), 6 digits from
+  `rand::thread_rng().gen_range(0..1_000_000)`, 10-min expiry, `used_at` marks
+  consumption, and a resend DELETEs the prior row. Return the code as
+  `otp_debug_only` ONLY when `OTP_SHOW_IN_RESPONSE` is set — never on the live
+  site. `mail::send_login_code` already existed but nothing called it.
+- Frontend/backend field drift is a recurring class: `visitor_stats` sent only
+  `total`/`today` while the dashboard read `yesterday`/`this_week`/`this_month`
+  → the card rendered literally "undefined". Grep the JS for the keys it reads
+  and confirm the handler sends each one.
+- `elixir --version` boots an Erlang VM that never exits → it HANGS a startup
+  script. Always wrap it: `timeout 15 elixir --version | grep -m1 Elixir`.
+  It also drops `erl_crash.dump` in the CWD (now git-ignored).
 
 Details: `2026-10-21-mbilinyi-rust-core.md`.
