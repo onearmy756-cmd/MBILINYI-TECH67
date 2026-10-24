@@ -151,6 +151,27 @@ function toast(msg, type = 'ok') {
  * The CEO pastes the platform link in Admin → Settings → Company Information.
  * Until it is set we hide the button rather than send visitors to a dead page,
  * and the "see projects on this site" link stays as the working alternative. */
+/* ---------- COMPANY BRAND ----------
+ * The CEO can replace the logo and the platform name in
+ * Admin → Settings → Company Information. The header ships with the default
+ * mark so the page renders before this runs; here we swap in whatever the
+ * company actually set, on every page. */
+function paintBrand() {
+  const p = window.__PLATFORM__ || {};
+  const logo = String(p.logo || '').trim();
+  const img = $('brandLogo');
+  if (img && logo && img.getAttribute('src') !== logo) {
+    img.setAttribute('src', logo);
+  }
+  const nameEl = $('brandName');
+  const name = String(p.name || '').trim();
+  // Only replace the wordmark when the company set its own name, so the
+  // designed default ("MBILINYI TECH SOLUTIONS") is never lost to a blank.
+  if (nameEl && name && name !== 'MbilinyiTech Platform') {
+    nameEl.textContent = name;
+  }
+}
+
 function paintPlatformCta() {
   const a = $('platformCta');
   if (!a) return;
@@ -3707,6 +3728,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderNews();
   renderTeam();
   paintPlatformCta();
+  paintBrand();
   initFeedbackStars();
 
   if ($('view-client')) {
