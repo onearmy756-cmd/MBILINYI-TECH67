@@ -34,6 +34,7 @@ mod pqc;
 mod runtime;
 mod runtime_api;
 mod sandbox;
+mod scheduler;
 mod schema_sql;
 mod security;
 mod seed;
@@ -340,6 +341,7 @@ pub fn bootstrap() {
     ajira::init_tables();
     agents::init_tables();
     engine::init_tables();
+    scheduler::init_tables();
     ofisi::init_tables();
     security::init_tables();
     mail::init_tables();
@@ -389,6 +391,11 @@ async fn main() {
         std::process::exit(1);
     }
     bootstrap();
+
+    // The autonomous scheduler: from here on the company works without being
+    // pushed. It claims queued jobs, honours the CEO's approval gate, and keeps
+    // every step on the record.
+    scheduler::start();
 
     let app = Router::new()
         .route("/ws/call/:room", get(call::ws_call))

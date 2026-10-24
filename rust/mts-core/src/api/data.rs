@@ -283,6 +283,33 @@ fn req_create(c: &Ctx) -> Response {
         assigned_to = emp_name;
     }
 
+    // Put the work on the scheduler's queue *held*: the CEO can see exactly what
+    // is waiting, and the loop will not touch it until the request is approved.
+    // The gate is therefore visible in the queue rather than implied by a status.
+    {
+        let tools: Vec<String> = if assigned_to.is_empty() {
+            Vec::new()
+        } else {
+            crate::wafanyakazi::pick_for_service(&service)
+                .map(|e| crate::tools::granted(&util::s(e.get("tools").unwrap_or(&J::Null))))
+                .unwrap_or_default()
+        };
+        let agent_id = crate::agents::pick_for_tools(&tools);
+        let task = format!(
+            "Serve client request {tracking}: {title}. Service: {service}. \
+             Carry out the work end to end, run the tests the service needs, and write the report the client will read."
+        );
+        crate::scheduler::enqueue(
+            &agent_id,
+            &task,
+            &id,
+            &service,
+            &tools,
+            "client-request",
+            true,
+        );
+    }
+
     let request = db::row("SELECT * FROM requests WHERE id = ?", &[arg(json!(id))])
         .map(|r| map::request(&r))
         .unwrap_or(J::Null);
@@ -404,11 +431,26 @@ fn notify_status(req: &db::Row, status: &str) {
 /// The CEO approved a request, so the assigned worker's agent starts the job.
 /// Nothing here runs if no agent or worker is in place — the request simply
 /// waits, and the admin sees why.
+///
+/// The work goes on the scheduler's queue rather than straight to an agent, so
+/// the approval gate is enforced in one place: a job put on the queue *held*
+/// cannot run until this function releases it, and the CEO's approval is the
+/// only thing that releases it.
 fn start_approved_work(req: &db::Row) {
     let rid = util::s(req.get("id").unwrap_or(&J::Null));
     let service = util::s(req.get("service").unwrap_or(&J::Null));
     let title = util::s(req.get("title").unwrap_or(&J::Null));
     let tracking = util::s(req.get("tracking_id").unwrap_or(&J::Null));
+    // Any job still held for this request may now go: the CEO has approved it.
+    crate::scheduler::release_for_request(&rid);
+    // If a job was already queued for this request, releasing it was enough.
+    let already = db::scalar_i64(
+        "SELECT COUNT(*) FROM agent_jobs WHERE request_id=? AND status IN ('ready','running','done')",
+        &[arg(json!(rid))],
+    );
+    if already > 0 {
+        return;
+    }
     // Which worker serves this service, and what tools their job may use.
     let Some(emp) = crate::wafanyakazi::pick_for_service(&service) else {
         return;
@@ -421,7 +463,16 @@ fn start_approved_work(req: &db::Row) {
     // The agent that holds the tools for this job; the manager picks when the
     // worker's grant names none.
     let agent_id = crate::agents::pick_for_tools(&tools);
-    crate::engine::spawn_with_tools(agent_id, task, rid, tools);
+    let job = crate::scheduler::enqueue(
+        &agent_id,
+        &task,
+        &rid,
+        &service,
+        &tools,
+        "approval-gate",
+        true,
+    );
+    crate::scheduler::release(&job);
 }
 
 /* ---------------------------- quotes ---------------------------- */

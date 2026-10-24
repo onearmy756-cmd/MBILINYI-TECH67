@@ -269,6 +269,23 @@ pub async fn run_job_with_grant(
         worker_grant.as_deref(),
     );
     let specs = specs_for(&grant);
+    // A job that names tools, given to an agent that holds none of them, cannot
+    // be done. Report that plainly rather than let the model write a report
+    // about work it never carried out — a silent "done" is worse than a visible
+    // refusal, because the CEO would read it as success.
+    if specs.is_empty() {
+        if let Some(w) = worker_grant.as_ref() {
+            if !w.is_empty() && !w.iter().any(|x| x == "all") {
+                let msg = format!(
+                    "No agent holds the tools this job needs ({}). \
+                     The CEO grants tools to an agent in Admin -> Agents.",
+                    w.join(", ")
+                );
+                finish(&run_id, "blocked", "", &msg, 0);
+                return json!({ "started": false, "runId": run_id, "error": msg });
+            }
+        }
+    }
     // The model sees tool names with underscores; map back to catalogue codes.
     let code_of = |n: &str| {
         tools::CATALOGUE

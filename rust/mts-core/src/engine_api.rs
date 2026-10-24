@@ -150,6 +150,101 @@ pub async fn handle(c: &Ctx) -> Response {
             .unwrap_or(0);
             ok(json!({ "cancelled": n > 0 }))
         }
+        // ---- The scheduler's queue: what the company is doing, and what waits ----
+        "queue" => {
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let status = c.p("status");
+            let limit = c.p("limit").parse::<i64>().unwrap_or(100).clamp(1, 500);
+            ok(json!({
+                "jobs": crate::scheduler::list(&status, limit),
+                "stats": crate::scheduler::stats(),
+            }))
+        }
+        "queue_stats" => {
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            ok(crate::scheduler::stats())
+        }
+        "queue_cancel" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let id = c.p("jobId");
+            ok(json!({ "cancelled": crate::scheduler::cancel(&id), "jobId": id }))
+        }
+        "queue_retry" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let id = c.p("jobId");
+            ok(json!({ "retried": crate::scheduler::retry(&id), "jobId": id }))
+        }
+        // The CEO's approval, for a job filed by hand. A held job runs only once
+        // this is called — which is the whole point of the gate.
+        "queue_release" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let id = c.p("jobId");
+            ok(json!({ "released": crate::scheduler::release(&id), "jobId": id }))
+        }
+        // Put a job on the queue by hand. `hold: true` files it behind the
+        // approval gate; the default is to let it run.
+        "queue_add" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let task = c.p("task");
+            if task.trim().is_empty() {
+                return bad("Describe the job the agent should do.");
+            }
+            let tools: Vec<String> = crate::tools::granted(&c.p("tools"));
+            let agent_id = {
+                let named = c.p("agentId");
+                if !named.trim().is_empty() {
+                    named
+                } else {
+                    crate::agents::pick_for_tools(&tools)
+                }
+            };
+            let held = c.p("hold") == "true" || c.p("hold") == "1";
+            let job = crate::scheduler::enqueue(
+                &agent_id,
+                &task,
+                &c.p("requestId"),
+                &c.p("service"),
+                &tools,
+                "admin",
+                held,
+            );
+            ok(json!({ "jobId": job, "agentId": agent_id, "held": held }))
+        }
+        // Kick the loop once, so the CEO can make the queue move without waiting
+        // for the next tick. Returns how many jobs started.
+        "queue_sweep" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            ok(json!({ "started": crate::scheduler::sweep_once() }))
+        }
         // ---- The runtime's own health ----
         "capabilities" => {
             if let Err(e) = c.require_admin() {
