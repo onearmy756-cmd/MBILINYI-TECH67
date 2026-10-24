@@ -58,6 +58,7 @@ COPY --from=build /src/rust/mts-core/target/release/mts-core /app/mts-core
 COPY templates /app/templates
 COPY rust/mts-core/r /app/r
 COPY assets /app/assets
+COPY downloads /app/downloads
 COPY manifest.json sw.js robots.txt sitemap.xml /app/
 # Outside /app on purpose: `static_file` serves any dotted path under the
 # working directory, and this script has no business being downloadable.

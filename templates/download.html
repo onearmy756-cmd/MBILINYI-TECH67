@@ -1,0 +1,57 @@
+<!-- ============ DOWNLOAD / INSTALL PAGE ============ -->
+<div id="view-landing" class="view-section active">
+  <section id="download" class="max-w-5xl mx-auto px-4 pt-8 pb-16">
+    <div class="text-center">
+      <div class="badge bg-emerald-500/10 text-emerald-300 border border-emerald-400/30 inline-block"><span data-en="GET THE APP" data-sw="PATA APP">GET THE APP</span></div>
+      <h2 class="font-display font-bold text-3xl md:text-4xl mt-3"><span data-en="Install" data-sw="Sakinisha">Install</span> <span class="grad-text" data-en="Mbilinyi Tech" data-sw="Mbilinyi Tech">Mbilinyi Tech</span></h2>
+      <p class="text-white/55 mt-3 text-[14px] max-w-2xl mx-auto" data-en="The same platform on your phone, laptop and desktop — install it once and it opens like a native app. Every build loads the live site, so you always run the newest version." data-sw="Jukwaa lilelile kwenye simu, laptop na kompyuta yako — isakinishe mara moja na itafunguka kama app ya kawaida. Kila toleo hupakia tovuti ya moja kwa moja, hivyo unatumia toleo jipya zaidi kila wakati.">The same platform on your phone, laptop and desktop — install it once and it opens like a native app. Every build loads the live site, so you always run the newest version.</p>
+    </div>
+
+    <div id="pwaCta" class="hidden glass-strong rounded-3xl p-6 mt-8 border border-emerald-400/30">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="font-display font-bold text-lg" data-en="Install on this device" data-sw="Sakinisha kwenye kifaa hiki">Install on this device</div>
+          <div class="text-white/55 text-[13px] mt-1" data-en="One tap — no download, no app store." data-sw="Mbofyo mmoja — hakuna kupakua, hakuna app store.">One tap — no download, no app store.</div>
+        </div>
+        <button id="pwaInstallBtn" onclick="installPwa()" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2"><i class="fa-solid fa-download"></i> <span data-en="Install App" data-sw="Sakinisha App">Install App</span></button>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-4 mt-6">
+      <div class="glass rounded-3xl p-6 flex flex-col">
+        <div class="w-12 h-12 rounded-2xl bg-blue-500/15 border border-blue-400/30 flex items-center justify-center text-2xl"><i class="fa-brands fa-android text-emerald-300"></i></div>
+        <div class="font-display font-bold text-lg mt-3">Android</div>
+        <div class="text-white/50 text-[12.5px] mt-1 mb-4" data-en="Android 6.0 and newer. Install the APK, then allow installs from this source when your phone asks." data-sw="Android 6.0 na zaidi. Sakinisha APK, kisha ruhusu usakinishaji kutoka chanzo hiki simu inapouliza.">Android 6.0 and newer. Install the APK, then allow installs from this source when your phone asks.</div>
+        <a href="downloads/MbilinyiTech-Android.apk" download class="mt-auto grad-btn px-5 py-3 rounded-xl font-bold text-sm text-center flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> <span data-en="Download APK" data-sw="Pakua APK">Download APK</span></a>
+        <div class="text-white/35 text-[11px] mt-2 text-center font-mono">MbilinyiTech-Android.apk • 7.8 MB</div>
+      </div>
+
+      <div class="glass rounded-3xl p-6 flex flex-col">
+        <div class="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-2xl"><i class="fa-brands fa-windows text-cyan-300"></i></div>
+        <div class="font-display font-bold text-lg mt-3">Windows</div>
+        <div class="text-white/50 text-[12.5px] mt-1 mb-4" data-en="Windows 10 and 11, 64-bit. The installer adds a Start-menu entry and a desktop shortcut." data-sw="Windows 10 na 11, 64-bit. Kifungashio huongeza kitu kwenye menyu ya Start na shortcut ya desktop.">Windows 10 and 11, 64-bit. The installer adds a Start-menu entry and a desktop shortcut.</div>
+        <a href="downloads/MbilinyiTech-Setup-Windows.exe" download class="mt-auto grad-btn px-5 py-3 rounded-xl font-bold text-sm text-center flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> <span data-en="Download Setup" data-sw="Pakua Kifungashio">Download Setup</span></a>
+        <div class="text-white/35 text-[11px] mt-2 text-center font-mono">MbilinyiTech-Setup-Windows.exe • 1.2 MB</div>
+        <a href="downloads/MbilinyiTech-Windows-Portable.exe" download class="text-cyan-300 text-[12px] font-semibold mt-3 text-center hover:underline" data-en="Portable version (no install) →" data-sw="Toleo la kubeba (bila kusakinisha) →">Portable version (no install) →</a>
+      </div>
+
+      <div class="glass rounded-3xl p-6 flex flex-col">
+        <div class="w-12 h-12 rounded-2xl bg-violet-500/15 border border-violet-400/30 flex items-center justify-center text-2xl"><i class="fa-brands fa-linux text-violet-300"></i></div>
+        <div class="font-display font-bold text-lg mt-3">Linux</div>
+        <div class="text-white/50 text-[12.5px] mt-1 mb-4" data-en="Debian and Ubuntu, 64-bit. Install with your package manager — dependencies are fetched for you." data-sw="Debian na Ubuntu, 64-bit. Sakinisha kwa package manager yako — vitegemezi hupakuliwa kiotomatiki.">Debian and Ubuntu, 64-bit. Install with your package manager — dependencies are fetched for you.</div>
+        <a href="downloads/MbilinyiTech-Linux-amd64.deb" download class="mt-auto grad-btn px-5 py-3 rounded-xl font-bold text-sm text-center flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> <span data-en="Download .deb" data-sw="Pakua .deb">Download .deb</span></a>
+        <div class="text-white/35 text-[11px] mt-2 text-center font-mono">MbilinyiTech-Linux-amd64.deb • 1.4 MB</div>
+      </div>
+    </div>
+
+    <div class="glass rounded-3xl p-6 mt-6">
+      <div class="font-display font-bold text-lg"><i class="fa-solid fa-circle-info text-cyan-300 mr-2"></i><span data-en="How to install on iPhone & iPad" data-sw="Jinsi ya kusakinisha kwenye iPhone na iPad">How to install on iPhone &amp; iPad</span></div>
+      <ol class="text-white/60 text-[13.5px] mt-3 space-y-2 list-decimal list-inside">
+        <li data-en="Open mbilinyitech.co.tz in Safari." data-sw="Fungua mbilinyitech.co.tz kwenye Safari.">Open mbilinyitech.co.tz in Safari.</li>
+        <li data-en="Tap the Share button, then choose &quot;Add to Home Screen&quot;." data-sw="Gusa kitufe cha Share, kisha chagua &quot;Add to Home Screen&quot;.">Tap the Share button, then choose "Add to Home Screen".</li>
+        <li data-en="Tap Add — the icon appears on your home screen like any app." data-sw="Gusa Add — ikoni itaonekana kwenye skrini yako ya nyumbani kama app yoyote.">Tap Add — the icon appears on your home screen like any app.</li>
+      </ol>
+      <div class="text-white/45 text-[12.5px] mt-4" data-en="On Android, Chrome offers the same option automatically — or use the APK above." data-sw="Kwenye Android, Chrome hutoa chaguo hilo kiotomatiki — au tumia APK hapo juu.">On Android, Chrome offers the same option automatically — or use the APK above.</div>
+    </div>
+  </section>
+</div>

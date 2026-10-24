@@ -62,6 +62,9 @@ fn title_for(name: &str) -> String {
         "careers" => "Careers (Ajira) — Apply & Be Assessed | Mbilinyi Tech Solutions".into(),
         "staff" => "Our Experts — The People Who Serve You | Mbilinyi Tech Solutions".into(),
         "mtaalamu" => "Staff Portal — Your Tasks & Tools | Mbilinyi Tech Solutions".into(),
+        "download" => {
+            "Download the App — Windows, Android & Linux | Mbilinyi Tech Solutions".into()
+        }
         _ => "Mbilinyi Tech Solutions".into(),
     }
 }
@@ -394,6 +397,8 @@ fn footer(globals_html: &str, country: &str) -> String {
       <span class="text-white/20">•</span>
       <a href="faq" class="hover:text-cyan-300 transition" data-en="FAQ" data-sw="Maswali">FAQ</a>
       <span class="text-white/20">•</span>
+      <a href="download" class="hover:text-emerald-300 transition text-emerald-300/90 font-semibold" data-en="Download App" data-sw="Pakua App">Download App</a>
+      <span class="text-white/20">•</span>
       <a href="community" class="hover:text-cyan-300 transition" data-en="Community" data-sw="Jamii">Community</a>
     </div>
     <div class="text-[12px] text-white/35">&copy; {year} <span data-en="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified" data-sw="Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Imejengwa kwa viwango vya uzalishaji • Imethibitishwa BRELA na TIN">Mbilinyi Tech Solutions • CEO Jackson Mbilinyi • Built to production standards • BRELA &amp; TIN Verified</span></div>
@@ -482,36 +487,40 @@ fn template_dir() -> String {
     "templates".to_string()
 }
 
+/// Every page the router will serve. A template with no entry here 404s.
+pub const KNOWN_PAGES: [&str; 27] = [
+    "index",
+    "services",
+    "stack",
+    "ai",
+    "pricing",
+    "process",
+    "work",
+    "track",
+    "contact",
+    "auth",
+    "client",
+    "admin",
+    "news",
+    "team",
+    "deploy",
+    "setup",
+    "terms",
+    "privacy",
+    "refund",
+    "feedback",
+    "reports",
+    "community",
+    "faq",
+    "careers",
+    "staff",
+    "mtaalamu",
+    "download",
+];
+
 /// Serve one page.
 pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
-    let known = [
-        "index",
-        "services",
-        "stack",
-        "ai",
-        "pricing",
-        "process",
-        "work",
-        "track",
-        "contact",
-        "auth",
-        "client",
-        "admin",
-        "news",
-        "team",
-        "deploy",
-        "setup",
-        "terms",
-        "privacy",
-        "refund",
-        "feedback",
-        "reports",
-        "community",
-        "faq",
-        "careers",
-        "staff",
-        "mtaalamu",
-    ];
+    let known = KNOWN_PAGES;
     if !known.contains(&name) {
         return (StatusCode::NOT_FOUND, "404 Not Found").into_response();
     }

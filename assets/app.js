@@ -4830,3 +4830,33 @@ async function runSnippet() {
     out.textContent = `exit: ${r.ok ? 'success' : 'failure'} • ${r.ms} ms\n\n${r.output}`;
   } catch (e) { out.textContent = e.message; }
 }
+
+/* ================================================================
+   INSTALL THE APP (PWA)
+   Chrome/Edge/Android fire `beforeinstallprompt`; we hold it and fire
+   it from the button. Safari never fires it, so there we show the
+   Add-to-Home-Screen steps instead of a dead button.
+================================================================ */
+let __PWA_PROMPT = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  __PWA_PROMPT = e;
+  const cta = $('pwaCta');
+  if (cta) cta.classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  __PWA_PROMPT = null;
+  const cta = $('pwaCta');
+  if (cta) cta.classList.add('hidden');
+  toast(LANG === 'sw' ? 'App imesakinishwa kwenye kifaa chako ✓' : 'App installed on your device ✓', 'ok');
+});
+function installPwa() {
+  if (!__PWA_PROMPT) {
+    toast(LANG === 'sw'
+      ? 'Kwenye iPhone/iPad: Share → Add to Home Screen. Kwenye Android: menyu ya Chrome → Install app.'
+      : 'On iPhone/iPad: Share → Add to Home Screen. On Android: Chrome menu → Install app.', 'info');
+    return;
+  }
+  __PWA_PROMPT.prompt();
+  __PWA_PROMPT.userChoice.then(() => { __PWA_PROMPT = null; });
+}

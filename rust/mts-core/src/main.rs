@@ -65,6 +65,12 @@ fn mime_of(path: &str) -> &'static str {
         "woff2" => "font/woff2",
         "woff" => "font/woff",
         "txt" => "text/plain; charset=utf-8",
+        "exe" => "application/vnd.microsoft.portable-executable",
+        "apk" => "application/vnd.android.package-archive",
+        "deb" => "application/vnd.debian.binary-package",
+        "dmg" => "application/x-apple-diskimage",
+        "zip" => "application/zip",
+        "xml" => "application/xml",
         _ => "application/octet-stream",
     }
 }
@@ -84,12 +90,27 @@ async fn static_file(path: &str) -> Response {
     match tokio::fs::read(clean).await {
         Ok(bytes) => {
             let ct = HeaderValue::from_static(mime_of(clean));
+            let is_download = clean.starts_with("downloads/");
             let mut res = Response::new(Body::from(bytes));
             res.headers_mut().insert(header::CONTENT_TYPE, ct);
             res.headers_mut().insert(
                 header::CACHE_CONTROL,
-                HeaderValue::from_static("public, max-age=3600"),
+                HeaderValue::from_static(if is_download {
+                    "public, max-age=300"
+                } else {
+                    "public, max-age=3600"
+                }),
             );
+            // Installers must land in the download folder, never render in a tab.
+            if is_download {
+                let fname = clean.rsplit('/').next().unwrap_or("download");
+                if let Ok(v) = HeaderValue::from_str(&format!(
+                    "attachment; filename=\"{}\"",
+                    fname.replace('"', "")
+                )) {
+                    res.headers_mut().insert(header::CONTENT_DISPOSITION, v);
+                }
+            }
             res
         }
         Err(_) => (StatusCode::NOT_FOUND, "404 Not Found").into_response(),
@@ -429,5 +450,52 @@ async fn main() {
     println!("Mbilinyi Tech Solutions — Rust core on http://{addr}");
     if let Err(e) = axum::serve(listener, app).await {
         eprintln!("[fatal] server stopped: {e}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn installer_extensions_get_installer_mime_types() {
+        assert_eq!(mime_of("downloads/App.apk"), "application/vnd.android.package-archive");
+        assert_eq!(mime_of("downloads/Setup.exe"), "application/vnd.microsoft.portable-executable");
+        assert_eq!(mime_of("downloads/App.deb"), "application/vnd.debian.binary-package");
+        assert_eq!(mime_of("downloads/App.dmg"), "application/x-apple-diskimage");
+    }
+
+    #[test]
+    fn assets_keep_their_own_mime_types() {
+        assert_eq!(mime_of("assets/app.js"), "application/javascript; charset=utf-8");
+        assert_eq!(mime_of("assets/icons/icon-192.png"), "image/png");
+        assert_eq!(mime_of("manifest.json"), "application/json");
+    }
+
+    /// The download page is a page, so it must be in the router's list — a
+    /// template without an entry here 404s no matter how good it looks.
+    #[test]
+    fn the_download_page_is_routable() {
+        assert!(crate::pages::KNOWN_PAGES.contains(&"download"));
+    }
+
+    /// Every routable page must have a template on disk. Registering a page
+    /// without its file is a 404 at runtime, and this catches it at test time.
+    #[test]
+    fn every_routable_page_has_a_template() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
+        for page in crate::pages::KNOWN_PAGES {
+            let f = dir.join(format!("{page}.html"));
+            assert!(f.is_file(), "missing template for the {page} page: {}", f.display());
+        }
+    }
+
+    /// The two partials the renderer always reads must exist as well.
+    #[test]
+    fn the_shared_partials_exist() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
+        for p in ["_header.html", "_auth-panel.html"] {
+            assert!(dir.join(p).is_file(), "missing partial {p}");
+        }
     }
 }

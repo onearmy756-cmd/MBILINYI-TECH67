@@ -35,6 +35,8 @@
       <span class="text-white/20">•</span>
       <a href="faq" class="hover:text-cyan-300 transition" data-en="FAQ" data-sw="Maswali">FAQ</a>
       <span class="text-white/20">•</span>
+      <a href="download" class="hover:text-emerald-300 transition text-emerald-300/90 font-semibold" data-en="Download App" data-sw="Pakua App">Download App</a>
+      <span class="text-white/20">•</span>
       <a href="community" class="hover:text-cyan-300 transition" data-en="Community" data-sw="Jamii">Community</a>
     </div>
     <div class="text-[12px] text-white/35">&copy; <?php
