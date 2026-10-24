@@ -5,17 +5,14 @@ Mbilinyi Tech Solutions: a PHP site (pages + `/api/*.php`) that is being
 replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 (`assets/app.js`, `templates/`) is shared by both and must not need changes.
 
-## What is now implemented (2026-10-23)
-- **Payroll**: `payroll.rs` — payslip per escrow release, banded PAYE + NSSF +
-  WCF, TRA return. Admin Payroll tab; worker "Pay & Contract" tab.
-- **Stripe (USD)**: `payments/gateways.rs`; `gw_stripe_api_base` is overridable
-  (point it at a mock or sandbox to test). Webhooks are HMAC-verified.
-  Requires `gw_stripe_publishable` AND `gw_stripe_secret`.
-- **100 agents + manager**: `agents.rs` seeds "Magma Commander" (dept `ceo`)
-  then 100 role seats → `agents.php?action=list` returns 101.
-- **Real video call**: backend `call.rs` relays SDP/ICE on `/ws/call/:room`;
-  browser `assets/call.js` (real RTCPeerConnection). Verified 2 peers connect.
-- Details and the traps: `2026-10-23-payroll-hiring-call.md`.
+## Implemented (2026-10-23; details in `2026-10-23-payroll-hiring-call.md`)
+- **Payroll** (`payroll.rs`): payslip per escrow release, banded PAYE/NSSF/WCF,
+  TRA return. Admin Payroll tab, worker "Pay & Contract" tab.
+- **Stripe (USD)** (`payments/gateways.rs`): `gw_stripe_api_base` overridable for
+  a mock; webhooks HMAC-verified. Needs `gw_stripe_publishable` + secret.
+- **101 agents**: `agents.rs` seeds "Magma Commander" then 100 role seats.
+- **Real video call**: `call.rs` relays SDP/ICE on `/ws/call/:room`; browser
+  `assets/call.js` uses a real RTCPeerConnection (2 peers verified).
 
 ## Deploy (Fly.io) — see `2026-10-24-fly-deploy.md`
 - **LIVE: https://mbilinyitech-tz.fly.dev/** (app `mbilinyitech-tz` — the plain
@@ -23,43 +20,27 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   shared IPv4 `66.241.125.44`, IPv6 `2a09:8280:1::1cb:226c:0`.
   `scripts/smoke.sh` against the live app = 25 ok:true / 4 ok:false, the same
   as a clean local run.
-- An app-scoped Fly token (like the one first supplied, scoped to `mtechos`)
-  CANNOT create apps; every create path returns `UNAUTHORIZED`. Creating an app
-  needs an ORG token (`fly tokens create org`). **Do not deploy over
-  `mtechos`** — it is a different product (an Agent-Canvas "fundi" IDE at
-  mtech.mbilinyitech.co.tz).
-- DNS for `mbilinyitech.co.tz` is at `ns1/ns2.rodlinehost.com` (cPanel host);
-  apex A → 91.204.209.30, `www` CNAME → apex, `mtech` CNAME → mtechos.fly.dev.
-  Fly cannot take the apex until the registrar A record changes. Exact
-  replacement records are in DEPLOY.md.
+- An app-scoped Fly token CANNOT create apps (`UNAUTHORIZED`); an app needs an
+  ORG token. **Do not deploy over `mtechos`** — a different product (Agent-Canvas
+  IDE at mtech.mbilinyitech.co.tz).
+- DNS for `mbilinyitech.co.tz` is at `ns1/ns2.rodlinehost.com` (cPanel); apex A →
+  91.204.209.30, `www` CNAME → apex. Fly cannot take the apex until the registrar
+  A record changes; exact records are in DEPLOY.md.
 - `MTS_OTP_PEPPER` is now a real Fly secret. Never set `OTP_SHOW_IN_RESPONSE`
   on the live site — it returns the sign-in code in the API response.
-- **Deposit bug fixed (only reproduced on Fly):** `deposit_info()` ordered DESC
-  on `'%deposit%'` while the countersign gate `deposit_block()` ordered ASC
-  LIMIT 1 on `'%50%Deposit%'`, so with two deposit invoices the admin marked the
-  one shown and the gate judged the other. Both now call one
-  `deposit_invoice_row()` helper, mirroring PHP. A fast local loop hides this
-  (both rows share a `created_at` second); latency on Fly separates them. When a
-  Rust port disagrees with PHP only in production, diff the *query*
-  (ORDER BY / LIKE / LIMIT), not just the route list.
-- **Security tools all work** (verified live): `security.php` actions + the
-  sandbox checks `headers/exposure/dns/tls/dependencies/code/malware`. Two real
-  bugs found and fixed: (1) posture reported `https:false`/HSTS off because
-  `platform_url` was seeded empty — now seeded from `MTS_PUBLIC_URL`/`SITE_URL`
-  at boot; (2) the malware scan used `scan_dir` (source extensions only, UTF-8
-  text), so its own EICAR signature could never match and binary payloads were
-  skipped — now `walk_files` visits every file and hashes raw bytes.
-  Scope rule: `exposure` refuses via `data.ok:false` (envelope stays `ok:true`)
-  unless the domain is authorised AND the caller names who approved it.
+- **Deposit bug (only on Fly)**: two queries disagreed (DESC `%deposit%` vs ASC
+  `%50%Deposit%`), now one `deposit_invoice_row()` helper. A fast local loop hides
+  it — when a Rust port differs from PHP *only in production*, diff the query
+  (ORDER BY/LIKE/LIMIT), not just the route list.
+- **Security tools all work** (verified live). Scope rule: `exposure` refuses via
+  `data.ok:false` (envelope stays `ok:true`) unless the domain is authorised AND
+  the caller names who approved it.
 
 ## Facts worth keeping
-- **MTECHOS is a DIFFERENT product, and it is broad in labels, not capability.**
-  Its 1040 "skills" include 30 security ones (nmap, sqlmap, metasploit, ...) but
-  every one is `action:"plan"` with no runtime and no script — a checklist. Its
-  `zed_tools_catalog.json` is a list of Rust *frameworks*, not cyber tools. Only
-  nmap/masscan/openssl/gpg/tshark/tcpdump are actually installed in its image.
-  This platform has fewer labels but each is backed by real code. Compare counts
-  only after checking that the other side actually runs something.
+- **MTECHOS is a DIFFERENT product, broad in labels not capability** — its
+  1040 "skills" are `action:"plan"` checklists with no runtime. This platform has
+  fewer labels, each backed by real code; compare counts only after checking the
+  other side actually runs something. Details: `2026-10-24-fly-deploy.md`.
 - Repo `onearmy756-cmd/MBILINYI-TECH67`, default branch **master** (a stale
   `main` ref also exists). **It is public, not private.** The CEO's PAT has
   push+admin; use it in a one-off URL, never in `.git/config`.
@@ -71,27 +52,38 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   sandbox (installs Rust/R/Go/Elixir, rebuilds when sources are newer).
 - `scripts/smoke.sh` is the acceptance test; all 26 steps pass, repeatably (the
   four `ok:false` lines are intentional refusal tests).
-- **Security tools: 26 in the family, all real.** 16 original + 10 added on
-  2026-10-24 (`method_audit`, `cors_audit`, `cookie_audit`, `cert_inspect`,
-  `subdomain_enum`, `secret_scan`, `password_audit`, `jwt_inspect`,
-  `file_integrity`, `log_audit`). All in `sandbox.rs`; reachable via
+- **Security tools: 26 in the family, all real**, in `sandbox.rs`; reachable via
   `security.php?action=scan&kind=<k>` and as agent tool codes in `runtime.rs`.
-  Total catalogue 100 tools, 66+ agentic. A bare credential *prefix* is not a
-  secret — rules carry a minimum credible token length or the scanner flags its
-  own rule table.
-- **Runtimes**: `langrun.rs` advertises a language only when it can run it. A
-  compiled language (Rust, C) is built then executed — driven by `compiled: bool`
-  — and children receive only toolchain-location env (`RUSTUP_HOME`, `CARGO_HOME`,
-  `GOPATH`, `GOCACHE`, `MIX_HOME`, `ERL_LIBS`), never the platform environment.
-  All seven (python/rust/go/elixir/r/node/c) verified printing `42`.
+  Catalogue total 100 tools (66+ agentic). A bare credential *prefix* is not a
+  secret — rules need a minimum token length or the scanner flags its own table.
+- **Runtimes**: `langrun.rs` advertises a language only when it can run it;
+  compiled ones (Rust, C) are built then run. Children get only toolchain-location
+  env, never the platform environment. All seven verified printing `42`.
+- **Installable apps**: `downloads/` holds four real builds (Android APK,
+  Windows NSIS setup + portable exe, Linux .deb) and `scripts/build-apps.sh`
+  rebuilds them. `/download` page + "Get App" nav button + `installPwa()` in
+  `app.js`. `static_file` adds installer MIME types and `Content-Disposition:
+  attachment` under `downloads/`. The Dockerfile copies the dir, so the binaries
+  must be committed.
+- **Custom domain not cut over**: `mbilinyitech.co.tz` still points at the cPanel
+  host (91.204.209.30); Fly ingress is 66.241.125.44. Change the registrar A/AAAA
+  records, then the Fly cert verifies itself.
 - **Hire a worker** with `wafanyakazi.php` action **`add`** and `services` as an
   **array** (singular `service` is ignored → the worker never matches a request).
 - `rust/mts-core/target/` (~1.3 GB) and the runtime DB are git-ignored.
 
 ## Traps that already cost time
-- The Rust core keeps ONE connection. PHP opened one per request, so the smoke
-  test's mid-run `rm storage/mts.sqlite` needs `db.rs` to notice the new inode
-  and re-bootstrap — otherwise it writes to the deleted inode.
+- **A template with mode 0600 404s while looking perfect.** The server runs as
+  uid 1000 (`mts`), so a file copied into the image as root-only is unreadable →
+  `render()` returns its 404 *with the real security headers*, indistinguishable
+  from a missing route. If a page 404s in prod but its template is on disk,
+  check the mode first (`flyctl ssh console` + `ls -la /app/templates/`). The
+  Dockerfile now `chmod -R a+rX` the copied trees.
+- **New page checklist**: add the template, add it to `KNOWN_PAGES`, add a
+  `title_for` arm — and to the PHP shell if it must match. A test asserts every
+  routable page has a template on disk.
+- The Rust core keeps ONE connection (PHP opened one per request), so a mid-run
+  `rm storage/mts.sqlite` needs `db.rs` to notice the new inode and re-bootstrap.
 - `/page.php` may only 301 for GET/HEAD; redirecting a POST drops the body.
 - A guest submitting a request gets an account created and signed in, so the
   response must set the session cookie.
@@ -101,23 +93,17 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   email, not just `user_id`.
 - Keep ONE `templates/` dir at the repo root; the duplicate under
   `rust/mts-core/templates` drifted and was deleted.
-- **The Rust core silently lagged the PHP reference on routes.** `auth.rs` had
-  no `verify-login-otp`/`resend-login-otp` while the login modal OPENS on the
-  Emailed Code tab, so every sign-in died at "Unknown auth action." Fix pattern:
-  `grep -oE "case '[a-z-]+'" api/*.php | sort -u` vs the Rust `match c.action()`
-  arms — diff them whenever a feature "works in PHP but not in the core".
-  `login` must ALSO create the code; having the verify route is not enough.
-- Login codes: hash = sha256(`code|email|MTS_OTP_PEPPER`), 6 digits from
-  `rand::thread_rng().gen_range(0..1_000_000)`, 10-min expiry, `used_at` marks
-  consumption, and a resend DELETEs the prior row. Return the code as
-  `otp_debug_only` ONLY when `OTP_SHOW_IN_RESPONSE` is set — never on the live
-  site. `mail::send_login_code` already existed but nothing called it.
-- Frontend/backend field drift is a recurring class: `visitor_stats` sent only
-  `total`/`today` while the dashboard read `yesterday`/`this_week`/`this_month`
-  → the card rendered literally "undefined". Grep the JS for the keys it reads
-  and confirm the handler sends each one.
-- `elixir --version` boots an Erlang VM that never exits → it HANGS a startup
-  script. Always wrap it: `timeout 15 elixir --version | grep -m1 Elixir`.
-  It also drops `erl_crash.dump` in the CWD (now git-ignored).
+- **The Rust core silently lags the PHP reference on routes.** Whenever a
+  feature "works in PHP but not in the core", diff
+  `grep -oE "case '[a-z-]+'" api/*.php | sort -u` against the Rust
+  `match c.action()` arms. `login` must ALSO create the OTP, not just verify it.
+- Login codes: sha256(`code|email|MTS_OTP_PEPPER`), 6 digits, 10-min expiry,
+  `used_at` marks use, resend DELETEs the prior row. Return the code as
+  `otp_debug_only` ONLY when `OTP_SHOW_IN_RESPONSE` is set — never live.
+- Frontend/backend field drift recurs (`visitor_stats` sent `total`/`today` while
+  the dashboard read `yesterday`/`this_week`/`this_month` → "undefined"). Grep
+  the JS for the keys it reads and confirm the handler sends each one.
+- `elixir --version` boots an Erlang VM that never exits → HANGS a startup script.
+  Wrap it: `timeout 15 elixir --version | grep -m1 Elixir`.
 
 Details: `2026-10-21-mbilinyi-rust-core.md`.

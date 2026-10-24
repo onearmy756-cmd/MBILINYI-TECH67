@@ -231,3 +231,41 @@ Traps found while testing:
 120 Rust tests pass (was 117); smoke 4 refusals / rest ok (baseline).
 Deployed: `flyctl deploy --remote-only -a mbilinyitech-tz` (remote build ~4 min;
 run it in the background and poll — a foreground 1800s timeout is refused).
+
+---
+
+## Installable apps + /download page (later the same day)
+
+Four real artifacts now live in `downloads/` (14 MB, committed — the Dockerfile
+copies the directory, so they must be in the build context):
+`MbilinyiTech-Android.apk` (Capacitor, 7.8 MB), `MbilinyiTech-Setup-Windows.exe`
+(Tauri NSIS, 1.2 MB), `MbilinyiTech-Windows-Portable.exe` (Tauri GUI, 3.0 MB),
+`MbilinyiTech-Linux-amd64.deb` (1.4 MB). `scripts/build-apps.sh` rebuilds them;
+its header lists the toolchain traps that cost the time.
+
+**THE TRAP THAT COST THE MOST — a 0600 template 404s while looking perfect.**
+`templates/download.html` was written with mode `600` (the editor's umask). The
+file was in the image, correct, and readable by root — but the server runs as
+`mts` (uid 1000), so `read_to_string` failed, `render()` returned its 404, and
+`/download` answered "404 Not Found" **with the real security headers**, which
+looks exactly like a missing route. Diagnosis: `flyctl ssh console` +
+`ls -la /app/templates/` + `gosu mts head -c 50 <file>`. Fix in the Dockerfile
+(`chmod -R a+rX` on the copied trees) so any host umask is survivable. When a
+page 404s in production but its template is on disk, check the mode first.
+
+- `static_file` now sends installer MIME types and, under `downloads/`, a
+  `Content-Disposition: attachment` so an .exe lands in the downloads folder
+  instead of rendering in a tab. `mime_of` + the page list have tests (125 now).
+- `/download` is registered in `KNOWN_PAGES` (now a `pub const`, so the test can
+  read it) in both the Rust core and the PHP shell (`download.php`).
+- Nav "Get App" button, mobile-menu entry, footer link, and `installPwa()` in
+  `app.js` (holds `beforeinstallprompt`; Safari gets Add-to-Home-Screen steps).
+
+## Custom domain: NOT switched over yet
+`mbilinyitech.co.tz` and `www` still resolve to **91.204.209.30** (the cPanel
+host). The Fly app's ingress is **66.241.125.44** (v4 shared) and
+`2a09:8280:1::1cb:226c:0` (v6 dedicated); `flyctl certs list` says "Not
+verified". To cut over at the registrar: A `mbilinyitech.co.tz` -> 66.241.125.44,
+AAAA -> the v6, and the same for `www` (or CNAME `www` -> `mbilinyitech-tz.fly.dev`).
+Then the cert verifies on its own. The app already answers everything correctly
+on `mbilinyitech-tz.fly.dev`.
