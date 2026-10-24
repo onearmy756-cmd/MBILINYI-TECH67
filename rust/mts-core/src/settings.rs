@@ -341,7 +341,7 @@ pub fn service_price_list() -> Vec<J> {
 
 /// Fill only blanks, so an admin edit is never overwritten on boot.
 pub fn seed_defaults() {
-    let defaults: [(&str, &str); 42] = [
+    let defaults: [(&str, &str); 43] = [
         ("pay_bank_name", "NMB Bank"),
         ("pay_bank_account", "51710099563"),
         ("pay_bank_holder", "JACKSON MBILINYI"),
@@ -364,6 +364,11 @@ pub fn seed_defaults() {
         ("llm_max_tokens", "4096"),
         ("llm_temperature", "0.3"),
         ("llm_api_key", ""),
+        // The ICE servers a live call uses. STUN alone cannot connect two
+        // phones behind mobile carriers' symmetric NAT, so a TURN server is
+        // needed for real calls. JSON, so the CEO can add their own without a
+        // rebuild; the credentials stay in the settings table, not in the code.
+        ("call_ice_servers", "[]"),
         // The SMS gateway the office sends through. Empty means "not
         // configured", and a send is then refused rather than faked.
         ("sms_gateway", ""),

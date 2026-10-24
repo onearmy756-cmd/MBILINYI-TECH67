@@ -22,13 +22,24 @@
   var makingOffer = {};
   var makingOfferState = {};
 
-  // Public STUN, so two browsers behind home routers can find each other. A
-  // deployment with its own TURN server adds it to [data-call-ice].
+  // Where to find the other side. A public STUN server gets two browsers behind
+  // home routers talking. It cannot get through the symmetric NAT a mobile
+  // carrier uses, so a TURN relay is needed for calls on a phone network — the
+  // CEO sets those in Admin -> Settings and they arrive in window.__ICE__.
+  // [data-call-ice] on the element wins, so a one-off room can override.
   var iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+  var fromPlatform = window.__ICE__;
+  if (Object.prototype.toString.call(fromPlatform) === '[object Array]' && fromPlatform.length) {
+    iceServers = fromPlatform;
+  }
   try {
     var extra = JSON.parse(root.getAttribute('data-call-ice') || '[]');
     if (extra.length) iceServers = extra;
   } catch (e) {}
+  var hasTurn = iceServers.some(function (s) {
+    var u = typeof s === 'string' ? s : (s && s.urls) || '';
+    return String(u).indexOf('turn') === 0 || String(u).indexOf('turns') === 0;
+  });
 
   var grid = root.querySelector('[data-call-videos]') || root;
   var status = root.querySelector('[data-call-status]');
@@ -76,6 +87,17 @@
     localStream.getTracks().forEach(function (t) {
       pc.addTrack(t, localStream);
     });
+
+    pc.oniceconnectionstatechange = function () {
+      var st = pc.iceConnectionState;
+      if (st === 'failed') {
+        say(hasTurn
+          ? 'Imeshindwa kuunganisha na ' + name + '. Jaribu tena.'
+          : 'Imeshindwa kuunganisha na ' + name + '. Mtandao huu unahitaji TURN serveri — mwambie CEO aiongeze kwenye Settings.');
+      } else if (st === 'connected' || st === 'completed') {
+        say('Umeunganishwa.');
+      }
+    };
 
     pc.onicecandidate = function (e) {
       if (e.candidate) send('ice', { to: name, candidate: e.candidate });
@@ -151,6 +173,9 @@
   }
 
   function open() {
+    if (!hasTurn) {
+      say('Chumba kimefunguliwa. Kumbuka: hakuna TURN serveri iliyowekwa, hivyo simu inaweza kushindwa kwenye mtandao wa simu.');
+    }
     socket = new WebSocket(scheme + '://' + location.host + '/ws/call/' + encodeURIComponent(room) + '?name=' + encodeURIComponent(me));
     socket.onmessage = function (e) { onMessage(e.data); };
     socket.onclose = function () { say('Mawasiliano yamekatika. Inajaribu kuunganisha tena…'); setTimeout(open, 2000); };

@@ -1953,14 +1953,16 @@ function growthBars(rows, labelKey, colour) {
   }).join('') + '</div>';
 }
 
-async function adminTab(t) {
+async function adminTab(t, quiet) {
+  if (!quiet) stopQueueWatch();
   aTab = t;
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
     wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
+    queue: 'Work Queue — What the Company Is Doing and What Waits for Approval',
     runs: 'Agent Runs — Every Job the Company Carries Out', runtimes: 'Runtimes — Languages the Platform Really Runs', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery' };
   $('adminTabTitle').textContent = titles[t];
-  $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
+  if (!quiet) $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
 
   try {
     const stats = await apiGet('api/dashboard.php', { action: 'stats' });
@@ -2304,6 +2306,55 @@ async function adminTab(t) {
         </div>
         ${a.assessmentNotes ? `<div class="text-[12px] text-white/55 mt-2 italic">“${esc(a.assessmentNotes)}”</div>` : ''}
       </div>`).join('') || '<div class="glass rounded-3xl p-6 text-center text-white/40">No applications yet. The public Ajira page is open to everyone.</div>'}</div>`;
+    }
+
+    if (t === 'queue') {
+      const q = await apiGet('api/engine.php', { action: 'queue', limit: 200 });
+      const st = q.stats || {};
+      const jobs = q.jobs || [];
+      const badge = (s) => ({ held: 'bg-amber-500/20 text-amber-200 border-amber-400/40', ready: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/40', running: 'bg-violet-500/20 text-violet-200 border-violet-400/40', done: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40', failed: 'bg-red-500/20 text-red-200 border-red-400/40' }[s] || 'bg-white/10 text-white/60 border-white/20');
+      if ($('adminQueueCount')) $('adminQueueCount').textContent = (st.held || 0) + (st.ready || 0);
+      const card = (n, l, c) => `<div class="glass rounded-xl p-3.5 border border-white/10"><div class="text-[22px] font-extrabold text-${c}">${n}</div><div class="text-[11.5px] text-white/50">${l}</div></div>`;
+      h = `
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 mb-4">
+          ${card(st.held || 0, 'Waiting for your approval', 'amber-300')}
+          ${card(st.ready || 0, 'Ready to start', 'cyan-300')}
+          ${card(st.running || 0, 'Running now', 'violet-300')}
+          ${card(st.done || 0, 'Done', 'emerald-300')}
+          ${card(st.failed || 0, 'Failed', 'red-300')}
+          ${card((st.busyAgents || 0) + '/' + (st.activeAgents || 0), 'Agents busy', 'fuchsia-300')}
+        </div>
+        <div class="glass rounded-2xl border border-white/10 p-4 mb-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[13px] text-white/60"><i class="fa-solid fa-heart-pulse mr-1 ${st.runningLoop ? 'text-emerald-300' : 'text-red-300'}"></i>Autonomous loop: <b class="${st.runningLoop ? 'text-emerald-300' : 'text-red-300'}">${st.runningLoop ? 'running' : 'stopped'}</b> · ticks: <span class="font-mono">${st.ticks || 0}</span></span>
+            <span class="flex-1"></span>
+            <button onclick="queueSweep()" class="grad-btn px-4 py-2 rounded-xl text-[12.5px] font-bold"><i class="fa-solid fa-bolt mr-1"></i>Run queue now</button>
+            <button onclick="adminTab('queue')" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[12.5px] font-bold hover:border-cyan-400/50"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+          </div>
+          <div class="text-[11.5px] text-white/45 mt-2">A job marked <b class="text-amber-300">held</b> is a client request waiting for you. Approve the request and the loop starts it by itself.</div>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          ${['', 'held', 'ready', 'running', 'done', 'failed'].map(f => `<button onclick="adminQueueFilter='${f}';adminTab('queue')" class="px-3.5 py-1.5 rounded-lg text-[12px] font-bold border ${adminQueueFilter === f ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200' : 'bg-white/5 border-white/10 text-white/60'}">${f || 'All'}</button>`).join('')}
+        </div>
+        <div class="space-y-2">${jobs.filter(j => !adminQueueFilter || j.status === adminQueueFilter).map(j => `
+          <div class="glass rounded-xl border border-white/10 p-3.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-[10.5px] px-2 py-0.5 rounded-md border ${badge(j.status)} font-bold uppercase">${esc(j.status)}</span>
+              <span class="font-mono text-[11.5px] text-white/50">${esc(j.id)}</span>
+              <span class="text-[12.5px] text-white/80"><i class="fa-solid fa-robot mr-1 text-fuchsia-300"></i>${esc(j.agentName || j.agentId || '—')}</span>
+              ${j.service ? `<span class="text-[11.5px] text-cyan-300"><i class="fa-solid fa-tag mr-1"></i>${esc(j.service)}</span>` : ''}
+              ${j.attempts > 0 ? `<span class="text-[11px] text-white/40">attempts ${j.attempts}</span>` : ''}
+              <span class="flex-1"></span>
+              ${j.status === 'held' ? `<button onclick="queueRelease('${esc(j.id)}')" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[11.5px] font-bold hover:bg-emerald-500/30"><i class="fa-solid fa-check mr-1"></i>Approve &amp; start</button>` : ''}
+              ${j.status === 'failed' ? `<button onclick="queueRetry('${esc(j.id)}')" class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-[11.5px] font-bold hover:border-cyan-400/50"><i class="fa-solid fa-rotate-right mr-1"></i>Retry</button>` : ''}
+              ${(j.status === 'held' || j.status === 'ready' || j.status === 'running') ? `<button onclick="queueCancel('${esc(j.id)}')" class="px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-400/30 text-red-200 text-[11.5px] font-bold"><i class="fa-solid fa-ban mr-1"></i>Cancel</button>` : ''}
+              ${j.runId ? `<button onclick="viewRun('${esc(j.runId)}')" class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-[11.5px] font-bold"><i class="fa-solid fa-eye mr-1"></i>Steps</button>` : ''}
+            </div>
+            <div class="text-[12.5px] text-white/75 mt-2">${esc(j.task || '')}</div>
+            ${j.error ? `<div class="text-[11.5px] text-red-300 mt-1.5"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${esc(j.error)}</div>` : ''}
+            ${j.result ? `<details class="mt-1.5"><summary class="text-[11.5px] text-emerald-300 cursor-pointer">Result</summary><div class="text-[12px] text-white/70 mt-1 whitespace-pre-wrap">${esc(j.result).slice(0, 1500)}</div></details>` : ''}
+          </div>`).join('') || '<div class="text-white/40 text-[13px] p-4">The queue is empty.</div>'}</div>`;
+      if (!quiet) startQueueWatch();
     }
 
     if (t === 'agents') {
@@ -4115,6 +4166,40 @@ async function setRoomStatus(id, status) {
 /* ============================================================
    LIVE CALLS — the WebRTC room inside the platform
    ============================================================ */
+/* Work Queue actions — the CEO's hands on the scheduler. */
+let adminQueueFilter = '';
+// The queue is a live thing: agents start and finish while the CEO watches, so
+// the panel refreshes itself. Cleared whenever another tab is opened.
+let queueTimer = null;
+function startQueueWatch() {
+  stopQueueWatch();
+  queueTimer = setInterval(() => {
+    if (aTab !== 'queue' || document.hidden) return;
+    adminTab('queue', true);
+  }, 5000);
+}
+function stopQueueWatch() {
+  if (queueTimer) { clearInterval(queueTimer); queueTimer = null; }
+}
+async function queueRelease(id) {
+  if (!confirm('Approve this job and let the agent start now?')) return;
+  try { const r = await apiPost('api/engine.php', { action: 'queue_release', jobId: id }); toast(r.released ? 'Job released — the agent is starting.' : 'That job is no longer waiting.', r.released ? 'ok' : 'info'); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('queue');
+}
+async function queueCancel(id) {
+  if (!confirm('Cancel this job?')) return;
+  try { await apiPost('api/engine.php', { action: 'queue_cancel', jobId: id }); toast('Job cancelled.', 'info'); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('queue');
+}
+async function queueRetry(id) {
+  try { const r = await apiPost('api/engine.php', { action: 'queue_retry', jobId: id }); toast(r.retried ? 'Job returned to the queue.' : 'That job cannot be retried.', r.retried ? 'ok' : 'info'); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('queue');
+}
+async function queueSweep() {
+  try { const r = await apiPost('api/engine.php', { action: 'queue_sweep' }); toast(`Started ${r.started} job(s).`, 'ok'); } catch (e) { toast(esc(e.message), 'err'); return; }
+  adminTab('queue');
+}
+
 function openCall(roomId) {
   const who = (currentUser()?.name || 'guest');
   openGen('Live Call', `

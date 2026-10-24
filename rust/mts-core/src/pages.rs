@@ -125,6 +125,18 @@ fn tz_only_services() -> serde_json::Value {
     serde_json::Value::Array(keys)
 }
 
+/// The ICE servers a live call should use. The CEO keeps these in settings, so
+/// a TURN server can be added for mobile networks without a rebuild. A JSON
+/// array of `{urls, username, credential}`; anything unreadable is dropped
+/// rather than shipped to the browser.
+pub fn ice_servers() -> serde_json::Value {
+    let raw = settings::get("call_ice_servers", "[]");
+    match serde_json::from_str::<serde_json::Value>(&raw) {
+        Ok(v @ serde_json::Value::Array(_)) => v,
+        _ => serde_json::Value::Array(Vec::new()),
+    }
+}
+
 /// The `window.*` globals the frontend reads. Kept identical to the PHP
 /// `partials/footer.php` block.
 fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> String {
@@ -139,7 +151,7 @@ fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> Strin
         "tagline": settings::get("platform_tagline", "No-one enters a section that is not theirs."),
     });
     format!(
-        "<script>\nwindow.__CSRF__ = {csrf};\nwindow.__ME__   = {me};\nwindow.__PAGE__ = {page};\nwindow.__SERVICES_ON__ = {svc};\nwindow.__TZ_ONLY__ = {tzonly};\nwindow.__COUNTRY__ = {country};\nwindow.__PLATFORM__ = {plat};\nwindow.__PAY_GATEWAYS__ = {gw};\nwindow.__OAUTH__ = {oauth};\n</script>",
+        "<script>\nwindow.__CSRF__ = {csrf};\nwindow.__ME__   = {me};\nwindow.__PAGE__ = {page};\nwindow.__SERVICES_ON__ = {svc};\nwindow.__TZ_ONLY__ = {tzonly};\nwindow.__COUNTRY__ = {country};\nwindow.__PLATFORM__ = {plat};\nwindow.__PAY_GATEWAYS__ = {gw};\nwindow.__OAUTH__ = {oauth};\nwindow.__ICE__ = {ice};\n</script>",
         csrf = serde_json::Value::String(csrf.to_string()),
         me = me_json,
         page = serde_json::Value::String(page.to_string()),
@@ -149,6 +161,7 @@ fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> Strin
         plat = platform,
         gw = serde_json::Value::Array(crate::payments::available()),
         oauth = serde_json::Value::Array(crate::api::oauth::available()),
+        ice = ice_servers(),
     )
 }
 

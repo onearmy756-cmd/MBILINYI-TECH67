@@ -69,6 +69,17 @@ fn envelope(kind: &str, from: &str, payload: &str) -> String {
     serde_json::json!({ "type": kind, "from": from, "payload": payload }).to_string()
 }
 
+/// Who sent an envelope, read from the JSON rather than matched as text, so a
+/// name that contains `"from"` cannot fool the check and a participant never
+/// receives their own message back.
+fn from_field(text: &str) -> Option<String> {
+    serde_json::from_str::<serde_json::Value>(text)
+        .ok()?
+        .get("from")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+}
+
 /// `GET /ws/call/<room>?name=<who>` — the upgrade handler.
 pub async fn ws_call(
     Path(room): Path<String>,
@@ -112,8 +123,12 @@ async fn handle(mut socket: WebSocket, room: String, name: String) {
             incoming = rx.recv() => {
                 match incoming {
                     Ok(text) => {
-                        // Do not echo a peer's own announcement back to them.
-                        if text.contains(&format!("\"from\":\"{name}\"")) && text.contains("peer-joined") {
+                        // A participant must never be sent their own message
+                        // back. The room is a broadcast channel, so this is the
+                        // one place that decides who hears what: an offer, an
+                        // answer, an ICE candidate or an announcement all skip
+                        // the peer they came from.
+                        if from_field(&text).as_deref() == Some(name.as_str()) {
                             continue;
                         }
                         if socket.send(Message::Text(text.into())).await.is_err() {
@@ -186,6 +201,20 @@ fn peers_in(room: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_peer_never_receives_their_own_message_back() {
+        // The relay stamps `from`, and the reader compares that field, so the
+        // sender's own offer is dropped before it reaches them.
+        let mine = envelope("offer", "asha", "{}");
+        assert_eq!(from_field(&mine).as_deref(), Some("asha"));
+        let theirs = envelope("offer", "neema", "{}");
+        assert_eq!(from_field(&theirs).as_deref(), Some("neema"));
+        // A name that merely looks like a field must not be mistaken for one.
+        let odd = envelope("chat", "from\":\"boss", "{}");
+        assert_eq!(from_field(&odd).as_deref(), Some("from\":\"boss"));
+        assert!(from_field("not json").is_none());
+    }
 
     #[test]
     fn a_room_is_created_on_the_first_join_and_removed_on_the_last_leave() {

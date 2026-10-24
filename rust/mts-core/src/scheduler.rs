@@ -347,9 +347,32 @@ fn truncate(s: &str, n: usize) -> String {
 
 pub fn job_json(r: &db::Row) -> J {
     let g = |k: &str| util::s(r.get(k).unwrap_or(&J::Null));
+    let agent_id = g("agent_id");
+    // The name, not just the id: the CEO is watching who is working, and a
+    // queue of bare ids tells them nothing.
+    let agent_name = db::row(
+        "SELECT name FROM agents WHERE id = ?",
+        &[arg(json!(agent_id))],
+    )
+    .map(|a| util::s(a.get("name").unwrap_or(&J::Null)))
+    .unwrap_or_default();
+    // The finished deliverable lives on the run, not the job. Read it back so
+    // the queue shows the work product without a second request.
+    let run_id = g("run_id");
+    let result = if run_id.is_empty() {
+        String::new()
+    } else {
+        db::row(
+            "SELECT result FROM agent_runs WHERE id = ?",
+            &[arg(json!(run_id))],
+        )
+        .map(|a| util::s(a.get("result").unwrap_or(&J::Null)))
+        .unwrap_or_default()
+    };
     json!({
         "id": g("id"),
-        "agentId": g("agent_id"),
+        "agentId": agent_id,
+        "agentName": agent_name,
         "requestId": g("request_id"),
         "service": g("service"),
         "task": g("task"),
@@ -359,9 +382,10 @@ pub fn job_json(r: &db::Row) -> J {
         "attempts": util::i(r.get("attempts").unwrap_or(&J::Null)),
         "maxAttempts": util::i(r.get("max_attempts").unwrap_or(&J::Null)),
         "dependsOn": g("depends_on"),
-        "runId": g("run_id"),
+        "runId": run_id,
         "claimedBy": g("claimed_by"),
         "error": g("error"),
+        "result": result,
         "createdBy": g("created_by"),
         "createdAt": util::iso(Some(&g("created_at"))),
         "updatedAt": util::iso(Some(&g("updated_at"))),
