@@ -18,21 +18,30 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 - Details and the traps: `2026-10-23-payroll-hiring-call.md`.
 
 ## Deploy (Fly.io) — see `2026-10-24-fly-deploy.md`
-- **The Fly token in the task is app-scoped to `mtechos` and CANNOT create an
-  app.** It deploys/creates volumes on `mtechos` but every app-create path
-  (deploy, launch, GraphQL `createApp`, machines volumes) returns
-  `UNAUTHORIZED` / `app not found`. Creating an app needs an ORG token
-  (`fly tokens create org`). **Do not deploy over `mtechos`** — it is a
-  different product (an Agent-Canvas "fundi" IDE at mtech.mbilinyitech.co.tz).
+- **LIVE: https://mbilinyitech-tz.fly.dev/** (app `mbilinyitech-tz` — the plain
+  name is taken globally on Fly). Region jnb, volume `mts_data` at `/data`,
+  shared IPv4 `66.241.125.44`, IPv6 `2a09:8280:1::1cb:226c:0`.
+  `scripts/smoke.sh` against the live app = 25 ok:true / 4 ok:false, the same
+  as a clean local run.
+- An app-scoped Fly token (like the one first supplied, scoped to `mtechos`)
+  CANNOT create apps; every create path returns `UNAUTHORIZED`. Creating an app
+  needs an ORG token (`fly tokens create org`). **Do not deploy over
+  `mtechos`** — it is a different product (an Agent-Canvas "fundi" IDE at
+  mtech.mbilinyitech.co.tz).
 - DNS for `mbilinyitech.co.tz` is at `ns1/ns2.rodlinehost.com` (cPanel host);
   apex A → 91.204.209.30, `www` CNAME → apex, `mtech` CNAME → mtechos.fly.dev.
-  Fly cannot take the apex until the registrar A record changes.
-- Deploy artifacts are committed: `Dockerfile`, `fly.toml`,
-  `docker/entrypoint.sh`, `.dockerignore`, `scripts/fly-deploy.sh`, DEPLOY.md.
-  Verified: 109 cargo tests pass, smoke.sh fully green against the container,
-  all 7 languages print 42, /api/health ok with 44 tables.
-- `MTS_OTP_PEPPER` defaults to a hardcoded value — set a real one in Fly.
-  Never set `OTP_SHOW_IN_RESPONSE` on the live site.
+  Fly cannot take the apex until the registrar A record changes. Exact
+  replacement records are in DEPLOY.md.
+- `MTS_OTP_PEPPER` is now a real Fly secret. Never set `OTP_SHOW_IN_RESPONSE`
+  on the live site — it returns the sign-in code in the API response.
+- **Deposit bug fixed (only reproduced on Fly):** `deposit_info()` ordered DESC
+  on `'%deposit%'` while the countersign gate `deposit_block()` ordered ASC
+  LIMIT 1 on `'%50%Deposit%'`, so with two deposit invoices the admin marked the
+  one shown and the gate judged the other. Both now call one
+  `deposit_invoice_row()` helper, mirroring PHP. A fast local loop hides this
+  (both rows share a `created_at` second); latency on Fly separates them. When a
+  Rust port disagrees with PHP only in production, diff the *query*
+  (ORDER BY / LIKE / LIMIT), not just the route list.
 
 ## Facts worth keeping
 - Repo `onearmy756-cmd/MBILINYI-TECH67`, default branch **master** (a stale

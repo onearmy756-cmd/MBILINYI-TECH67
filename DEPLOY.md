@@ -111,25 +111,61 @@ The server runs as the unprivileged `mts` account. The entrypoint hands the
 volume at `/data` to that account and then drops privileges, because the
 platform executes code that visitors submit.
 
+## The custom domain — exact cPanel records
+
+The app is live at `https://mbilinyitech-tz.fly.dev/`. The domain
+`mbilinyitech.co.tz` still resolves to `91.204.209.30` (the cPanel host), so
+point it at Fly by replacing the DNS records in cPanel → **Zone Editor**. Fly
+issues the TLS certificate automatically once the records resolve.
+
+The Fly app owns these two addresses:
+
+| Address | Value |
+| --- | --- |
+| shared IPv4 | `66.241.125.44` |
+| dedicated IPv6 | `2a09:8280:1::1cb:226c:0` |
+
+Add these records (delete the old `A` records pointing at `91.204.209.30`):
+
+| Type | Name | Value | TTL |
+| --- | --- | --- | --- |
+| A | `@` (mbilinyitech.co.tz) | `66.241.125.44` | 3600 |
+| AAAA | `@` (mbilinyitech.co.tz) | `2a09:8280:1::1cb:226c:0` | 3600 |
+| CNAME | `www` | `rkp5xz8.mbilinyitech-tz.fly.dev` | 3600 |
+
+If cPanel rejects a CNAME at `www` because an `A` record already exists there,
+delete that `A` record first. `www` can alternatively use the same two IP
+addresses as `@`.
+
+Only needed to issue the certificate *before* traffic moves — harmless to add:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| CNAME | `_acme-challenge` | `mbilinyitech.co.tz.rkp5xz8.flydns.net` |
+| TXT | `_fly-ownership` | `app-rkp5xz8` |
+
+Verify once DNS propagates:
+
+```bash
+fly certs check mbilinyitech.co.tz
+fly certs check www.mbilinyitech.co.tz
+```
+
+Keep `mtech.mbilinyitech.co.tz` pointing at `mtechos.fly.dev`: that is a
+different application.
+
 ## The database
 
 `MTS_DB` is `/data/mts.sqlite`, on the `mts_data` volume, so the database and
 the session table survive a redeploy. A deployment with no volume would reset
 the site on every release.
 
-## The custom domain
+## The OTP pepper
 
-`mbilinyitech.co.tz` currently resolves to `91.204.209.30`, the cPanel host. Fly
-cannot take over the domain until that record changes at the registrar:
-
-| Type | Name | Value |
-| --- | --- | --- |
-| A | `mbilinyitech.co.tz` | IPv4 from `fly ips list` |
-| AAAA | `mbilinyitech.co.tz` | IPv6 from `fly ips list` |
-| CNAME | `www` | `<app>.fly.dev` |
-
-Keep `mtech.mbilinyitech.co.tz` pointing at `mtechos.fly.dev`: that is a
-different application.
+`MTS_OTP_PEPPER` is set as a Fly secret; it salts the stored hash of the
+emailed sign-in codes. Keep it stable — changing it invalidates outstanding
+codes. Never set `OTP_SHOW_IN_RESPONSE` on the live site: it returns the code
+in the response body.
 
 ## A token that cannot create apps
 

@@ -1,6 +1,6 @@
 # Fly.io configuration for the Mbilinyi Tech Solutions Rust core.
 # Deploy with:  fly deploy
-app = "mbilinyitech"
+app = "mbilinyitech-tz"
 primary_region = "jnb"
 
 [build]

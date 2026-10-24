@@ -101,3 +101,29 @@ the user edits DNS.
 Either (a) mint an org-level token (`fly tokens create org -o personal`) and
 re-run `scripts/fly-deploy.sh`, or (b) tell me the app name if one already
 exists in that org that I may use. Then change the apex A record to Fly's IP.
+
+## DEPLOYED (2026-10-24, later in the session)
+* App name is **`mbilinyitech-tz`** — `mbilinyitech` is globally taken on Fly.
+* Live: **https://mbilinyitech-tz.fly.dev/** — machine 8e25d6b7d99018, region
+  jnb, 1/1 health checks, volume `mts_data` mounted at `/data`.
+* IPs: shared IPv4 `66.241.125.44`, dedicated IPv6 `2a09:8280:1::1cb:226c:0`.
+* `MTS_OTP_PEPPER` set as a Fly secret (random 32 bytes).
+* Acceptance: `scripts/smoke.sh` against the live app → **25 ok:true / 4
+  ok:false**, i.e. byte-for-byte the same as a clean local run.
+* Certs `mbilinyitech.co.tz` and `www.mbilinyitech.co.tz` added, status "Not
+  verified" until cPanel DNS changes. Exact records are in DEPLOY.md.
+
+## The deposit bug that only showed on Fly (FIXED)
+* `deposit_info()` (the signing panel) ordered `DESC` and matched the looser
+  `lower(title) LIKE '%deposit%'`, while the countersign gate `deposit_block()`
+  ordered `ASC LIMIT 1` on `title LIKE '%50%Deposit%'`. With two deposit-titled
+  invoices on one tracking id the panel named one row and the gate judged the
+  other, so the admin marked the invoice they were shown and the gate still
+  refused. PHP never had this: both call the one helper `deposit_invoice_row()`.
+* It hid locally because a fast loop puts both rows in the same `created_at`
+  second, so ASC and DESC agree; network latency on Fly separates them.
+* Fix: one `deposit_invoice_row(tracking)` mirroring the PHP, used by BOTH
+  `deposit_block()` and `deposit_info()`. `scripts/smoke.sh` step 12c now marks
+  the invoice `deposit_info` names, not the newest from `admin_list`.
+* Lesson: when a Rust port disagrees with PHP only in production, diff the
+  *query* (ORDER BY / LIKE pattern / LIMIT), not just the route list.
