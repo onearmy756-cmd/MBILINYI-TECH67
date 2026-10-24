@@ -16,15 +16,22 @@
 mod agents;
 mod ajira;
 mod api;
+mod call;
 mod db;
+mod engine;
+mod engine_api;
+mod llm;
+mod llm_api;
 mod ofisi;
 mod pages;
 mod payments;
+mod runtime;
 mod schema_sql;
 mod security;
 mod seed;
 mod session;
 mod settings;
+mod sms;
 mod tools;
 mod util;
 mod wafanyakazi;
@@ -170,6 +177,7 @@ pub fn bootstrap() {
     wafanyakazi::init_tables();
     ajira::init_tables();
     agents::init_tables();
+    engine::init_tables();
     ofisi::init_tables();
     security::init_tables();
     settings::seed_defaults();
@@ -191,6 +199,7 @@ async fn main() {
     bootstrap();
 
     let app = Router::new()
+        .route("/ws/call/:room", get(call::ws_call))
         .route("/api/*name", get(api_dispatch).post(api_dispatch))
         .route("/*path", get(page_dispatch).post(page_dispatch))
         .fallback(get(page_dispatch).post(page_dispatch));

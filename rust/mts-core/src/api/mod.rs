@@ -46,6 +46,8 @@ pub async fn dispatch(name: &str, req: Request<Body>) -> Response {
         "wafanyakazi" | "employees" => crate::wafanyakazi::handle(&c).await,
         "ajira" | "jobs" => crate::ajira::handle(&c).await,
         "agents" => crate::agents::handle(&c).await,
+        "engine" => crate::engine_api::handle(&c).await,
+        "llm" => crate::llm_api::handle(&c).await,
         "tools" => crate::tools::handle(&c).await,
         "ofisi" | "office" => crate::ofisi::handle(&c).await,
         "security" => crate::security::handle(&c).await,

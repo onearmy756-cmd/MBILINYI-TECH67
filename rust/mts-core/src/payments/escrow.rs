@@ -98,6 +98,18 @@ pub fn ledger(contract_id: &str) -> Vec<serde_json::Value> {
     .collect()
 }
 
+/// Total released to the company across every contract.
+pub fn total_released() -> f64 {
+    db::rows(
+        "SELECT COALESCE(SUM(amount),0) AS t FROM escrow_ledger WHERE kind = 'release'",
+        &[],
+    )
+    .first()
+    .and_then(|r| r.get("t"))
+    .and_then(|v| v.as_f64())
+    .unwrap_or(0.0)
+}
+
 /// Total currently held across every contract — the figure the admin must not
 /// treat as revenue.
 pub fn total_held() -> f64 {

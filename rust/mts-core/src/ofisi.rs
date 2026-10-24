@@ -182,6 +182,57 @@ pub async fn handle(c: &Ctx) -> Response {
             }))
         }
         "sms_send" => sms_send(c),
+        // What the CEO configures to make SMS leave the building for real.
+        "sms_config" => {
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            ok(crate::sms::status())
+        }
+        "sms_config_save" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let gateway = c.p("gateway").trim().to_lowercase();
+            if !gateway.is_empty() && !crate::sms::GATEWAYS.iter().any(|(k, _, _)| *k == gateway) {
+                return bad("Choose one of the supported SMS gateways.");
+            }
+            crate::settings::set("sms_gateway", &gateway);
+            for (field, setting) in [
+                ("baseUrl", "sms_base_url"),
+                ("senderId", "sms_sender_id"),
+            ] {
+                if !c.p(field).trim().is_empty() {
+                    crate::settings::set(setting, c.p(field).trim());
+                }
+            }
+            // Empty secret fields leave the stored ones alone.
+            if !c.p("apiKey").trim().is_empty() {
+                crate::settings::set("sms_api_key", c.p("apiKey").trim());
+            }
+            if !c.p("secret").trim().is_empty() {
+                crate::settings::set("sms_secret", c.p("secret").trim());
+            }
+            ok(crate::sms::status())
+        }
+        // One real message, so the CEO can prove the gateway works.
+        "sms_test" => {
+            if let Err(e) = c.require_csrf() {
+                return e;
+            }
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let phone = c.p("phone");
+            if phone.trim().is_empty() {
+                return bad("Give the number to send the test to.");
+            }
+            let r = crate::sms::send(&phone, "MBILINYI-TECH67: jaribio la SMS limefanikiwa.").await;
+            ok(json!({ "sent": r.ok, "detail": r.detail }))
+        }
         // Online office rooms: meetings, calls and the AI scribe.
         "rooms" => {
             let rows = db::rows("SELECT * FROM office_rooms ORDER BY created_at DESC LIMIT 100", &[]);
@@ -228,7 +279,21 @@ fn sms_send(c: &Ctx) -> Response {
             arg(json!("manual")), arg(json!("queued")), arg(json!(util::now())),
         ],
     );
-    ok(json!({ "id": id, "queued": true }))
+    // The message is sent for real in the background, and the log row is
+    // updated with what the gateway actually said. `queued` above is the state
+    // for the few seconds that takes.
+    crate::sms::spawn_send(id.clone(), phone, message);
+    let configured = crate::sms::configured();
+    ok(json!({
+        "id": id,
+        "queued": configured,
+        "gatewayConfigured": configured,
+        "message": if configured {
+            "Ujumbe unatuma sasa; hali yake itaonekana kwenye SMS log."
+        } else {
+            "Ujumbe umeandikwa lakini hakuna SMS gateway iliyowekwa. CEO anaweka moja kwenye Admin -> Settings."
+        },
+    }))
 }
 
 fn room_create(c: &Ctx) -> Response {

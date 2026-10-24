@@ -227,7 +227,7 @@ pub fn service_price_list() -> Vec<J> {
 
 /// Fill only blanks, so an admin edit is never overwritten on boot.
 pub fn seed_defaults() {
-    let defaults: [(&str, &str); 13] = [
+    let defaults: [(&str, &str); 24] = [
         ("pay_bank_name", "NMB Bank"),
         ("pay_bank_account", "51710099563"),
         ("pay_bank_holder", "JACKSON MBILINYI"),
@@ -242,6 +242,21 @@ pub fn seed_defaults() {
         ("fx_usd_tzs", "2600"),
         ("platform_name", "MbilinyiTech Platform"),
         ("webauthn_rp_name", "Mbilinyi Tech Solutions"),
+        // The AI provider the agent engine calls. Empty provider means "work it
+        // out from whichever key is present"; the key itself is never seeded.
+        ("llm_provider", ""),
+        ("llm_model", ""),
+        ("llm_base_url", ""),
+        ("llm_max_tokens", "4096"),
+        ("llm_temperature", "0.3"),
+        ("llm_api_key", ""),
+        // The SMS gateway the office sends through. Empty means "not
+        // configured", and a send is then refused rather than faked.
+        ("sms_gateway", ""),
+        ("sms_base_url", ""),
+        ("sms_api_key", ""),
+        ("sms_secret", ""),
+        ("sms_sender_id", ""),
     ];
     let have = all();
     for (k, v) in defaults {
