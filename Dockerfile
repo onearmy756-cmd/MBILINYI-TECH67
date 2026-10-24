@@ -43,6 +43,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         elixir \
     && rm -rf /var/lib/apt/lists/*
 
+# The security and forensics tools the sandbox actually shells out to. These are
+# real binaries, not labels: `nmap_scan` runs nmap, `disk_forensics` runs
+# fls/mmls from sleuthkit, `carve_files` runs foremost. `sandbox::toolchain()`
+# reports which of them are present at runtime, so a missing tool is visible
+# rather than a silent no-op. nmap's NSE scripts and tcpdump are kept in the
+# same layer so a scan and a packet read behave the same in every environment.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        nmap nmap-common dnsutils whois gnupg tcpdump \
+        sqlite3 binutils file \
+        sleuthkit foremost yara binwalk \
+    && rm -rf /var/lib/apt/lists/*
+
 # The Rust toolchain, so the "Rust" language in the platform really compiles.
 COPY --from=build /usr/local/rustup /usr/local/rustup
 COPY --from=build /usr/local/cargo /usr/local/cargo

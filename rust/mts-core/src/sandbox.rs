@@ -143,7 +143,7 @@ pub fn host_of(target: &str) -> String {
 
 /// Refuse work that is not authorised. Every network-facing tool calls this, so
 /// the scope rule cannot be bypassed by a tool that forgets to check.
-fn scope_check(target: &str, authorised_by: &str) -> Result<String, String> {
+pub fn scope_check(target: &str, authorised_by: &str) -> Result<String, String> {
     let host = host_of(target);
     if host.is_empty() {
         return Err("Give the domain or URL in scope.".into());
@@ -725,6 +725,7 @@ pub fn status() -> J {
             "Logs — brute force, injection, traversal and scanner marks in a log",
             "Passwords — entropy measured, with the candidate never echoed back",
         ],
+        "toolchain": crate::forensics::toolchain(),
         "rule": "Nothing is scanned until the CEO authorises the domain and the caller names who approved the work.",
     })
 }

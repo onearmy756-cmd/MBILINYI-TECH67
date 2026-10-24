@@ -20,6 +20,7 @@ mod call;
 mod db;
 mod engine;
 mod engine_api;
+mod forensics;
 mod hardening;
 mod langrun;
 mod llm;

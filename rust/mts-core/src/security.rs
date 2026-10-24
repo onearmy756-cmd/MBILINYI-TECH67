@@ -318,10 +318,30 @@ async fn scan(c: &Ctx) -> Response {
         "subdomains" => crate::sandbox::subdomain_scan(&target).await,
         "hash" => crate::sandbox::hash_file(&target).await,
         "logs" => crate::sandbox::audit_logs(&target).await,
+        // The real-tool wrappers: each one drives an installed binary and
+        // returns what it printed. nmap still passes the scope gate; the
+        // forensics tools work on evidence the operator supplied.
+        "nmap" => crate::forensics::nmap_scan(&target, &c.p("authorised")).await,
+        "pcap" => crate::forensics::pcap_summary(&target).await,
+        "partitions" => crate::forensics::image_partitions(&target).await,
+        "filesystem" => crate::forensics::image_filesystem(&target, &c.p("offset")).await,
+        "fls" => crate::forensics::image_list_files(
+            &target,
+            &c.p("offset"),
+            c.p("deleted") == "1" || c.p("deleted") == "true",
+        )
+        .await,
+        "carve" => crate::forensics::carve_files(&target, &c.p("types")).await,
+        "yara" => crate::forensics::yara_scan(&target, &c.p("rules")).await,
+        "binwalk" => crate::forensics::embedded_scan(&target).await,
+        "disassemble" => crate::forensics::disassemble(&target).await,
+        "database" => crate::forensics::inspect_database(&target).await,
         _ => {
             return bad(
                 "Choose a check: headers, exposure, dns, tls, methods, cors, cookies, cert, \
-                 subdomains, dependencies, code, secrets, malware, hash, logs or password.",
+                 subdomains, dependencies, code, secrets, malware, hash, logs, password, \
+                 nmap, pcap, partitions, filesystem, fls, carve, yara, binwalk, disassemble \
+                 or database.",
             )
         }
     };

@@ -93,6 +93,50 @@ pub fn spec(code: &str) -> Spec {
             "Carry out a security task. Only authorised work on the client's own systems.",
             obj(&[("target", "string", "the system, code or URL in scope"), ("authorised", "string", "who authorised this work")], &["target"]),
         ),
+        "nmap_scan" => (
+            "Run a real nmap connect scan. Only an authorised host may be scanned.",
+            obj(&[
+                ("target", "string", "the authorised host or IP"),
+                ("authorised", "string", "who authorised this work"),
+            ], &["target", "authorised"]),
+        ),
+        "pcap_forensics" => (
+            "Read a packet capture file with tcpdump and summarise its conversations.",
+            obj(&[("path", "string", "path to the .pcap file on the server")], &["path"]),
+        ),
+        "disk_forensics" => (
+            "Examine a disk image with sleuthkit: partitions, filesystem metadata and files.",
+            obj(&[
+                ("path", "string", "path to the disk image"),
+                ("offset", "string", "partition start in sectors (from the partition list)"),
+            ], &["path"]),
+        ),
+        "file_carving" => (
+            "Recover files from an image by signature with foremost.",
+            obj(&[
+                ("path", "string", "path to the image"),
+                ("types", "string", "file types to carve, e.g. jpg,pdf,zip (blank = all)"),
+            ], &["path"]),
+        ),
+        "malware_rules" => (
+            "Match files against YARA rules to identify malware.",
+            obj(&[
+                ("path", "string", "file or directory to scan"),
+                ("rules", "string", "path to the YARA rule file"),
+            ], &["path", "rules"]),
+        ),
+        "binary_analysis" => (
+            "Inspect a binary: section headers, strings and embedded content.",
+            obj(&[("path", "string", "path to the binary")], &["path"]),
+        ),
+        "db_forensics" => (
+            "Read a SQLite evidence file directly: its tables and row counts.",
+            obj(&[("path", "string", "path to the .sqlite file")], &["path"]),
+        ),
+        "domain_record" => (
+            "Read a domain's registration record and DNS records.",
+            obj(&[("target", "string", "the domain to look up")], &["target"]),
+        ),
         "ai_finetune" | "dataset_forge" | "model_eval" | "ml_local" | "continuous_learning" => (
             "Plan and carry out model work on the client's data.",
             obj(&[("goal", "string", "what the model must do"), ("data", "string", "what data is available")], &["goal"]),
@@ -289,6 +333,71 @@ pub async fn run(code: &str, args: &J) -> Outcome {
                 return Outcome::failed(evidence, "web: no answer");
             }
             Outcome::done(crate::sandbox::explain("web security review", &evidence).await, "web: audited")
+        }
+
+        // ---- Tools that drive a real installed binary ----
+        "nmap_scan" => {
+            let (evidence, ok) = crate::forensics::nmap_scan(&pick_target(args), &s("authorised")).await;
+            if !ok {
+                return Outcome::failed(evidence, "nmap: refused");
+            }
+            Outcome::done(evidence, "nmap: scanned")
+        }
+        "pcap_forensics" => {
+            let (evidence, ok) = crate::forensics::pcap_summary(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "pcap: nothing to read");
+            }
+            Outcome::done(evidence, "pcap: read")
+        }
+        "disk_forensics" => {
+            let (part, ok) = crate::forensics::image_partitions(&s("path")).await;
+            if !ok {
+                return Outcome::failed(part, "image: not readable");
+            }
+            let offset = s("offset");
+            let (fs, _) = crate::forensics::image_filesystem(&s("path"), &offset).await;
+            let (files, _) = crate::forensics::image_list_files(&s("path"), &offset, false).await;
+            Outcome::done(
+                format!("{part}\n\n{fs}\n\n{files}"),
+                "image: examined",
+            )
+        }
+        "file_carving" => {
+            let (evidence, ok) = crate::forensics::carve_files(&s("path"), &s("types")).await;
+            if !ok {
+                return Outcome::failed(evidence, "carve: failed");
+            }
+            Outcome::done(evidence, "carve: done")
+        }
+        "malware_rules" => {
+            let (evidence, ok) = crate::forensics::yara_scan(&s("path"), &s("rules")).await;
+            if !ok {
+                return Outcome::failed(evidence, "yara: failed");
+            }
+            Outcome::done(evidence, "yara: matched")
+        }
+        "binary_analysis" => {
+            let (evidence, ok) = crate::forensics::disassemble(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "binary: not readable");
+            }
+            let (embedded, _) = crate::forensics::embedded_scan(&s("path")).await;
+            Outcome::done(format!("{evidence}\n\n{embedded}"), "binary: analysed")
+        }
+        "db_forensics" => {
+            let (evidence, ok) = crate::forensics::inspect_database(&s("path")).await;
+            if !ok {
+                return Outcome::failed(evidence, "database: not readable");
+            }
+            Outcome::done(evidence, "database: read")
+        }
+        "domain_record" => {
+            let (evidence, ok) = crate::forensics::domain_record(&pick_target(args)).await;
+            if !ok {
+                return Outcome::failed(evidence, "domain: no record");
+            }
+            Outcome::done(evidence, "domain: read")
         }
 
         // ---- Code tools that compile and run for real ----
