@@ -15,10 +15,12 @@
 
   var room = root.getAttribute('data-call-room');
   var me = root.getAttribute('data-call-name') || 'guest';
+  var myLabel = null;        // set from the server's `joined` event
+  var myName = me;           // the display name, for tile captions
   var scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   var socket;
   var localStream;
-  var peers = {};            // peer name -> { pc, polite }
+  var peers = {};            // peer label -> { pc, polite, name }
   var makingOffer = {};
   var makingOfferState = {};
 
@@ -48,10 +50,16 @@
     if (status) status.textContent = msg;
   }
 
-  function tile(name, stream, isSelf) {
+  /* A label looks like "Asha#3f2a1b". Show only the name. */
+  function nameOf(label) {
+    var i = String(label).lastIndexOf('#');
+    return i > 0 ? String(label).slice(0, i) : String(label);
+  }
+
+  function tile(key, stream, isSelf, caption) {
     var box = document.createElement('div');
     box.className = 'call-tile';
-    box.setAttribute('data-peer', name);
+    box.setAttribute('data-peer', key);
     var video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
@@ -59,7 +67,7 @@
     video.srcObject = stream;
     var label = document.createElement('span');
     label.className = 'call-name';
-    label.textContent = name + (isSelf ? ' (you)' : '');
+    label.textContent = (caption || nameOf(key)) + (isSelf ? ' (you)' : '');
     box.appendChild(video);
     box.appendChild(label);
     grid.appendChild(box);
@@ -77,10 +85,17 @@
     }
   }
 
-  function connectionFor(name, polite) {
+  /* Set up the connection to one other participant.
+
+     `initiate` says whether we are the side that sends the first offer. The
+     person who joined later initiates; the people already in the room wait for
+     that offer and answer it. Both sides offering at once is glare: each one
+     drops the other's offer as a collision and the call connects to nobody,
+     which is exactly what a two-person room did before this rule. */
+  function connectionFor(name, initiate) {
     if (peers[name]) return peers[name];
     var pc = new RTCPeerConnection({ iceServers: iceServers });
-    peers[name] = { pc: pc, polite: polite };
+    peers[name] = { pc: pc, initiate: !!initiate };
     makingOffer[name] = false;
     makingOfferState[name] = false;
 
@@ -92,8 +107,8 @@
       var st = pc.iceConnectionState;
       if (st === 'failed') {
         say(hasTurn
-          ? 'Imeshindwa kuunganisha na ' + name + '. Jaribu tena.'
-          : 'Imeshindwa kuunganisha na ' + name + '. Mtandao huu unahitaji TURN serveri — mwambie CEO aiongeze kwenye Settings.');
+          ? 'Imeshindwa kuunganisha na ' + nameOf(name) + '. Jaribu tena.'
+          : 'Imeshindwa kuunganisha na ' + nameOf(name) + '. Mtandao huu unahitaji TURN serveri — mwambie CEO aiongeze kwenye Settings.');
       } else if (st === 'connected' || st === 'completed') {
         say('Umeunganishwa.');
       }
@@ -107,10 +122,13 @@
       if (box) {
         box.querySelector('video').srcObject = e.streams[0];
       } else {
-        tile(name, e.streams[0], false);
+        tile(name, e.streams[0], false, nameOf(name));
       }
     };
     pc.onnegotiationneeded = function () {
+      // Adding our tracks fires this on both sides. Only the initiating side
+      // turns it into an offer; the other side waits for the offer to arrive.
+      if (!peers[name] || !peers[name].initiate) return;
       makingOfferState[name] = true;
       pc.createOffer()
         .then(function (o) { return pc.setLocalDescription(o); })
@@ -122,6 +140,7 @@
   }
 
   function handleOffer(name, sdp) {
+    // Whoever sent the offer is the initiating side; we only ever answer.
     var entry = connectionFor(name, false);
     var pc = entry.pc;
     // Perfect negotiation: a collision resolves without either side stalling.
@@ -146,39 +165,66 @@
     entry.pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(function () {});
   }
 
+  /* A payload is an object when it was relayed, and a JSON string when the
+     server wrote the event itself. Accept both. */
+  function payloadObject(msg) {
+    var p = msg && msg.payload;
+    if (typeof p === 'string') { try { return JSON.parse(p) || {}; } catch (e) { return {}; } }
+    return p && typeof p === 'object' ? p : {};
+  }
+
   function onMessage(text) {
     var msg;
     try { msg = JSON.parse(text); } catch (e) { return; }
     var from = msg.from;
     if (msg.type === 'joined') {
-      say('Umeunganishwa kwenye chumba. Wengine wanaweza kujiunga sasa.');
+      var info = payloadObject(msg);
+      if (info.you && info.you.label) myLabel = info.you.label;
+      if (info.you && info.you.name) myName = info.you.name;
+      var already = info.peers || [];
+      say(already.length
+        ? 'Umeunganishwa. Wapo ' + already.length + ' kwenye chumba.'
+        : 'Umeunganishwa kwenye chumba. Wengine wanaweza kujiunga sasa.');
+      // The newcomer offers to the people already here; they answer. This is
+      // what stops both sides offering at once.
+      already.forEach(function (p) { connectionFor(p, true); });
       return;
     }
-    if (msg.type === 'peer-joined' && from !== me) {
-      say(from + ' amejiunga.');
+    if (msg.type === 'peer-joined' && myLabel && from !== myLabel) {
+      say(nameOf(from) + ' amejiunga.');
       // The newcomer waits; the people already here greet by offering.
       connectionFor(from, false);
       return;
     }
-    if (msg.type === 'peer-left' && from !== me) {
-      say(from + ' ameondoka.');
+    if (msg.type === 'peer-left' && from !== myLabel) {
+      say(nameOf(from) + ' ameondoka.');
       if (peers[from]) { peers[from].pc.close(); delete peers[from]; }
       removeTile(from);
       return;
     }
-    if (from === me) return;
+    if (from === myLabel) return;
+    // Ignore a signal addressed to another participant.
+    var to = payloadObject(msg).to;
+    if (to && myLabel && to !== myLabel) return;
     if (msg.type === 'offer') return handleOffer(from, msg.payload.sdp);
     if (msg.type === 'answer') return handleAnswer(from, msg.payload.sdp);
     if (msg.type === 'ice') return handleIce(from, msg.payload.candidate);
   }
 
-  function open() {
+var left = false;
+
+function open() {
+    if (left) return;
     if (!hasTurn) {
       say('Chumba kimefunguliwa. Kumbuka: hakuna TURN serveri iliyowekwa, hivyo simu inaweza kushindwa kwenye mtandao wa simu.');
     }
     socket = new WebSocket(scheme + '://' + location.host + '/ws/call/' + encodeURIComponent(room) + '?name=' + encodeURIComponent(me));
     socket.onmessage = function (e) { onMessage(e.data); };
-    socket.onclose = function () { say('Mawasiliano yamekatika. Inajaribu kuunganisha tena…'); setTimeout(open, 2000); };
+    socket.onclose = function () {
+      if (left) return;
+      say('Mawasiliano yamekatika. Inajaribu kuunganisha tena…');
+      setTimeout(open, 2000);
+    };
     socket.onerror = function () { say('Imeshindwa kuunganisha. Angalia mtandao.'); };
   }
 
@@ -197,11 +243,14 @@
         } else if (a === 'share') {
           share(b);
         } else if (a === 'hangup') {
+          if (left) return;
+          // Tell the room first, while the socket is still open.
+          send('leave', {});
+          left = true;
           Object.keys(peers).forEach(function (n) { peers[n].pc.close(); });
           peers = {};
           if (localStream) localStream.getTracks().forEach(function (t) { t.stop(); });
           if (socket) socket.close();
-          send('leave', {});
           say('Umeondoka kwenye chumba.');
         }
       });
@@ -232,7 +281,7 @@
 
   navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(function (stream) {
     localStream = stream;
-    tile(me, stream, true);
+    tile('self', stream, true, myName);
     wireButtons();
     open();
   }).catch(function () {

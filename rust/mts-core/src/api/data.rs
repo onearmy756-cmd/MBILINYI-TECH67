@@ -965,7 +965,6 @@ pub async fn invoices(c: &Ctx) -> Response {
             else {
                 return err("Invoice not found.", 404);
             };
-            let uid = u.get("id").and_then(|v| v.as_str()).unwrap_or("");
             let role = u.get("role").and_then(|v| v.as_str()).unwrap_or("");
             if role != "admin" && !invoice_owned_by(&row, &u) {
                 return err("Not your invoice.", 403);

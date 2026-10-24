@@ -27,6 +27,14 @@ struct Room {
     tx: broadcast::Sender<String>,
     /// How many people are connected, so the client can show who is present.
     peers: usize,
+    /// Everyone in the room right now, in join order.
+    roster: Vec<Peer>,
+}
+
+/// A participant in a room: who they are, and the label they are known by.
+struct Peer {
+    label: String,
+    conn: String,
 }
 
 fn rooms() -> &'static Mutex<HashMap<String, Room>> {
@@ -34,33 +42,71 @@ fn rooms() -> &'static Mutex<HashMap<String, Room>> {
     ROOMS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// Join a room, creating it if this is the first person. Returns the receiver
-/// and a short list of the people already there.
-fn join(room: &str, name: &str) -> (broadcast::Receiver<String>, Vec<String>) {
+/// Join a room, creating it if this is the first person.
+///
+/// Returns the receiver, this participant's label, and the labels of the people
+/// already in the room. The label, not the display name, is what identifies a
+/// participant: one account can be signed in on a phone and a laptop at the same
+/// time, and both must be able to hear each other. Using the name as the key
+/// made each of them ignore the other, because the client drops any message
+/// whose sender matches its own name.
+fn join(room: &str, name: &str, conn: &str) -> (broadcast::Receiver<String>, String, Vec<String>) {
     let mut map = rooms().lock().unwrap_or_else(|e| e.into_inner());
     let entry = map.entry(room.to_string()).or_insert_with(|| {
         let (tx, _rx) = broadcast::channel(256);
-        Room { tx, peers: 0 }
+        Room { tx, peers: 0, roster: Vec::new() }
     });
+    let label = format!("{name}#{conn}");
     let rx = entry.tx.subscribe();
+    // The roster is read before this participant is added, so the list never
+    // contains the newcomer and nobody is asked to negotiate with themselves.
+    let others: Vec<String> = entry.roster.iter().map(|p| p.label.clone()).collect();
     entry.peers += 1;
-    // Tell everyone already in the room that someone arrived.
-    let _ = entry.tx.send(envelope("peer-joined", name, ""));
-    // The newcomers list is the peers we know about; the client uses it to
-    // decide who offers first (the later joiner offers to the earlier one).
-    let others = vec![name.to_string()];
-    (rx, others)
+    entry.roster.push(Peer {
+        label: label.clone(),
+        conn: conn.to_string(),
+    });
+    // Announcing the arrival is left to the caller, which does it only after the
+    // newcomer has been told its own label. Broadcasting here would race: the
+    // newcomer's own `peer-joined` could arrive before its `joined`, leaving it
+    // with no label to compare against and making it greet itself.
+    (rx, label, others)
 }
 
-fn leave(room: &str, name: &str) {
+/// Tell the room that someone arrived. Called once the newcomer knows its label.
+fn announce_join(room: &str, label: &str) {
+    let map = rooms().lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(entry) = map.get(room) {
+        let _ = entry.tx.send(envelope("peer-joined", label, ""));
+    }
+}
+
+fn leave(room: &str, label: &str) {
     let mut map = rooms().lock().unwrap_or_else(|e| e.into_inner());
     if let Some(entry) = map.get_mut(room) {
         entry.peers = entry.peers.saturating_sub(1);
-        let _ = entry.tx.send(envelope("peer-left", name, ""));
+        entry.roster.retain(|p| p.label != label);
+        let _ = entry.tx.send(envelope("peer-left", label, ""));
         if entry.peers == 0 {
             map.remove(room);
         }
     }
+}
+
+/// The names of everyone in a room, as `(label, name)`.
+fn roster(room: &str) -> Vec<(String, String)> {
+    let map = rooms().lock().unwrap_or_else(|e| e.into_inner());
+    map.get(room)
+        .map(|r| {
+            r.roster
+                .iter()
+                .map(|p| {
+                    let name = p.label.rsplit_once('#').map(|(n, _)| n).unwrap_or(&p.label);
+                    (p.label.clone(), name.to_string())
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// The message shape every client understands: a type, who it is from and a
@@ -81,16 +127,48 @@ fn from_field(text: &str) -> Option<String> {
 }
 
 /// `GET /ws/call/<room>?name=<who>` — the upgrade handler.
+///
+/// A room carries live audio and video, so joining one requires a signed-in
+/// session. The session travels in the cookie the browser sends with the
+/// WebSocket handshake, so the check is the same one every API route makes —
+/// and the display name is taken from the account, never from the query string,
+/// so nobody can appear under someone else's name in a call.
 pub async fn ws_call(
     Path(room): Path<String>,
     Query(q): Query<HashMap<String, String>>,
+    headers: axum::http::HeaderMap,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    let name = q.get("name").cloned().unwrap_or_else(|| "guest".into());
-    ws.on_upgrade(move |socket| handle(socket, room, name))
+    let session = crate::session::load(&headers);
+    let Some(user) = crate::session::current_user(&session) else {
+        return (axum::http::StatusCode::UNAUTHORIZED, "sign in to join a call").into_response();
+    };
+    let name = crate::util::s(user.get("name").unwrap_or(&serde_json::Value::Null));
+    let name = if name.trim().is_empty() {
+        q.get("name").cloned().unwrap_or_else(|| "guest".into())
+    } else {
+        name
+    };
+    // One account can be open on several devices at once. Give each connection
+    // its own label so the two do not look like the same participant.
+    let conn = uuid_like();
+    ws.on_upgrade(move |socket| handle(socket, room, name, conn)).into_response()
 }
 
-async fn handle(mut socket: WebSocket, room: String, name: String) {
+/// A short random token, used to tell two connections of the same account apart.
+fn uuid_like() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let n = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let mix = n
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(std::process::id() as u128);
+    format!("{:x}", mix & 0xffff_ffff)
+}
+
+async fn handle(mut socket: WebSocket, room: String, name: String, conn: String) {
     // Refuse a room name that could be used to confuse the map or a log.
     if room.is_empty()
         || room.len() > 80
@@ -105,17 +183,24 @@ async fn handle(mut socket: WebSocket, room: String, name: String) {
             .await;
         return;
     }
-    let (mut rx, _) = join(&room, &name);
+    let (mut rx, label, others) = join(&room, &name, &conn);
+    // Tell the newcomer who is already here, so the newcomer's client knows it
+    // must offer to each of them. The roster is read before this participant is
+    // added, so the list never contains the newcomer.
+    let peers_json = serde_json::to_string(&others).unwrap_or_else(|_| "[]".into());
+    let me_json = serde_json::json!({ "name": name, "label": label }).to_string();
     let _ = socket
         .send(Message::Text(
             envelope(
                 "joined",
                 "server",
-                &format!("{{\"room\":\"{room}\",\"you\":\"{name}\"}}"),
+                &format!("{{\"room\":\"{room}\",\"you\":{me_json},\"peers\":{peers_json}}}"),
             )
             .into(),
         ))
         .await;
+    // Only now, once the newcomer knows its own label, tell the room it arrived.
+    announce_join(&room, &label);
 
     loop {
         tokio::select! {
@@ -127,8 +212,8 @@ async fn handle(mut socket: WebSocket, room: String, name: String) {
                         // back. The room is a broadcast channel, so this is the
                         // one place that decides who hears what: an offer, an
                         // answer, an ICE candidate or an announcement all skip
-                        // the peer they came from.
-                        if from_field(&text).as_deref() == Some(name.as_str()) {
+                        // the connection they came from.
+                        if from_field(&text).as_deref() == Some(label.as_str()) {
                             continue;
                         }
                         if socket.send(Message::Text(text.into())).await.is_err() {
@@ -143,7 +228,7 @@ async fn handle(mut socket: WebSocket, room: String, name: String) {
             msg = socket.recv() => {
                 match msg {
                     Some(Ok(Message::Text(t))) => {
-                        relay(&room, &name, &t);
+                        relay(&room, &label, &t);
                     }
                     Some(Ok(Message::Close(_))) | None => break,
                     Some(Ok(_)) => {}
@@ -152,7 +237,7 @@ async fn handle(mut socket: WebSocket, room: String, name: String) {
             }
         }
     }
-    leave(&room, &name);
+    leave(&room, &label);
 }
 
 /// Pass a participant's message to everyone else in the room. The `from` field
@@ -220,13 +305,13 @@ mod tests {
     fn a_room_is_created_on_the_first_join_and_removed_on_the_last_leave() {
         let room = "unit-room-alpha";
         assert_eq!(peers_in(room), 0);
-        join(room, "ann");
+        let (_, a, _) = join(room, "ann", "c1");
         assert_eq!(peers_in(room), 1);
-        join(room, "bob");
+        let (_, b, _) = join(room, "bob", "c2");
         assert_eq!(peers_in(room), 2);
-        leave(room, "ann");
+        leave(room, &a);
         assert_eq!(peers_in(room), 1);
-        leave(room, "bob");
+        leave(room, &b);
         assert_eq!(peers_in(room), 0);
     }
 
@@ -235,17 +320,50 @@ mod tests {
         // A message with a verb we do not know is dropped, so the hub cannot be
         // used as a general-purpose message bus.
         let room = "unit-room-beta";
-        join(room, "ann");
+        let (_, a, _) = join(room, "ann", "c1");
         relay(room, "ann", "{\"type\":\"exec\",\"payload\":\"rm -rf /\"}");
         relay(room, "ann", "{\"type\":\"offer\",\"payload\":\"sdp\"}");
-        leave(room, "ann");
+        leave(room, &a);
+    }
+
+    #[test]
+    fn one_account_on_two_devices_gets_two_distinct_labels() {
+        // A phone and a laptop signed in as the same person must be able to hear
+        // each other. Keying participants by name made each of them drop the
+        // other's signals, so the call never connected.
+        let room = "unit-room-same-account";
+        let (_, phone, _) = join(room, "Asha", "aaaa");
+        let (_, laptop, peers) = join(room, "Asha", "bbbb");
+        assert_ne!(phone, laptop);
+        // The second device is told the first is already there, so it offers.
+        assert_eq!(peers, vec![phone.clone()]);
+        let roster = roster(room);
+        assert_eq!(roster.len(), 2);
+        assert_eq!(roster[0].1, "Asha");
+        leave(room, &phone);
+        leave(room, &laptop);
+    }
+
+    #[test]
+    fn a_newcomer_is_never_listed_as_already_present() {
+        // The roster is read before the newcomer is added, so a client is never
+        // told to negotiate with itself.
+        let room = "unit-room-roster";
+        let (_, first, peers) = join(room, "Asha", "c1");
+        assert!(peers.is_empty());
+        let (_, second, peers) = join(room, "Baraka", "c2");
+        assert_eq!(peers, vec![first.clone()]);
+        assert!(!peers.contains(&second));
+        leave(room, &first);
+        leave(room, &second);
+        assert!(roster(room).is_empty());
     }
 
     #[test]
     fn a_bad_message_is_ignored_rather_than_panicking() {
         let room = "unit-room-gamma";
-        join(room, "ann");
+        let (_, a, _) = join(room, "ann", "c1");
         relay(room, "ann", "not json at all");
-        leave(room, "ann");
+        leave(room, &a);
     }
 }
