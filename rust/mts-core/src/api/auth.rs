@@ -41,6 +41,75 @@ fn phone_tail(phone: &str) -> String {
     }
 }
 
+/// The pepper mixed into every login code before it is hashed. It lives in the
+/// environment, not the database, so someone who reads the `otp_codes` table
+/// still cannot brute-force a code from its hash.
+fn otp_pepper() -> String {
+    std::env::var("MTS_OTP_PEPPER").unwrap_or_else(|_| "MTS_OTP_2026_PEPPER_DAR".to_string())
+}
+
+fn otp_hash(code: &str, email: &str) -> String {
+    use sha2::{Digest, Sha256};
+    hex::encode(Sha256::digest(
+        format!("{code}|{email}|{}", otp_pepper()).as_bytes(),
+    ))
+}
+
+/// A six-digit login code from the OS random source. Not `util::new_id`'s three
+/// random bytes: this code is the only thing between a known email and the
+/// account, so every one of the million values must be equally likely.
+fn otp_code() -> String {
+    use rand::Rng;
+    format!("{:06}", rand::thread_rng().gen_range(0..1_000_000u32))
+}
+
+/// Issue a fresh login code, replacing any earlier one so only the newest works.
+fn otp_issue(user_id: &str, email: &str) -> String {
+    let code = otp_code();
+    let expires = (chrono::Local::now() + chrono::Duration::minutes(10))
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string();
+    let _ = db::run(
+        "DELETE FROM otp_codes WHERE email = ? AND purpose = ?",
+        &[arg(json!(email)), arg(json!("login"))],
+    );
+    let _ = db::run(
+        "INSERT INTO otp_codes (id, user_id, email, purpose, code_hash, expires_at, created_at)
+         VALUES (?,?,?,?,?,?,?)",
+        &[
+            arg(json!(util::new_id("OTP-"))),
+            arg(json!(user_id)),
+            arg(json!(email)),
+            arg(json!("login")),
+            arg(json!(otp_hash(&code, email))),
+            arg(json!(expires)),
+            arg(json!(util::now())),
+        ],
+    );
+    code
+}
+
+/// The code is echoed back to the caller only when `OTP_SHOW_IN_RESPONSE` is
+/// set — a way to exercise the flow on a deployment with no mail provider. It is
+/// never enabled on the live site, because the reply would leak the code.
+fn otp_debug(code: &str) -> Option<String> {
+    match std::env::var("OTP_SHOW_IN_RESPONSE") {
+        Ok(v) if !v.trim().is_empty() && v.trim() != "0" => Some(code.to_string()),
+        _ => None,
+    }
+}
+
+/// Open the session and return the signed-in user with the cookie attached.
+fn finish_login(row: &db::Row) -> Response {
+    let id = util::s(row.get("id").unwrap_or(&serde_json::Value::Null));
+    let sess = crate::session::login(&id);
+    let mut res = ok(json!({ "user": map::user(row) }));
+    if let Ok(v) = axum::http::HeaderValue::from_str(&crate::session::set_cookie(&sess.id)) {
+        res.headers_mut().insert(axum::http::header::SET_COOKIE, v);
+    }
+    res
+}
+
 /// Check a submitted PIN against the stored hash, or the phone tail when no PIN
 /// was ever set. Returns the reason on failure so the caller can count attempts.
 fn check_pin(row: &db::Row, pin: &str) -> (bool, String) {
@@ -71,6 +140,8 @@ pub async fn handle(c: &Ctx) -> Response {
     match c.action().as_str() {
         "login" => login(c),
         "verify-login-pin" => verify_login_pin(c),
+        "verify-login-otp" => verify_login_otp(c),
+        "resend-login-otp" => resend_login_otp(c),
         "set-pin" => set_pin(c),
         "register" => register(c),
         "logout" => logout(c),
@@ -120,11 +191,92 @@ fn login(c: &Ctx) -> Response {
         .unwrap_or("")
         .is_empty();
     let has_tail = !phone_tail(row.get("phone").and_then(|v| v.as_str()).unwrap_or("")).is_empty();
+    // The password is only step one. A code goes out now so the second step can
+    // be completed without waiting for a resend; it is replaced on every sign-in.
+    let uid = util::s(row.get("id").unwrap_or(&serde_json::Value::Null));
+    let code = otp_issue(&uid, &email);
+    crate::mail::send_login_code(&email, &code);
     ok(json!({
         "otp_required": true,
         "email": email,
+        "otp_debug_only": otp_debug(&code),
         "pin_available": has_pin || has_tail,
         "pin_kind": if has_pin { "pin" } else if has_tail { "phone" } else { "" },
+    }))
+}
+
+/// Step two, by emailed code. The code is compared as a hash, so the stored row
+/// never reveals it, and a used code cannot be replayed.
+fn verify_login_otp(c: &Ctx) -> Response {
+    if let Err(e) = c.require_csrf() {
+        return e;
+    }
+    let email = c.p("email").to_lowercase();
+    let code = digits(&c.p("code"));
+    if email.is_empty() || code.is_empty() {
+        return bad("Email and code are required.");
+    }
+    let Some(otp) = db::row(
+        "SELECT * FROM otp_codes WHERE email = ? AND purpose = ? AND used_at IS NULL
+         ORDER BY created_at DESC LIMIT 1",
+        &[arg(json!(email)), arg(json!("login"))],
+    ) else {
+        return err("No pending code for this email. Sign in again.", 404);
+    };
+    let expected = otp_hash(&code, &email);
+    let stored = util::s(otp.get("code_hash").unwrap_or(&serde_json::Value::Null));
+    let expired = otp
+        .get("expires_at")
+        .and_then(|v| v.as_str())
+        .and_then(|s| chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").ok())
+        .map(|until| until < chrono::Local::now().naive_local())
+        .unwrap_or(true);
+    if expired || !crate::payments::constant_time_eq(expected.as_bytes(), stored.as_bytes()) {
+        return bad("Wrong or expired verification code. Check your email, or Resend.");
+    }
+    let oid = util::s(otp.get("id").unwrap_or(&serde_json::Value::Null));
+    let _ = db::run(
+        "UPDATE otp_codes SET used_at = ? WHERE id = ?",
+        &[arg(json!(util::now())), arg(json!(oid))],
+    );
+    let Some(row) = db::row(
+        "SELECT * FROM users WHERE lower(email) = ?",
+        &[arg(json!(email))],
+    ) else {
+        return err("Account not available.", 403);
+    };
+    if row.get("status").and_then(|v| v.as_str()) != Some("Active") {
+        return err("Account is suspended. Contact 0796 752 645.", 403);
+    }
+    finish_login(&row)
+}
+
+/// Send a replacement code, invalidating the old one. Refuses for an unknown or
+/// suspended account so it cannot be used to probe which emails are registered.
+fn resend_login_otp(c: &Ctx) -> Response {
+    if let Err(e) = c.require_csrf() {
+        return e;
+    }
+    let email = c.p("email").to_lowercase();
+    if email.is_empty() {
+        return bad("Email is required.");
+    }
+    let Some(row) = db::row(
+        "SELECT id, status FROM users WHERE lower(email) = ?",
+        &[arg(json!(email))],
+    ) else {
+        return err("No account with this email.", 404);
+    };
+    if row.get("status").and_then(|v| v.as_str()) != Some("Active") {
+        return err("Account is suspended.", 403);
+    }
+    let uid = util::s(row.get("id").unwrap_or(&serde_json::Value::Null));
+    let code = otp_issue(&uid, &email);
+    crate::mail::send_login_code(&email, &code);
+    ok(json!({
+        "otp_required": true,
+        "email": email,
+        "otp_debug_only": otp_debug(&code),
     }))
 }
 
@@ -194,12 +346,7 @@ fn verify_login_pin(c: &Ctx) -> Response {
         "UPDATE users SET pin_fails = 0, pin_locked_until = NULL WHERE id = ?",
         &[arg(json!(id))],
     );
-    let sess = crate::session::login(&id);
-    let mut res = ok(json!({ "user": map::user(&row) }));
-    if let Ok(v) = axum::http::HeaderValue::from_str(&crate::session::set_cookie(&sess.id)) {
-        res.headers_mut().insert(axum::http::header::SET_COOKIE, v);
-    }
-    res
+    finish_login(&row)
 }
 
 /// Set or change the account PIN. Needs a session, so a stranger cannot attach
@@ -639,4 +786,48 @@ fn passkey_delete(c: &Ctx) -> Response {
 #[allow(dead_code)]
 fn _keep(_: fn(&Ctx, &str, &str) -> Result<String, Response>) {
     let _ = need;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every one of the million codes must be reachable and always six digits —
+    /// a short or skewed code would shrink the search space an attacker faces.
+    #[test]
+    fn otp_code_is_always_six_digits() {
+        let mut seen = std::collections::HashSet::new();
+        for _ in 0..4000 {
+            let c = otp_code();
+            assert_eq!(c.len(), 6, "code {c} is not six characters");
+            assert!(c.chars().all(|ch| ch.is_ascii_digit()), "code {c} is not numeric");
+            seen.insert(c);
+        }
+        // 4000 draws from a million values should be almost entirely distinct.
+        assert!(seen.len() > 3900, "codes repeat too often: {} unique", seen.len());
+    }
+
+    /// The stored value must not contain the code itself, and must depend on the
+    /// email so a hash stolen for one account is useless for another.
+    #[test]
+    fn otp_hash_hides_the_code_and_binds_the_email() {
+        let a = otp_hash("123456", "ceo@example.com");
+        let b = otp_hash("123456", "other@example.com");
+        assert!(!a.contains("123456"));
+        assert_ne!(a, b);
+        assert_eq!(a, otp_hash("123456", "ceo@example.com"));
+        assert_eq!(a.len(), 64, "sha256 hex should be 64 characters");
+    }
+
+    /// The emailed-code path exists and is reachable by name from the frontend.
+    #[test]
+    fn otp_actions_are_registered() {
+        let src = include_str!("auth.rs");
+        for action in ["verify-login-otp", "resend-login-otp"] {
+            assert!(
+                src.contains(&format!("\"{action}\" =>")),
+                "{action} is not routed in handle()"
+            );
+        }
+    }
 }

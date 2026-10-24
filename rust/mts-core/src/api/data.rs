@@ -1660,13 +1660,38 @@ pub async fn dashboard(c: &Ctx) -> Response {
                 return e;
             }
             let total = db::scalar_i64("SELECT count(*) FROM visitor_logs", &[]);
+            // A visit is a distinct session per day, so one person reloading a
+            // page ten times still counts once.
             let today = db::scalar_i64(
-                "SELECT count(*) FROM visitor_logs WHERE substr(visit_date,1,10) = ?",
+                "SELECT count(DISTINCT session_id) FROM visitor_logs WHERE substr(visit_date,1,10) = ?",
                 &[arg(json!(chrono::Local::now()
                     .format("%Y-%m-%d")
                     .to_string()))],
             );
-            ok(json!({ "total": total, "today": today }))
+            let yesterday = db::scalar_i64(
+                "SELECT count(DISTINCT session_id) FROM visitor_logs WHERE substr(visit_date,1,10) = ?",
+                &[arg(json!((chrono::Local::now() - chrono::Duration::days(1))
+                    .format("%Y-%m-%d")
+                    .to_string()))],
+            );
+            // The last seven days include today, so the window starts six days back.
+            let this_week = db::scalar_i64(
+                "SELECT count(DISTINCT session_id) FROM visitor_logs WHERE substr(visit_date,1,10) >= ?",
+                &[arg(json!((chrono::Local::now() - chrono::Duration::days(6))
+                    .format("%Y-%m-%d")
+                    .to_string()))],
+            );
+            let this_month = db::scalar_i64(
+                "SELECT count(DISTINCT session_id) FROM visitor_logs WHERE substr(visit_date,1,7) = ?",
+                &[arg(json!(chrono::Local::now().format("%Y-%m").to_string()))],
+            );
+            ok(json!({
+                "total": total,
+                "today": today,
+                "yesterday": yesterday,
+                "this_week": this_week,
+                "this_month": this_month,
+            }))
         }
         _ => bad("Unknown dashboard action."),
     }

@@ -77,10 +77,19 @@ if ! command -v go >/dev/null 2>&1 || ! command -v elixir >/dev/null 2>&1; then
       || log "Go/Elixir could not be installed; those languages will be hidden."
   fi
 fi
-for c in go elixir; do
-  command -v "$c" >/dev/null 2>&1 && log "$c: $($c --version 2>&1 | head -1)" \
-    || log "$c not available."
-done
+# `go --version` is not a flag — Go uses the `go version` subcommand. `elixir
+# --version` boots an Erlang VM that does not exit on its own, so it is run under
+# a timeout and only the version line is kept.
+if command -v go >/dev/null 2>&1; then
+  log "go: $(go version 2>&1 | head -1)"
+else
+  log "go not available."
+fi
+if command -v elixir >/dev/null 2>&1; then
+  log "elixir: $(timeout 15 elixir --version 2>/dev/null | grep -m1 Elixir || echo installed)"
+else
+  log "elixir not available."
+fi
 
 # --- build ----------------------------------------------------------------
 # A binary built before a session reset is stale: the toolchain that made it is

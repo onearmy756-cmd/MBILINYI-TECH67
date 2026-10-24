@@ -37,3 +37,6 @@ node_modules/
 # Tauri build output and the schema it generates on every build.
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
+
+# Erlang/Elixir crash dumps (the version probe can leave one behind)
+erl_crash.dump
