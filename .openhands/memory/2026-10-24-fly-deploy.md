@@ -443,3 +443,8 @@ Fly v26).
 - Follow-up (same day): the CEO wanted the cards visible on arrival, not below
   the CEO block. Moved the EXPLORE section to sit directly under the hero
   (before CEO) in both engines. Commit ec2a664, Fly v27.
+
+- Second follow-up: the CEO then wanted the cards at the VERY TOP, before any
+  prose. Moved EXPLORE above the HERO inside #view-landing (both engines), with
+  pt-10 for breathing room. Commit 838078f, Fly v28. The hero stat counters read
+  "0" until scrolled into view (IntersectionObserver) — expected, not a bug.
