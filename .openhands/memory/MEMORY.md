@@ -102,6 +102,12 @@ Rust core (the PHP shell already had them). Pattern: a spec feature can exist in
 PHP + the frontend + the DB yet be absent from the Rust handler that serves
 production — always check the Rust core, not just `api/*.php`.
 
+- **The landing view is duplicated**: `templates/index.html` (Rust) and
+  `index.php` (PHP/cPanel) are two hand-kept copies of the same HTML. Any
+  homepage edit must land in BOTH or the two engines drift. The `/company` and
+  `/services` pages existed for a while with no card linking to them from the
+  homepage — only the header nav (fixed 2026-10-25, Fly v26).
+
 ## Traps that already cost time
 - **A template with mode 0600 404s while looking perfect.** The server runs as
   uid 1000 (`mts`), so a file copied into the image as root-only is unreadable →

@@ -424,3 +424,18 @@ the recorder writes a row per page render (salted sha256(ip+session) hash).
   test of the notify functions needs a runtime. The repo guards this class with
   **source-level tests** (`read_to_string(...).contains("notify::contract_...")`)
   like `plan_toggle_never_touches_service_visibility` — follow that pattern.
+
+## The homepage never linked to /company or /services (2026-10-25)
+The CEO reported "sioni hizo cards za MBILINYI TECH COMPANY / MBILINYITECH
+SERVICES". They DO exist — but only as the badge at the top of the /company and
+/services pages themselves. The landing page (templates/index.html and its PHP
+twin index.php) had no card linking to them; a visitor only found them in the
+header nav. Fixed by adding an EXPLORE grid of six cards (Company, Services,
+Stack, AI, Pricing, Work) to the landing view on both engines (commit 89eab3d,
+Fly v26).
+- Lesson: the landing view is duplicated, not shared — `templates/index.html`
+  (Rust) and `index.php` (PHP/cPanel) are two hand-kept copies of the same HTML.
+  Any homepage change must be made in BOTH, or Fly and cPanel drift. A test
+  (`the_homepage_links_to_company_and_services`) asserts both carry the cards.
+- To insert into index.php: find the `<!-- OUR TEAM -->` marker and insert the
+  block before it; the two files are otherwise byte-identical in that region.
