@@ -439,3 +439,7 @@ Fly v26).
   (`the_homepage_links_to_company_and_services`) asserts both carry the cards.
 - To insert into index.php: find the `<!-- OUR TEAM -->` marker and insert the
   block before it; the two files are otherwise byte-identical in that region.
+
+- Follow-up (same day): the CEO wanted the cards visible on arrival, not below
+  the CEO block. Moved the EXPLORE section to sit directly under the hero
+  (before CEO) in both engines. Commit ec2a664, Fly v27.
