@@ -559,4 +559,58 @@ mod tests {
         assert!(service_visible("custom_software"));
         set("services_hidden", "");
     }
+
+    /// FR-7: the Rust core must record a page view, not only read the table.
+    /// The admin's Visitor Analytics card reads `visitor_logs`; if nothing
+    /// writes it the card is permanently zero on production. Guard the wiring:
+    /// `pages.rs` inserts a row, and `visitor_stats` returns every field the
+    /// dashboard chart and top-pages list read.
+    #[test]
+    fn page_views_are_recorded_and_reported() {
+        let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let pages = std::fs::read_to_string(base.join("pages.rs")).expect("read pages.rs");
+        assert!(
+            pages.contains("INSERT INTO visitor_logs"),
+            "pages.rs no longer records page views — the Visitor Analytics card \
+             would read zero on production."
+        );
+        assert!(
+            pages.contains("record_visitor("),
+            "pages.rs defines the recorder but never calls it from render()."
+        );
+        let data = std::fs::read_to_string(base.join("api/data.rs")).expect("read data.rs");
+        for field in ["\"last_7_days\"", "\"top_pages\""] {
+            assert!(
+                data.contains(field),
+                "visitor_stats must return {field} — the dashboard chart and the \
+                 top-pages list read it, so omitting it renders an empty panel."
+            );
+        }
+    }
+
+    /// FR-9: signing a contract must notify. The client's signature has to reach
+    /// the CEO, and the countersignature has to reach both parties.
+    #[test]
+    fn contract_signing_notifies_both_parties() {
+        let data = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/api/data.rs"),
+        )
+        .expect("read data.rs");
+        assert!(
+            data.contains("notify::contract_client_signed"),
+            "the client-sign branch no longer emails the CEO — the countersignature \
+             would be left waiting unnoticed."
+        );
+        assert!(
+            data.contains("notify::contract_fully_signed"),
+            "the admin-sign branch no longer emails the signed contract to both parties."
+        );
+        let notify = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/notify.rs"),
+        )
+        .expect("read notify.rs");
+        for f in ["pub fn contract_client_signed", "pub fn contract_fully_signed"] {
+            assert!(notify.contains(f), "notify.rs is missing {f}.");
+        }
+    }
 }

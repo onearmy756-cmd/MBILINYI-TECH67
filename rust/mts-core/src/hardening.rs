@@ -131,8 +131,13 @@ pub async fn layer(req: Request<axum::body::Body>, next: Next) -> Response {
 
 /// The client address, honouring the proxy header the platform is served behind.
 pub fn client_ip(req: &Request<axum::body::Body>) -> String {
-    if let Some(v) = req
-        .headers()
+    client_ip_from_headers(req.headers())
+}
+
+/// The client address from the headers alone. `render` receives only the header
+/// map, so the page-view recorder needs the same logic without a whole request.
+pub fn client_ip_from_headers(headers: &axum::http::HeaderMap) -> String {
+    if let Some(v) = headers
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
     {
@@ -143,7 +148,7 @@ pub fn client_ip(req: &Request<axum::body::Body>) -> String {
             }
         }
     }
-    if let Some(v) = req.headers().get("x-real-ip").and_then(|v| v.to_str().ok()) {
+    if let Some(v) = headers.get("x-real-ip").and_then(|v| v.to_str().ok()) {
         if !v.trim().is_empty() {
             return v.trim().to_string();
         }

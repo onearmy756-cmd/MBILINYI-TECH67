@@ -17,6 +17,50 @@ use axum::body::Body;
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 
+/// Record one page view. PHP did this on every request (`record_visitor()` in
+/// `config/app.php`); the Rust core served the pages but never wrote the row, so
+/// the admin's Visitor Analytics card read zero on production. The `ip_hash` is
+/// salted with the session id so the same person is countable without the raw
+/// address being stored, matching the PHP behaviour.
+fn record_visitor(
+    page: &str,
+    session: &crate::session::Session,
+    me: &Option<db::Row>,
+    headers: &axum::http::HeaderMap,
+) {
+    use sha2::{Digest, Sha256};
+    let ip = crate::hardening::client_ip_from_headers(headers);
+    let ua = headers
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let referer = headers
+        .get(header::REFERER)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let ip_hash = hex::encode(Sha256::digest(format!("{ip}{}", session.id).as_bytes()));
+    let user_id: Option<String> = me
+        .as_ref()
+        .and_then(|u| u.get("id").map(util::s))
+        .filter(|s| !s.is_empty());
+    let visit_date = util::now().get(0..10).unwrap_or("").to_string();
+    let _ = db::run(
+        "INSERT INTO visitor_logs (visit_date, ip_hash, user_agent, page_path, page_url, referer, user_id, session_id, visited_at)
+         VALUES (?,?,?,?,?,?,?,?,?)",
+        &[
+            db::from_json(serde_json::json!(visit_date)),
+            db::from_json(serde_json::json!(ip_hash)),
+            db::from_json(serde_json::json!(ua.chars().take(255).collect::<String>())),
+            db::from_json(serde_json::json!(page)),
+            db::from_json(serde_json::json!(page)),
+            db::from_json(serde_json::json!(referer.chars().take(255).collect::<String>())),
+            db::from_json(serde_json::json!(user_id)),
+            db::from_json(serde_json::json!(session.id)),
+            db::from_json(serde_json::json!(util::now())),
+        ],
+    );
+}
+
 /// The site base URL, for canonical links and social cards.
 fn site_base() -> String {
     let s = std::env::var("SITE_URL").unwrap_or_else(|_| "https://mbilinyitech.co.tz".to_string());
@@ -669,6 +713,9 @@ pub async fn render(name: &str, tab: &str, headers: &axum::http::HeaderMap) -> R
     if let Ok(v) = HeaderValue::from_str(&crate::session::set_cookie(&session.id)) {
         res.headers_mut().insert(header::SET_COOKIE, v);
     }
+    // Log the view for the admin's Visitor Analytics. Done last so a logging
+    // failure can never turn a rendered page into an error response.
+    record_visitor(&page, &session, &me, headers);
     res
 }
 

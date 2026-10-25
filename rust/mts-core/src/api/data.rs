@@ -887,6 +887,11 @@ fn sign(c: &Ctx, who: &str) -> Response {
                 arg(json!(id)),
             ],
         );
+        // FR-9: tell the CEO the client signed, so the countersignature is not
+        // left waiting. Reload the row so the email carries the saved state.
+        if let Some(r) = db::row("SELECT * FROM contracts WHERE id = ?", &[arg(json!(id))]) {
+            crate::notify::contract_client_signed(&r);
+        }
     } else {
         if let Err(e) = c.require_admin() {
             return e;
@@ -913,6 +918,11 @@ fn sign(c: &Ctx, who: &str) -> Response {
                 arg(json!(id)),
             ],
         );
+        // FR-9: both parties have signed — send the fully-signed contract and
+        // the 50/50 terms to the client and the CEO.
+        if let Some(r) = db::row("SELECT * FROM contracts WHERE id = ?", &[arg(json!(id))]) {
+            crate::notify::contract_fully_signed(&r);
+        }
     }
     match db::row("SELECT * FROM contracts WHERE id = ?", &[arg(json!(id))]) {
         Some(r) => ok(json!({ "contract": map::contract(&r) })),
@@ -1689,12 +1699,49 @@ pub async fn dashboard(c: &Ctx) -> Response {
                 "SELECT count(DISTINCT session_id) FROM visitor_logs WHERE substr(visit_date,1,7) = ?",
                 &[arg(json!(chrono::Local::now().format("%Y-%m").to_string()))],
             );
+            // The chart reads `last_7_days` as {date,label,count} and the list
+            // reads `top_pages` as {page,views}. The PHP handler sent both; the
+            // Rust one did not, so the chart drew empty and the list said "No
+            // tracked pages yet" on a site with traffic.
+            let mut last7: Vec<J> = Vec::new();
+            for i in (0..7).rev() {
+                let day = (chrono::Local::now() - chrono::Duration::days(i))
+                    .format("%Y-%m-%d")
+                    .to_string();
+                let label = (chrono::Local::now() - chrono::Duration::days(i))
+                    .format("%a")
+                    .to_string();
+                let count = db::scalar_i64(
+                    "SELECT count(*) FROM visitor_logs WHERE substr(visit_date,1,10) = ?",
+                    &[arg(json!(day))],
+                );
+                last7.push(json!({ "date": day, "label": label, "count": count }));
+            }
+            let top_rows = db::rows(
+                "SELECT page_path, count(*) AS views FROM visitor_logs
+                 WHERE substr(visit_date,1,10) >= ? GROUP BY page_path
+                 ORDER BY views DESC LIMIT 5",
+                &[arg(json!((chrono::Local::now() - chrono::Duration::days(29))
+                    .format("%Y-%m-%d")
+                    .to_string()))],
+            );
+            let top_pages: Vec<J> = top_rows
+                .iter()
+                .map(|r| {
+                    json!({
+                        "page": util::s(r.get("page_path").unwrap_or(&J::Null)),
+                        "views": r.get("views").and_then(|v| v.as_i64()).unwrap_or(0),
+                    })
+                })
+                .collect();
             ok(json!({
                 "total": total,
                 "today": today,
                 "yesterday": yesterday,
                 "this_week": this_week,
                 "this_month": this_month,
+                "last_7_days": last7,
+                "top_pages": top_pages,
             }))
         }
         _ => bad("Unknown dashboard action."),

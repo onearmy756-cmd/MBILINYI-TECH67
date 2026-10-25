@@ -94,6 +94,80 @@ pub fn request_created(req: &db::Row) {
     );
 }
 
+/// FR-9 / Task 10 — the client has signed; the CEO still has to countersign.
+/// The admin is emailed so the signature is not left waiting unnoticed.
+pub fn contract_client_signed(contract: &db::Row) {
+    let cid = util::s(contract.get("id").unwrap_or(&J::Null));
+    let title = util::s(contract.get("project_title").unwrap_or(&J::Null));
+    let tracking = util::s(contract.get("tracking_id").unwrap_or(&J::Null));
+    let client = util::s(contract.get("client_name").unwrap_or(&J::Null));
+    let total = contract
+        .get("total")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    admin_alert(
+        &format!("Contract {cid} — client signed, awaiting your countersignature"),
+        &format!(
+            "Klienti {client} amesaini mkataba {cid} (Tracking {tracking}).<br>\
+             <b>{title}</b> — TZS {total:.0}.<br>\
+             Sasa ni zamu yako (CEO) kupigia saini ndipo mradi uanze rasmi. Kumbuka kanuni ya \
+             <b>50/50</b>: deposit ya 50% (TZS {:.0}) ilipwe kabla ya kuanza kwa mradi.",
+            total * 0.5
+        ),
+        "admin_client_signed",
+    );
+}
+
+/// FR-9 / Task 10 — both parties have signed. Client and CEO get the signed
+/// contract, the 50/50 terms and the deposit reminder.
+pub fn contract_fully_signed(contract: &db::Row) {
+    let cid = util::s(contract.get("id").unwrap_or(&J::Null));
+    let title = util::s(contract.get("project_title").unwrap_or(&J::Null));
+    let tracking = util::s(contract.get("tracking_id").unwrap_or(&J::Null));
+    let client = util::s(contract.get("client_name").unwrap_or(&J::Null));
+    let total = contract
+        .get("total")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let half = total * 0.5;
+    let client_email = db::row(
+        "SELECT email FROM requests WHERE tracking_id = ?",
+        &[arg(json!(tracking))],
+    )
+    .map(|r| util::s(r.get("email").unwrap_or(&J::Null)))
+    .unwrap_or_default();
+    let body = format!(
+        "<p>Mkataba <b>{cid}</b> umesainiwa na pande zote mbili (Client + CEO) ✅</p>\
+         <p><b>{title}</b> — TZS {total:.0} • Tracking <b>{tracking}</b></p>\
+         <p>Client: <b>{client}</b>. Mradi umeanza (In Progress).</p>\
+         <div style=\"margin-top:14px;padding:16px;background:linear-gradient(135deg,#06203a,#1a0b3a);\
+         border:1px solid rgba(34,211,238,.3);border-radius:14px\">\
+         <div style=\"font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:#22d3ee;margin-bottom:10px\">\
+         PAYMENT TERMS — MASHARTI YA MALIPO (50/50)</div>\
+         <p style=\"margin:0 0 8px\"><b style=\"color:#F5B301\">1. DEPOSIT (50%):</b> TZS {half:.0} — \
+         inalipwa <b>kabla ya kazi kuanza</b>. Mradi hauanzi hadi deposit ilipwe na CEO aweke saini yake.</p>\
+         <p style=\"margin:0 0 8px\"><b style=\"color:#F5B301\">2. MID-PROJECT (50%):</b> TZS {half:.0} — \
+         inalipwa wakati mradi umekamilikia 50% (kati ya timeline), <b>kabla ya delivery ya mwisho</b>.</p>\
+         <p style=\"margin:0;color:#8EA0BF;font-size:12px\">Si \"Deposit + Delivery\". Final source code, \
+         training na handover hazinapelekwi kabla installment ya 2 haijawekwa. Late payment: penalty 2% kwa wiki.</p></div>\
+         <p style=\"margin-top:14px\">Deposit invoice (50%) inapatikana kwenye <b>Invoices &amp; Payments</b> \
+         ya portal yako. Lipa kwa M-Pesa <b>0796 752 645</b> (Jackson Mbilinyi) tuma risiti kwa WhatsApp.</p>"
+    );
+    admin_alert(
+        &format!("Contract {cid} fully signed — project in progress"),
+        &body,
+        "contract_fully_signed",
+    );
+    if !client_email.trim().is_empty() {
+        email(
+            &client_email,
+            &format!("Contract {cid} fully signed — project in progress"),
+            &body,
+            "contract_fully_signed",
+        );
+    }
+}
+
 /// A contract is ready. Both parties are told, and the admin is asked to sign.
 pub fn contract_ready(contract: &db::Row) {
     let cid = util::s(contract.get("id").unwrap_or(&J::Null));
