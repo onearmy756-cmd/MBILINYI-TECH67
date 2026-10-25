@@ -17,6 +17,7 @@ mod agents;
 mod ajira;
 mod api;
 mod call;
+mod coding;
 mod db;
 mod engine;
 mod engine_api;
@@ -365,6 +366,7 @@ pub fn bootstrap() {
     ajira::init_tables();
     agents::init_tables();
     engine::init_tables();
+    coding::init_tables();
     scheduler::init_tables();
     ofisi::init_tables();
     security::init_tables();

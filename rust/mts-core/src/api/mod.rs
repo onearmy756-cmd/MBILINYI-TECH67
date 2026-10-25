@@ -56,6 +56,8 @@ pub async fn dispatch(name: &str, req: Request<Body>) -> Response {
         "runtime" => crate::runtime_api::handle(&c).await,
         // Moving the platform between hosts: export, import and the plan.
         "migrate" => crate::migrate::handle(&c).await,
+        // Mbilinyi Coding — the real OpenHands agent, run from the panel.
+        "coding" => crate::coding::handle(&c).await,
         _ => return not_found("Unknown endpoint."),
     };
     result

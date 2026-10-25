@@ -1960,7 +1960,7 @@ async function adminTab(t, quiet) {
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
     wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', payroll: 'Payroll — Payslips, PAYE, NSSF & WCF', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
     queue: 'Work Queue — What the Company Is Doing and What Waits for Approval',
-    runs: 'Agent Runs — Every Job the Company Carries Out', runtimes: 'Runtimes — Languages the Platform Really Runs', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery', hamisha: 'Hamisha — Move the Platform to Another Cloud or VPS' };
+    runs: 'Agent Runs — Every Job the Company Carries Out', runtimes: 'Runtimes — Languages the Platform Really Runs', ai: 'AI Engine — The Provider Every Agent Thinks With', sms: 'SMS Gateway — Real Message Delivery', hamisha: 'Hamisha — Move the Platform to Another Cloud or VPS', coding: 'Mbilinyi Coding — Real OpenHands Agents in Their Own Sandbox' };
   $('adminTabTitle').textContent = titles[t];
   if (!quiet) $('adminContent').innerHTML = '<div class="text-white/45 text-[13.5px] flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>';
 
@@ -2790,6 +2790,74 @@ async function adminTab(t, quiet) {
         A bundle carries the settings table, which holds the AI provider key and the SMTP password. It is stored under <span class="font-mono">storage/backups/</span> — a directory the web server does not serve — and both export and import are admin-only. Move it over a trusted channel, and delete it from the old host once the new one is live.
       </div>`;
       setTimeout(() => { loadMigBundles(); loadMigPlan('fly'); }, 60);
+    }
+
+    if (t === 'coding') {
+      const st = await apiGet('api/coding.php', { action: 'status' });
+      const jobs = await apiGet('api/coding.php', { action: 'jobs' }).catch(() => ({ jobs: [] }));
+      const J = jobs.jobs || [];
+      const agents = st.agents || [];
+      const okCls = st.configured ? 'emerald' : 'amber';
+      h = `<div class="rounded-2xl border border-${okCls}-400/25 bg-${okCls}-500/[.05] p-4 text-[13px] text-white/75 mb-4">
+        <i class="fa-solid fa-laptop-code text-${okCls}-300 mr-2"></i>
+        <strong>Mbilinyi Coding</strong> hands a job to a <strong>real OpenHands agent</strong> — a genuine OpenHands Cloud conversation with its own sandbox. The company's own name is on it; underneath it is OpenHands.
+        ${st.configured ? `Connected as <strong>${esc(st.keyHint || 'a key is set')}</strong> via <span class="font-mono">${esc(st.baseUrl)}</span>.` : `No API key yet — add one below to switch it on.`}
+        <br><span class="text-white/55">Every agent uses the platform's configured LLM: <strong>${esc(st.model || 'not set')}</strong>${st.llmConfigured ? ` (${esc(st.llmProvider)})` : ' — set a provider key in AI Engine first'}.</span>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 mb-4">
+        ${[['API key', st.configured ? 'Set' : 'Missing', 'fa-key', st.configured ? 'emerald' : 'amber'], ['Model', st.model || '—', 'fa-microchip', 'fuchsia'], ['Agent seats', agents.length, 'fa-robot', 'violet']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-lg truncate max-w-[160px]">${esc(v)}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
+      </div>
+
+      <div class="rounded-2xl border border-white/12 bg-white/[.02] p-5 mb-4">
+        <div class="font-bold text-[14px] mb-3"><i class="fa-solid fa-plug-circle-check text-cyan-300 mr-1.5"></i>Connection — OpenHands API</div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">API key</label>
+            <input id="codKey" type="password" class="input mt-1" placeholder="${st.configured ? 'leave blank to keep the current key' : 'paste your OpenHands API key'}"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">API base URL</label>
+            <input id="codBase" class="input mt-1" value="${esc(st.baseUrl || '')}" placeholder="https://app.all-hands.dev"></div>
+          <div class="sm:col-span-2"><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Model every coding agent uses</label>
+            <input id="codModel" class="input mt-1" value="${esc(st.model || '')}" placeholder="e.g. anthropic/claude-3-5-sonnet-latest — blank uses the platform LLM"></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button onclick="saveCoding()" class="grad-btn px-5 py-2.5 rounded-xl font-bold text-[13px]"><i class="fa-solid fa-floppy-disk mr-1"></i>Save</button>
+          <button onclick="testCoding()" class="px-5 py-2.5 rounded-xl font-bold text-[13px] border border-cyan-400/40 hover:bg-cyan-500/10"><i class="fa-solid fa-vial mr-1"></i>Test connection</button>
+        </div>
+        <div id="codTest" class="mt-3"></div>
+      </div>
+
+      <div class="rounded-2xl border border-emerald-400/25 bg-emerald-500/[.04] p-5 mb-4">
+        <div class="font-bold text-[14px] mb-1"><i class="fa-solid fa-play text-emerald-300 mr-1.5"></i>Start a coding job</div>
+        <div class="text-[12.5px] text-white/55 mb-3">Describe the job. OpenHands clones the repository (if given), works in its own sandbox, and reports back. The answer appears below and in the job list.</div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div class="sm:col-span-2"><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">What must be done</label>
+            <textarea id="codTask" class="input mt-1" rows="3" placeholder="e.g. Fix the failing test in src/api.rs and open a PR"></textarea></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Repository (optional)</label>
+            <input id="codRepo" class="input mt-1" placeholder="owner/repo"></div>
+          <div><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Branch (optional)</label>
+            <input id="codBranch" class="input mt-1" placeholder="main"></div>
+          <div class="sm:col-span-2"><label class="text-[11px] font-bold text-white/55 uppercase tracking-wider">Agent (whose grant of tools is used)</label>
+            <select id="codAgent" class="input mt-1">${agents.map(a => `<option value="${esc(a.id)}">${esc(a.name)} — ${esc(a.role)}</option>`).join('')}</select></div>
+        </div>
+        <button onclick="startCoding()" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm mt-3"><i class="fa-solid fa-rocket mr-1"></i>Start job</button>
+        <div id="codStart" class="mt-3"></div>
+      </div>
+
+      <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-bold text-[14px]"><i class="fa-solid fa-list-check text-violet-300 mr-1.5"></i>Coding jobs</div>
+          <button onclick="adminTab('coding')" class="px-3 py-1.5 rounded-lg text-[12px] font-bold border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+        </div>
+        <div id="codJobs">${J.length ? J.map(j => `<div class="rounded-xl border border-white/10 bg-white/[.02] p-3 mb-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="font-bold text-[13px]">${esc(j.title)}</div>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${j.status === 'done' ? 'bg-emerald-500/20 text-emerald-300' : j.status === 'failed' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'}">${esc(j.status)}</span>
+          </div>
+          <div class="text-[11.5px] text-white/45 mt-1 font-mono">${esc(j.model || '')} ${j.repository ? '· ' + esc(j.repository) : ''} ${j.conversation ? '· ' + esc(j.conversation) : ''}</div>
+          ${j.result ? `<div class="text-[12.5px] text-white/70 mt-2 whitespace-pre-wrap max-h-40 overflow-auto">${esc(j.result)}</div>` : ''}
+          <div class="flex gap-2 mt-2"><button onclick="pollCoding('${esc(j.id)}')" class="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate-right mr-1"></i>Check</button></div>
+        </div>`).join('') : '<div class="text-white/45 text-[13px]">No coding jobs yet.</div>'}</div>
+      </div>`;
     }
 
     if (t === 'settings') {
@@ -4518,6 +4586,64 @@ async function exportBundle() {
 
 function downloadBundle(name) {
   window.location = '/' + cleanPath('api/migrate.php') + '?action=download&name=' + encodeURIComponent(name);
+}
+
+/* ---- Mbilinyi Coding — the real OpenHands agent ---------------------- */
+
+async function saveCoding() {
+  const box = $('codTest');
+  box.innerHTML = '<div class="text-[12.5px] text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Saving…</div>';
+  try {
+    await apiPost('api/coding.php', { action: 'save', apiKey: $('codKey').value, baseUrl: $('codBase').value, model: $('codModel').value });
+    toast('Mbilinyi Coding saved ✓', 'ok');
+    adminTab('coding', true);
+  } catch (e) {
+    box.innerHTML = `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200">${esc(e.message)}</div>`;
+  }
+}
+
+async function testCoding() {
+  const box = $('codTest');
+  box.innerHTML = '<div class="text-[12.5px] text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Asking the OpenHands API…</div>';
+  try {
+    const r = await apiGet('api/coding.php', { action: 'test' });
+    box.innerHTML = r.connected
+      ? `<div class="rounded-xl bg-emerald-500/10 border border-emerald-400/30 p-3 text-[12.5px] text-emerald-100"><i class="fa-solid fa-circle-check mr-1"></i>Connected as <strong>${esc(r.email)}</strong>. ${esc(r.detail)}</div>`
+      : `<div class="rounded-xl bg-amber-500/10 border border-amber-400/30 p-3 text-[12.5px] text-amber-100"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${esc(r.detail)}</div>`;
+  } catch (e) {
+    box.innerHTML = `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200">${esc(e.message)}</div>`;
+  }
+}
+
+async function startCoding() {
+  const box = $('codStart');
+  const task = $('codTask').value.trim();
+  if (!task) { toast('Describe the coding job first', 'warn'); return; }
+  box.innerHTML = '<div class="text-[12.5px] text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Starting a real OpenHands agent…</div>';
+  let r;
+  try {
+    r = await apiPost('api/coding.php', { action: 'start', task, repository: $('codRepo').value, branch: $('codBranch').value, agentId: $('codAgent').value });
+  } catch (e) {
+    box.innerHTML = `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200">${esc(e.message)}</div>`; return;
+  }
+  const j = r.job || {};
+  box.innerHTML = `<div class="rounded-xl bg-emerald-500/10 border border-emerald-400/30 p-3 text-[12.5px] text-emerald-100">
+    <div class="font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Agent started: <span class="font-mono">${esc(j.id)}</span></div>
+    <div class="mt-1">Model <strong>${esc(r.model || 'default')}</strong> · ${r.tools || 0} tool(s) granted${r.conversation ? ` · conversation <span class="font-mono">${esc(r.conversation)}</span>` : ''}</div>
+    ${r.uiUrl ? `<a href="${esc(r.uiUrl)}" target="_blank" class="grad-btn inline-block mt-2 px-4 py-2 rounded-lg font-bold text-[12px]"><i class="fa-solid fa-up-right-from-square mr-1"></i>Open in OpenHands</a>` : ''}
+    <button onclick="pollCoding('${esc(j.id)}')" class="mt-2 ml-2 px-4 py-2 rounded-lg font-bold text-[12px] border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate-right mr-1"></i>Check progress</button>
+  </div>`;
+  toast('Coding job started ✓', 'ok');
+}
+
+async function pollCoding(id) {
+  const box = $('codJobs');
+  toast('Checking the job…', 'info');
+  let r;
+  try { r = await apiPost('api/coding.php', { action: 'poll', id }); } catch (e) { toast(e.message, 'err'); return; }
+  const j = r.job || {};
+  if (j.result) toast('Agent finished a step ✓', 'ok'); else toast('Agent is still working…', 'info');
+  adminTab('coding', true);
 }
 
 async function loadMigBundles() {

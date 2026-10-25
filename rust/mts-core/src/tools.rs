@@ -37,6 +37,15 @@ pub const CATALOGUE: &[ToolDef] = &[
         desc: "Write, run and review code in the platform.",
         agentic: true,
     },
+    // The real OpenHands agent, run under the company's own name.
+    ToolDef {
+        code: "mbilinyi_coding",
+        name: "Mbilinyi Coding",
+        family: "software",
+        icon: "fa-solid fa-laptop-code",
+        desc: "Hand a coding job to a real OpenHands agent in its own sandbox.",
+        agentic: true,
+    },
     ToolDef {
         code: "version_forge",
         name: "Version Forge",

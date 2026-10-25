@@ -65,6 +65,15 @@ pub fn spec(code: &str) -> Spec {
                 ("code", "string", "optional: the exact program to compile and run"),
             ], &["task"]),
         ),
+        "mbilinyi_coding" => (
+            "Hand a whole coding job to a real OpenHands agent, which works in its own sandbox and can clone a repository. Give the task; optionally a repository and branch.",
+            obj(&[
+                ("task", "string", "the coding job to carry out"),
+                ("repository", "string", "optional: owner/repo to work in"),
+                ("branch", "string", "optional: branch to work on"),
+                ("title", "string", "optional: a short name for the job"),
+            ], &["task"]),
+        ),
         "test_runner" => (
             "Run code or a project's tests for real. Give `language` with `code` to run a snippet,              or `path` to run the project's own suite.",
             obj(&[
@@ -424,6 +433,34 @@ Exit: {}
                 )
             } else {
                 model_tool(code, args).await
+            }
+        }
+        // A coding job handed to a real OpenHands agent. The agent gets its own
+        // sandbox; the answer is the sandbox transcript, not a local run.
+        "mbilinyi_coding" => {
+            let task = pick_target(args);
+            let req = crate::coding::StartRequest {
+                title: s("title"),
+                task: task.clone(),
+                repository: s("repository"),
+                branch: s("branch"),
+                agent_id: s("agent_id"),
+                created_by: "agent".to_string(),
+            };
+            match crate::coding::start_job(req).await {
+                Ok(v) => Outcome::done(
+                    format!(
+                        "A real OpenHands coding agent has started on this job.\n\
+                         Job: {}\nConversation: {}\nModel: {}\nOpen it: {}\n\
+                         It works in its own sandbox; read the result from the panel.",
+                        util::s(v.get("jobId").unwrap_or(&J::Null)),
+                        util::s(v.get("conversation").unwrap_or(&J::Null)),
+                        util::s(v.get("model").unwrap_or(&J::Null)),
+                        util::s(v.get("uiUrl").unwrap_or(&J::Null)),
+                    ),
+                    "coding: started",
+                ),
+                Err(e) => Outcome::failed(e, "coding: refused"),
             }
         }
         "code_studio" | "code_execution" if !s("code").is_empty() && !s("language").is_empty() => {
