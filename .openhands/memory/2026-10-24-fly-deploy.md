@@ -269,3 +269,39 @@ verified". To cut over at the registrar: A `mbilinyitech.co.tz` -> 66.241.125.44
 AAAA -> the v6, and the same for `www` (or CNAME `www` -> `mbilinyitech-tz.fly.dev`).
 Then the cert verifies on its own. The app already answers everything correctly
 on `mbilinyitech-tz.fly.dev`.
+
+## Mbilinyi Coding: the coding tool is a REAL OpenHands agent (2026-10-25)
+The "Tools ya kucode" tool (`mbilinyi_coding`) now drives the OpenHands Cloud
+API for real — it is not a simulation. `src/coding.rs` creates a conversation
+via `POST /api/v1/app-conversations`, resolves the conversation id from the
+start-task (`GET /api/v1/app-conversations/start-tasks?ids=…`), reads the
+events, and stores the agent's final answer. Admin tab = "Mbilinyi Coding".
+
+End-to-end proven locally AND on production:
+- start a job → `JOB-…` + `startTask`; first poll returns `pending:true`, the
+  next resolves `conversation` + `sandbox` + a `uiUrl` on app.all-hands.dev.
+- a final poll returns `status:done, events:10, result:"PROD-CODING-OK"`.
+
+**Trap that cost the whole feature:** the events search asked for
+`limit=200`. OpenHands caps it at 100 and answers **HTTP 422**, so every poll
+read zero events and every job looked stuck at "running" forever even though
+the agent had already replied. Now `EVENTS_LIMIT = 100` and
+`events_url()` is a pure fn with a test pinning the exact URL. If a job never
+finishes, check the events request first — a non-200 there is silent.
+
+Config: `coding_api_key` (settings win) → `OPENHANDS_API_KEY` env;
+`coding_base_url` → `OPENHANDS_BASE_URL` → `https://app.all-hands.dev`;
+`coding_model` → the platform's `llm_provider`/`llm_model`. On Fly the key is
+the `OPENHANDS_API_KEY` secret (set 2026-10-25). `action=test` is the live
+connectivity probe (it returned `onearmy756@gmail.com`).
+
+**Fly secret syntax:** `flyctl secrets import` wants `NAME=VALUE` on stdin, so
+piping the raw token fails. Use `flyctl secrets set KEY="$VALUE" -a APP`.
+
+## GitHub push: only the CEO's PAT works
+`$GITHUB_TOKEN` in this sandbox authenticates as `onearmy756-cmd` and the API
+shows push=true, but **git push over HTTPS is refused (403)** — it is a
+fine-grained/app token without the git credential. The `origin` remote also
+carries a stale `ghu_…` token (also refused). Push with the CEO's classic PAT
+in a one-off URL and never write it into `.git/config`:
+`git push "https://<PAT>@github.com/onearmy756-cmd/MBILINYI-TECH67.git" master`.

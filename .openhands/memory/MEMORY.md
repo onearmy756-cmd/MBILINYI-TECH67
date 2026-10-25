@@ -28,6 +28,15 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   A record changes; exact records are in DEPLOY.md.
 - `MTS_OTP_PEPPER` is now a real Fly secret. Never set `OTP_SHOW_IN_RESPONSE`
   on the live site — it returns the sign-in code in the API response.
+- **Mbilinyi Coding** (`coding.rs`, admin tab) is a REAL OpenHands agent, not a
+  simulation: it creates an app-conversation, resolves it from the start-task,
+  and reads the answer from the events. Proven end to end on prod
+  (`result:"PROD-CODING-OK"`). Needs the `OPENHANDS_API_KEY` Fly secret (set).
+  Trap: the events search must use `limit<=100` — 200 gets HTTP 422 and every
+  job then looks stuck at "running" with zero events. Details in
+  `2026-10-24-fly-deploy.md`.
+- **git push**: `$GITHUB_TOKEN` shows push=true via the API yet git-over-HTTPS
+  is refused (403). Only the CEO's classic PAT pushes, via a one-off URL.
 - **Deposit bug (only on Fly)**: two queries disagreed (DESC `%deposit%` vs ASC
   `%50%Deposit%`), now one `deposit_invoice_row()` helper. A fast local loop hides
   it — when a Rust port differs from PHP *only in production*, diff the query
