@@ -145,4 +145,18 @@ for p in index.php services.php stack.php ai.php pricing.php process.php work.ph
   echo "$p -> $code"
 done
 
+echo "== 21b. every portal section is a page of its own =="
+for p in admin/requests admin/quotes admin/contracts admin/portfolio admin/testimonials admin/news admin/team admin/wafanyakazi admin/ajira admin/payroll admin/agents admin/tools admin/ofisi admin/ukuaji admin/usalama admin/users admin/invoices admin/tickets admin/feedback admin/settings admin/email admin/queue admin/runs admin/coding admin/runtimes admin/ai admin/sms admin/hamisha client/requests client/invoices client/support mtaalamu/tasks mtaalamu/tools; do
+  # A signed-out visitor is sent to sign in, so a section answers 200 (signed in)
+  # or 302 (redirect to /auth?returnTo=...&tab=...) — never 404.
+  code=$(curl -s -o /dev/null -w '%{http_code}' "$B/$p")
+  echo "$p -> $code"
+done
+
+echo "== 21c. a section that does not exist is a 404, not the dashboard =="
+for p in admin/nonsense client/nonsense mtaalamu/nonsense pricing/anything; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' "$B/$p")
+  echo "$p -> $code"
+done
+
 echo "DONE"

@@ -230,23 +230,22 @@ const PAGES = {
   mtaalamu: 'mtaalamu'
 };
 
-/* Normalise a location.pathname to a page key, accepting both the clean
- * form (/pricing) and the legacy one (/pricing.php) so old bookmarks and
- * any link we missed still highlight correctly. */
+/* Normalise a location.pathname to a page key, accepting the clean form
+ * (/pricing), the legacy one (/pricing.php) and a portal section
+ * (/admin/payroll -> admin), so the header still marks the page you are on. */
 function pageKey(p) {
-  const last = String(p || '/').split('/').pop();
-  if (!last) return '';
-  return last.replace(/\.php$/, '');
+  const seg = String(p || '/').split('/').filter(Boolean)[0] || '';
+  return seg.replace(/\.php$/, '');
 }
 
 function goPage(v) {
   const target = PAGES[v];
   if (target === undefined) return;
-  if (target === pageKey(location.pathname)) {
+  if (location.pathname === '/' + target) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
-  location.href = target || '/';
+  location.href = '/' + target;
 }
 /* showView inabaki kama jina la legacy — inaelekeza kwenye ukurasa halisi sasa. */
 function showView(v) { goPage(v); }
@@ -274,31 +273,57 @@ document.addEventListener('click', e => {
 });
 
 /* ---------- SECTION ADDRESSES ----------
- * Every portal section is addressable: the admin, client and staff tabs each
- * write their name to the URL fragment. A section can then be linked to,
- * bookmarked, refreshed into, and reached with the browser Back button — it is
- * a page of its own rather than a panel hidden behind a click. */
-function setTabHash(t) {
-  const want = '#' + t;
-  if (location.hash !== want) history.pushState({ tab: t }, '', want);
-}
-function hashTab() { return (location.hash || '').replace(/^#/, ''); }
-/* Which portal is on screen, so one Back handler can serve all three. */
-function activePortal() {
+ * Every portal section is a page of its own: /admin/payroll, /client/invoices,
+ * /mtaalamu/tools. The server serves that path, and a click keeps the address
+ * bar in step with what is on screen — so a section can be linked to, opened in
+ * a new tab, bookmarked, refreshed into, and reached with the Back button. */
+const PORTAL_TABS = {
+  admin: ['overview', 'requests', 'quotes', 'contracts', 'portfolio', 'testimonials',
+    'news', 'team', 'wafanyakazi', 'ajira', 'payroll', 'agents', 'tools', 'ofisi',
+    'ukuaji', 'usalama', 'users', 'invoices', 'tickets', 'feedback', 'settings',
+    'email', 'queue', 'runs', 'coding', 'runtimes', 'ai', 'sms', 'hamisha'],
+  client: ['overview', 'requests', 'quotes', 'contracts', 'invoices', 'support', 'news'],
+  mtaalamu: ['home', 'tasks', 'tools', 'workspace', 'office', 'pay'],
+};
+/* The portal this document is, or '' when it is not a portal. */
+function portalName() {
   if ($('view-admin')) return 'admin';
   if ($('view-client')) return 'client';
-  if ($('view-staff')) return 'staff';
+  if ($('view-staff')) return 'mtaalamu';
   return '';
 }
-function applyHashTab() {
-  const t = hashTab();
-  const p = activePortal();
-  if (p === 'admin') adminTab(t || 'overview');
-  else if (p === 'client') clientTab(t || 'overview');
-  else if (p === 'staff') staffTab(t || 'home');
+/* The first section of a portal, used when the path names none. */
+function portalHome(p) {
+  if (p === 'admin') return 'overview';
+  if (p === 'client') return 'overview';
+  if (p === 'mtaalamu') return 'home';
+  return '';
 }
-window.addEventListener('popstate', applyHashTab);
-window.addEventListener('hashchange', applyHashTab);
+/* Read the section out of the path: /admin/payroll -> 'payroll'. */
+function tabFromPath(p) {
+  const parts = String(location.pathname || '/').split('/').filter(Boolean);
+  if (parts[0] !== p) return '';
+  const t = (parts[1] || '').replace(/\.php$/, '');
+  return PORTAL_TABS[p]?.includes(t) ? t : '';
+}
+/* Keep the address bar on the section, without a reload. */
+function setTabPath(p, t) {
+  const want = '/' + p + (t && t !== portalHome(p) ? '/' + t : '');
+  if (location.pathname !== want) history.pushState({ portal: p, tab: t }, '', want);
+}
+/* One Back handler serves all three portals. */
+function applyTabPath() {
+  const p = portalName();
+  if (!p) return;
+  const t = tabFromPath(p) || portalHome(p);
+  if (p === 'admin') adminTab(t, true);
+  else if (p === 'client') clientTab(t, true);
+  else staffTab(t);
+}
+window.addEventListener('popstate', applyTabPath);
+
+/* Which section the server rendered for this request. */
+function initialTab(p) { return tabFromPath(p) || window.__TAB__ || portalHome(p); }
 
 /* ---------- LANG ---------- */
 /* Uchaguzi wa lugha unahifadhiwa (localStorage) na hurudishwa kwenye kila ukurasa. */
@@ -705,10 +730,13 @@ function pwStrength(id, meterId) {
 /* Login ni moja — server inatambua role (admin/client) kiotomatiki baada ya kuingia. */
 
 function returnTarget(role) {
-  const rt = (new URLSearchParams(location.search).get('returnTo') || '').replace(/\.php$/, '');
+  const q = new URLSearchParams(location.search);
+  const rt = (q.get('returnTo') || '').replace(/\.php$/, '');
+  const section = (q.get('section') || '').replace(/\.php$/, '');
   if (rt === 'client' || rt === 'admin') {
     if (rt === 'admin' && role !== 'admin') return 'client';
-    return rt;
+    /* Land back on the section that sent them here, not the dashboard. */
+    return PORTAL_TABS[rt]?.includes(section) ? rt + '/' + section : rt;
   }
   return role === 'admin' ? 'admin' : 'client';
 }
@@ -1425,7 +1453,7 @@ async function submitRequest() {
       <h3 class="font-display font-bold text-2xl mt-4">Asante! Request Received.</h3>
       <p class="text-white/55 text-[14px] mt-2 max-w-md mx-auto">Your Tracking ID is <span class="font-mono font-bold text-cyan-300 text-lg">${tid}</span>. CEO Jackson Mbilinyi will send your official quotation within 24hrs.</p>
       <div class="flex flex-wrap justify-center gap-3 mt-6">
-        <button onclick="closeGen();location.href='client#requests'" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm">Open My Portal →</button>
+        <button onclick="closeGen();location.href='/client/requests'" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm">Open My Portal →</button>
         <a href="https://wa.me/255796752645?text=Hello!%20My%20tracking%20ID%20is%20${tid}" target="_blank" class="px-6 py-3 rounded-xl font-bold text-sm bg-[#25D366]/15 border border-[#25D366]/40 text-[#4be584]"><i class="fa-brands fa-whatsapp mr-1"></i> Confirm on WhatsApp</a>
       </div>
     </div>`);
@@ -1446,11 +1474,11 @@ function paintClientHeader() {
   $('clientEmail').textContent = u.email;
 }
 
-async function clientTab(t) {
-  const valid = ['overview', 'requests', 'quotes', 'contracts', 'invoices', 'support', 'news'];
+async function clientTab(t, quiet) {
+  const valid = PORTAL_TABS.client;
   if (!valid.includes(t)) t = 'overview';
   cTab = t;
-  setTabHash(t);
+  if (!quiet) setTabPath('client', t);
   document.querySelectorAll('#clientNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.ctab === t));
   const u = currentUser(); if (!u) { showView('auth'); return; }
   const titles = {
@@ -2035,8 +2063,9 @@ function growthBars(rows, labelKey, colour) {
 
 async function adminTab(t, quiet) {
   if (!quiet) stopQueueWatch();
+  if (!PORTAL_TABS.admin.includes(t)) t = 'overview';
   aTab = t;
-  if (!quiet) setTabHash(t);
+  if (!quiet) setTabPath('admin', t);
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
     wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', payroll: 'Payroll — Payslips, PAYE, NSSF & WCF', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
@@ -4092,14 +4121,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if ($('view-client')) {
     paintClientHeader();
-    clientTab(hashTab() || 'overview');
+    clientTab(initialTab('client'));
   }
 
   if ($('view-admin')) {
     if (!u || u.role !== 'admin') {
       location.href = 'auth?returnTo=admin';
     } else {
-      adminTab(hashTab() || 'overview');
+      adminTab(initialTab('admin'));
     }
   }
 
@@ -4109,7 +4138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!u) {
       location.href = 'auth?returnTo=mtaalamu';
     } else {
-      staffTab(hashTab() || 'home');
+      staffTab(initialTab('mtaalamu'));
     }
   }
 
@@ -4953,8 +4982,9 @@ async function resetLogo() {
 let sTab = 'home';
 
 function staffTab(t) {
+  if (!PORTAL_TABS.mtaalamu.includes(t)) t = 'home';
   sTab = t;
-  setTabHash(t);
+  setTabPath('mtaalamu', t);
   document.querySelectorAll('#staffNav [data-stab]').forEach(b => {
     b.classList.toggle('active', b.dataset.stab === t);
     b.classList.toggle('text-white', b.dataset.stab === t);

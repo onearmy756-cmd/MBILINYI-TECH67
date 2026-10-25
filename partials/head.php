@@ -6,13 +6,20 @@ $pageDescription = $pageDescription ?? 'Mbilinyi Tech Solutions — BRELA regist
 $siteBase = rtrim((string)(getenv('SITE_URL') ?: 'https://mbilinyitech.co.tz'), '/');
 $canonicalUrl = $canonicalUrl ?? ($siteBase . (($_SERVER['REQUEST_URI'] ?? '/') === '/' ? '/' : strtok((string)$_SERVER['REQUEST_URI'], '?')));
 $ogImage = $siteBase . '/assets/icons/og-image.png';
+/* A portal is served below the root (/admin/payroll), so every relative URL in
+   the shell — api/..., assets/app.js, href="services" — needs a base to resolve
+   against, or it would look for /admin/api/.... Non-portal pages keep the
+   document's own URL, which the legal pages' #section anchors depend on. */
+$portalPage = function_exists('portal_page') ? portal_page() : '';
+$portalTab  = $portalPage !== '' ? portal_tab() : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= htmlspecialchars($pageTitle) ?></title>
+<?php if ($portalPage !== ''): ?><base href="/">
+<?php endif; ?><title><?= htmlspecialchars($pageTitle) ?></title>
 <meta name="description" content="<?= htmlspecialchars($pageDescription) ?>">
 <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl) ?>">
 <meta name="theme-color" content="#050914">

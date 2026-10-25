@@ -146,7 +146,7 @@ function login_user(string $userId): void {
  * so no .php ever appears in a Location header or the address bar. */
 function client_page_user(): array {
     $u = current_user();
-    if (!$u) redirect('auth?returnTo=client');
+    if (!$u) redirect('auth?returnTo=client' . portal_query());
     if ($u['status'] !== 'Active') { session_destroy(); redirect('auth'); }
     if ($u['role'] === 'admin') redirect('admin');
     return $u;
@@ -154,10 +154,49 @@ function client_page_user(): array {
 
 function admin_page_user(): array {
     $u = current_user();
-    if (!$u) redirect('auth?returnTo=admin');
+    if (!$u) redirect('auth?returnTo=admin' . portal_query());
     if ($u['status'] !== 'Active') { session_destroy(); redirect('auth'); }
     if ($u['role'] !== 'admin') redirect('client');
     return $u;
+}
+
+/**
+ * The sections of each portal. A section is a page of its own — /admin/payroll —
+ * so the same list drives the router, the nav and the sign-in round trip.
+ */
+function portal_sections(string $page): ?array {
+    $map = [
+        'admin' => ['overview', 'requests', 'quotes', 'contracts', 'portfolio', 'testimonials',
+            'news', 'team', 'wafanyakazi', 'ajira', 'payroll', 'agents', 'tools', 'ofisi',
+            'ukuaji', 'usalama', 'users', 'invoices', 'tickets', 'feedback', 'settings',
+            'email', 'queue', 'runs', 'coding', 'runtimes', 'ai', 'sms', 'hamisha'],
+        'client' => ['overview', 'requests', 'quotes', 'contracts', 'invoices', 'support', 'news'],
+        'mtaalamu' => ['home', 'tasks', 'tools', 'workspace', 'office', 'pay'],
+    ];
+    return $map[$page] ?? null;
+}
+
+/** The portal this request is, or '' when it is not one. */
+function portal_page(): string {
+    $parts = array_values(array_filter(explode('/', (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH)), 'strlen'));
+    $first = str_replace('.php', '', $parts[0] ?? '');
+    return portal_sections($first) !== null ? $first : '';
+}
+
+/** The section of that portal: /admin/payroll -> "payroll". '' means the first. */
+function portal_tab(): string {
+    $parts = array_values(array_filter(explode('/', (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH)), 'strlen'));
+    $page = portal_page();
+    $tab = str_replace('.php', '', $parts[1] ?? '');
+    return ($page !== '' && in_array($tab, portal_sections($page), true)) ? $tab : '';
+}
+
+/** `&section=payroll` for the sign-in link, or '' on the portal's first section.
+ * The parameter is `section` because `tab` already means the sign-in form's own
+ * tab (password / emailed code / register). */
+function portal_query(): string {
+    $tab = portal_tab();
+    return $tab === '' ? '' : '&section=' . rawurlencode($tab);
 }
 
 function json_out(mixed $data): never {

@@ -140,9 +140,32 @@ pub fn ice_servers() -> serde_json::Value {
     }
 }
 
-/// The `window.*` globals the frontend reads. Kept identical to the PHP
-/// `partials/footer.php` block.
-fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> String {
+/// The sections of each portal. A section is a page of its own — `/admin/payroll`
+/// — so the router can accept it, and a typo becomes a 404 rather than a silent
+/// fall-back to the dashboard.
+pub fn sections_for(page: &str) -> Option<&'static [&'static str]> {
+    match page {
+        "admin" => Some(&[
+            "overview", "requests", "quotes", "contracts", "portfolio", "testimonials",
+            "news", "team", "wafanyakazi", "ajira", "payroll", "agents", "tools", "ofisi",
+            "ukuaji", "usalama", "users", "invoices", "tickets", "feedback", "settings",
+            "email", "queue", "runs", "coding", "runtimes", "ai", "sms", "hamisha",
+        ]),
+        "client" => Some(&[
+            "overview", "requests", "quotes", "contracts", "invoices", "support", "news",
+        ]),
+        "mtaalamu" => Some(&["home", "tasks", "tools", "workspace", "office", "pay"]),
+        _ => None,
+    }
+}
+
+/// Is `tab` a real section of `page`? An empty tab means the portal's first
+/// section, which the front end picks.
+pub fn is_section(page: &str, tab: &str) -> bool {
+    tab.is_empty() || sections_for(page).is_some_and(|s| s.contains(&tab))
+}
+
+fn globals(page: &str, tab: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> String {
     let me_json = match me {
         Some(u) => crate::api::map::user(u).to_string(),
         None => "null".to_string(),
@@ -154,10 +177,11 @@ fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> Strin
         "tagline": settings::get("platform_tagline", "No-one enters a section that is not theirs."),
     });
     format!(
-        "<script>\nwindow.__CSRF__ = {csrf};\nwindow.__ME__   = {me};\nwindow.__PAGE__ = {page};\nwindow.__SERVICES_ON__ = {svc};\nwindow.__TZ_ONLY__ = {tzonly};\nwindow.__COUNTRY__ = {country};\nwindow.__PLATFORM__ = {plat};\nwindow.__PAY_GATEWAYS__ = {gw};\nwindow.__OAUTH__ = {oauth};\nwindow.__ICE__ = {ice};\n</script>",
+        "<script>\nwindow.__CSRF__ = {csrf};\nwindow.__ME__   = {me};\nwindow.__PAGE__ = {page};\nwindow.__TAB__  = {tab};\nwindow.__SERVICES_ON__ = {svc};\nwindow.__TZ_ONLY__ = {tzonly};\nwindow.__COUNTRY__ = {country};\nwindow.__PLATFORM__ = {plat};\nwindow.__PAY_GATEWAYS__ = {gw};\nwindow.__OAUTH__ = {oauth};\nwindow.__ICE__ = {ice};\n</script>",
         csrf = serde_json::Value::String(csrf.to_string()),
         me = me_json,
         page = serde_json::Value::String(page.to_string()),
+        tab = serde_json::Value::String(tab.to_string()),
         svc = settings::service_visibility(),
         tzonly = tz_only_services(),
         country = serde_json::Value::String(country.to_string()),
@@ -171,15 +195,29 @@ fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> Strin
 /// The head of the home page, so a test can assert what the page advertises
 /// without rendering a whole page (which needs the database).
 pub fn render_probe_head() -> String {
-    head("index", "Mbilinyi Tech Solutions")
+    head("index", "", "Mbilinyi Tech Solutions")
 }
 
-/// The `<head>`, matching `partials/head.php` link for link.
-pub(crate) fn head(name: &str, title: &str) -> String {
+/// The `<head>`, matching `partials/head.php` link for link. `deep` marks a page
+/// served below the root (`/admin/payroll`), which needs `<base href="/">` so
+/// every relative URL in the shell still resolves from the site root.
+pub(crate) fn head(name: &str, tab: &str, title: &str) -> String {
     let base = site_base();
     let desc = page_description();
-    let canonical = format!("{base}/{}", if name == "index" { "" } else { name });
+    let slug = if name == "index" {
+        String::new()
+    } else if tab.is_empty() || tab == "overview" || tab == "home" {
+        name.to_string()
+    } else {
+        format!("{name}/{tab}")
+    };
+    let canonical = format!("{base}/{slug}");
     let og = format!("{base}/assets/icons/og-image.png");
+    let base_tag = if sections_for(name).is_some() {
+        "<base href=\"/\">\n"
+    } else {
+        ""
+    };
     let ld = serde_json::json!({
         "@context": "https://schema.org",
         "@type": "ProfessionalService",
@@ -204,7 +242,7 @@ pub(crate) fn head(name: &str, title: &str) -> String {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title}</title>
+{base_tag}<title>{title}</title>
 <meta name="description" content="{desc}">
 <link rel="canonical" href="{canonical}">
 <meta name="theme-color" content="#050914">
@@ -268,6 +306,7 @@ tailwind.config = {{
         desc = h(&desc),
         canonical = h(&canonical),
         og = h(&og),
+        base_tag = base_tag,
         ld = ld,
         style = STYLE,
     )
@@ -550,24 +589,26 @@ pub const KNOWN_PAGES: [&str; 27] = [
     "download",
 ];
 
-/// Serve one page.
-pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
+/// Serve one page. `tab` is the section of a portal (`/admin/payroll`), and is
+/// empty for every other page.
+pub async fn render(name: &str, tab: &str, headers: &axum::http::HeaderMap) -> Response {
     let known = KNOWN_PAGES;
     if !known.contains(&name) {
         return (StatusCode::NOT_FOUND, "404 Not Found").into_response();
     }
 
     // `client` and `admin` send a signed-out visitor to the sign-in page rather
-    // than showing an empty portal.
+    // than showing an empty portal. The section they wanted is carried through,
+    // so signing in lands them on it rather than on the dashboard.
     let session = crate::session::load(headers);
     let me = crate::session::current_user(&session);
     if matches!(name, "client" | "admin" | "mtaalamu") && me.is_none() {
-        return (
-            StatusCode::FOUND,
-            [(header::LOCATION, format!("/auth?returnTo={name}"))],
-            "",
-        )
-            .into_response();
+        let to = if tab.is_empty() {
+            format!("/auth?returnTo={name}")
+        } else {
+            format!("/auth?returnTo={name}&section={tab}")
+        };
+        return (StatusCode::FOUND, [(header::LOCATION, to)], "").into_response();
     }
     if name == "auth" {
         if let Some(u) = &me {
@@ -606,11 +647,11 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
     let body = body.replace("<!--AUTH_PANEL-->", &panel);
     let html = format!(
         "{head}\n<body class=\"antialiased\">\n{header}\n{body}\n{footer}",
-        head = head(&page, &title_for(&page)),
+        head = head(&page, tab, &title_for(&page)),
         header = header,
         body = body,
         footer = footer(
-            &globals(&page, &session.csrf, &me, &visitor_country(headers)),
+            &globals(&page, tab, &session.csrf, &me, &visitor_country(headers)),
             &visitor_country(headers),
             &modals
         ),

@@ -338,7 +338,17 @@ async fn page_dispatch(req: Request<Body>) -> Response {
 
     let name = path.trim_matches('/');
     let name = if name.is_empty() { "index" } else { name };
-    pages::render(name, req.headers()).await
+    // `/admin/payroll` is one page and one section: the portal template plus the
+    // tab it opens on. Split here so `pages::render` keeps its simple signature
+    // and an unknown section becomes a 404 rather than the dashboard.
+    let (page, tab) = match name.split_once('/') {
+        Some((p, t)) => (p, t.trim_end_matches('/')),
+        None => (name, ""),
+    };
+    if !pages::is_section(page, tab) {
+        return (StatusCode::NOT_FOUND, "404 Not Found").into_response();
+    }
+    pages::render(page, tab, req.headers()).await
 }
 
 /// Everything a database needs to be usable: the schema, the tables the Rust
@@ -589,6 +599,64 @@ mod tests {
         }
     }
 
+    /// A portal section is a page of its own, so the router has to accept
+    /// `/admin/payroll` and refuse `/admin/nonsense` rather than quietly showing
+    /// the dashboard.
+    #[test]
+    fn a_portal_section_is_routable_and_a_typo_is_not() {
+        assert!(crate::pages::is_section("admin", "payroll"));
+        assert!(crate::pages::is_section("admin", "hamisha"));
+        assert!(crate::pages::is_section("client", "invoices"));
+        assert!(crate::pages::is_section("mtaalamu", "tools"));
+        // No section at all means the portal's first one.
+        assert!(crate::pages::is_section("admin", ""));
+        assert!(!crate::pages::is_section("admin", "nonsense"));
+        // A non-portal page has no sections, so a second segment is a 404.
+        assert!(!crate::pages::is_section("pricing", "anything"));
+    }
+
+    /// The Rust section list and the PHP one drive the same URLs, so they must
+    /// agree. Drift here is a link that works on one engine and 404s on the
+    /// other.
+    #[test]
+    fn the_rust_and_php_section_lists_agree() {
+        let php = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/app.php"),
+        )
+        .expect("read config/app.php");
+        for page in ["admin", "client", "mtaalamu"] {
+            for section in crate::pages::sections_for(page).expect("known portal") {
+                assert!(
+                    php.contains(&format!("'{section}'")),
+                    "config/app.php is missing the {page} section {section}"
+                );
+            }
+        }
+    }
+
+    /// A portal's nav is real links: each row carries the section's own address,
+    /// so it can be copied, bookmarked and opened in a new tab. The in-page
+    /// `href="#x"` + `return false` form kept every section on one document.
+    #[test]
+    fn portal_nav_links_are_real_addresses() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
+        for (file, attr, portal) in [
+            ("admin.html", "data-atab", "admin"),
+            ("client.html", "data-ctab", "client"),
+            ("mtaalamu.html", "data-stab", "mtaalamu"),
+        ] {
+            let html = std::fs::read_to_string(dir.join(file)).expect("read portal template");
+            assert!(
+                !html.contains("return false"),
+                "{file} still swallows the click, so its sections are not pages"
+            );
+            assert!(
+                html.contains(&format!("{attr}=")) && html.contains(&format!("\"/{portal}")),
+                "{file} has no real section links"
+            );
+        }
+    }
+
     /// The two partials the renderer always reads must exist as well.
     #[test]
     fn the_shared_partials_exist() {
@@ -704,7 +772,7 @@ mod tests {
     /// path breaks on any page that is not the site root.
     #[test]
     fn the_head_points_at_the_root_icon() {
-        let html = crate::pages::head("index", "Mbilinyi Tech Solutions");
+        let html = crate::pages::head("index", "", "Mbilinyi Tech Solutions");
         assert!(
             html.contains(r#"href="/favicon.ico""#),
             "no root favicon link"

@@ -53,11 +53,13 @@ RewriteRule ^ - [L]
 
 # ---------------------------------------------------------------
 # 5. /pricing  ->  pricing.php      /api/settings -> api/settings.php
+#    A portal section is the same page: /admin/payroll -> admin.php,
+#    which reads the section from the request URI itself.
 #    Only when that .php file really exists, so a typo becomes a
 #    normal 404 instead of an endless rewrite loop.
 # ---------------------------------------------------------------
 RewriteCond %{DOCUMENT_ROOT}/$1.php -f
-RewriteRule ^(.+)$ $1.php [L]
+RewriteRule ^([^/]+)(?:/.*)?$ $1.php [L]
 
 # ================================================================
 #  NGINX equivalent (put this in your server block — .htaccess is
@@ -67,7 +69,7 @@ RewriteRule ^(.+)$ $1.php [L]
 #       try_files $uri $uri/ @php;
 #   }
 #   location @php {
-#       rewrite ^/(.+)$ /$1.php last;
+#       rewrite ^/([^/]+)(?:/.*)?$ /$1.php last;
 #       rewrite ^/$ /index.php last;
 #   }
 #   location ~ ^/(storage|config|scripts)/ { deny all; }

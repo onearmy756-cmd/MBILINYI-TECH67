@@ -62,8 +62,25 @@ if ($path !== '/' && is_file(__DIR__ . $path)) {
     return false;
 }
 
-/* ---- 5. /pricing  ->  pricing.php ---------------------------------- */
-$target = __DIR__ . ($path === '/' ? '/index.php' : $path . '.php');
+/* ---- 5. /pricing  ->  pricing.php ----------------------------------
+ * /admin/payroll -> admin.php as well: the second segment is a section of
+ * the portal, and admin.php reads it from the request URI itself.        */
+$path = '/' . ltrim($rawPath, '/');
+if (strlen($path) > 1) {
+    $path = rtrim($path, '/');
+}
+$parts = array_values(array_filter(explode('/', $path), 'strlen'));
+$first = $parts[0] ?? '';
+$second = str_replace('.php', '', $parts[1] ?? '');
+$sections = function_exists('portal_sections') ? portal_sections(str_replace('.php', '', $first)) : null;
+/* A section that is not real is a 404, not a silent dashboard. */
+if ($second !== '' && $sections !== null && !in_array($second, $sections, true)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo '404 Not Found';
+    return true;
+}
+$target = __DIR__ . ($path === '/' ? '/index.php' : '/' . $first . '.php');
 if (is_file($target)) {
     /* keep SCRIPT_NAME honest for anything that reads it */
     $_SERVER['SCRIPT_NAME'] = $path;

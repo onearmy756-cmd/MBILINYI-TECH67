@@ -76,6 +76,9 @@
 window.__CSRF__ = <?= json_encode(csrf_token()) ?>;
 window.__ME__   = <?= json_encode(current_user()) ?>;
 window.__PAGE__ = <?= json_encode($page ?? '') ?>;
+/* The section of the portal this document is: /admin/payroll -> "payroll".
+   Empty on every other page. */
+window.__TAB__  = <?= json_encode(function_exists('portal_tab') ? portal_tab() : '') ?>;
 window.__SERVICES_ON__ = <?= json_encode(service_visibility()) ?>;
 /* Set by the CEO in Admin → Settings. Empty means "not configured yet". */
 window.__PLATFORM__ = <?= json_encode([
