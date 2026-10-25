@@ -22,6 +22,7 @@ $ogImage = $siteBase . '/assets/icons/og-image.png';
      as a stable absolute URL, and one size is larger than the 48px floor. -->
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/favicon-48.png">
+<link rel="icon" type="image/png" sizes="96x96" href="/assets/icons/icon-96.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16.png">
@@ -170,5 +171,30 @@ tailwind.config = {
   @keyframes spin{to{transform:rotate(360deg)}}
   .shimmer{background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.12) 50%,transparent 70%);background-size:200% 100%;animation:shimmer 2.2s infinite}
   @keyframes shimmer{to{background-position:-200% 0}}
+  /* ---- Responsive navigation & touch ---- */
+  /* The page you are on is marked, so a link reads as a place, not a guess. */
+  header nav a[aria-current="page"]{position:relative}
+  header nav a[aria-current="page"]::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:2px;border-radius:99px;background:linear-gradient(90deg,#22d3ee,#8b5cf6)}
+  /* The mobile menu slides rather than blinks, and its rows are full tap rows. */
+  #mobileMenu{max-height:0;overflow:hidden;opacity:0;transition:max-height .32s ease,opacity .24s ease,padding .32s ease;padding-top:0;padding-bottom:0}
+  #mobileMenu.open{max-height:80vh;overflow-y:auto;opacity:1;padding-top:1rem;padding-bottom:1rem}
+  #mobileMenu a,#mobileMenu button{min-height:44px}
+  /* Nothing is narrower than its content on a phone, and nothing overflows. */
+  html{-webkit-text-size-adjust:100%}
+  img,canvas,table{max-width:100%}
+  @media (max-width:640px){
+    h1{font-size:30px!important;line-height:1.08!important}
+    .max-w-7xl,.max-w-\[1400px\]{padding-left:14px;padding-right:14px}
+    aside.lg\:sticky{position:static}
+  }
+  /* A long token (a tracking id, a URL) wraps instead of pushing the layout. */
+  .break-anywhere{overflow-wrap:anywhere;word-break:break-word}
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms!important;transition-duration:.001ms!important}
+  }
+  /* Notches and home bars do not cover the header or the fixed chat button. */
+  @supports(padding:max(0px)){
+    header.sticky{padding-top:env(safe-area-inset-top)}
+  }
 </style>
 </head>

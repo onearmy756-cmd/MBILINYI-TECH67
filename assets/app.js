@@ -172,6 +172,23 @@ function paintBrand() {
   }
 }
 
+/* The page you are on is marked in the navigation, so a visitor always knows
+ * where they are. The href is compared to the current path with `.php` and a
+ * trailing slash stripped, so both the clean URL and the legacy one match. */
+function paintNavActive() {
+  const here = pageKey(location.pathname);
+  document.querySelectorAll('header nav a, #mobileMenu a').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    if (/^(https?:|mailto:|tel:|#)/.test(href)) return;
+    const key = pageKey(href.split('?')[0]);
+    const on = (key === '' && here === '') || (key !== '' && key === here);
+    a.classList.toggle('text-cyan-300', on);
+    a.classList.toggle('font-bold', on);
+    a.classList.toggle('text-white/70', !on && !a.classList.contains('text-emerald-300'));
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+}
+
 function paintPlatformCta() {
   const a = $('platformCta');
   if (!a) return;
@@ -234,7 +251,54 @@ function goPage(v) {
 /* showView inabaki kama jina la legacy — inaelekeza kwenye ukurasa halisi sasa. */
 function showView(v) { goPage(v); }
 
-function toggleMobileMenu() { const m = $('mobileMenu'); if (m) m.classList.toggle('hidden'); }
+/* The mobile menu is a real panel: it slides open, closes on a second tap, on
+ * Escape, or when a link inside it is followed, and the button that opened it
+ * keeps `aria-expanded` in step. */
+function toggleMobileMenu(force) {
+  const m = $('mobileMenu');
+  if (!m) return;
+  const open = typeof force === 'boolean' ? force : !m.classList.contains('open');
+  m.classList.toggle('open', open);
+  m.classList.toggle('hidden', false);
+  const btn = document.querySelector('[onclick^="toggleMobileMenu"]');
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+  if (!open) m.classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleMobileMenu(false); });
+document.addEventListener('click', e => {
+  const m = $('mobileMenu');
+  if (!m || !m.classList.contains('open')) return;
+  if (m.contains(e.target)) return;
+  if (e.target.closest('[onclick^="toggleMobileMenu"]')) return;
+  toggleMobileMenu(false);
+});
+
+/* ---------- SECTION ADDRESSES ----------
+ * Every portal section is addressable: the admin, client and staff tabs each
+ * write their name to the URL fragment. A section can then be linked to,
+ * bookmarked, refreshed into, and reached with the browser Back button — it is
+ * a page of its own rather than a panel hidden behind a click. */
+function setTabHash(t) {
+  const want = '#' + t;
+  if (location.hash !== want) history.pushState({ tab: t }, '', want);
+}
+function hashTab() { return (location.hash || '').replace(/^#/, ''); }
+/* Which portal is on screen, so one Back handler can serve all three. */
+function activePortal() {
+  if ($('view-admin')) return 'admin';
+  if ($('view-client')) return 'client';
+  if ($('view-staff')) return 'staff';
+  return '';
+}
+function applyHashTab() {
+  const t = hashTab();
+  const p = activePortal();
+  if (p === 'admin') adminTab(t || 'overview');
+  else if (p === 'client') clientTab(t || 'overview');
+  else if (p === 'staff') staffTab(t || 'home');
+}
+window.addEventListener('popstate', applyHashTab);
+window.addEventListener('hashchange', applyHashTab);
 
 /* ---------- LANG ---------- */
 /* Uchaguzi wa lugha unahifadhiwa (localStorage) na hurudishwa kwenye kila ukurasa. */
@@ -1386,6 +1450,7 @@ async function clientTab(t) {
   const valid = ['overview', 'requests', 'quotes', 'contracts', 'invoices', 'support', 'news'];
   if (!valid.includes(t)) t = 'overview';
   cTab = t;
+  setTabHash(t);
   document.querySelectorAll('#clientNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.ctab === t));
   const u = currentUser(); if (!u) { showView('auth'); return; }
   const titles = {
@@ -1971,6 +2036,7 @@ function growthBars(rows, labelKey, colour) {
 async function adminTab(t, quiet) {
   if (!quiet) stopQueueWatch();
   aTab = t;
+  if (!quiet) setTabHash(t);
   document.querySelectorAll('#adminNav .sidebar-link').forEach(b => b.classList.toggle('active', b.dataset.atab === t));
   const titles = { overview: 'Business Dashboard', requests: 'Client Requests Inbox', quotes: 'Quotations & Pricing (Admin Sets Prices)', contracts: 'Contracts Manager', portfolio: 'Portfolio Projects (Admin CRUD)', testimonials: 'Client Testimonials (Admin CRUD)', news: 'News & Updates (Admin CRUD)', team: 'Our Team (Admin CRUD)', users: 'Manage All Accounts', invoices: 'Invoices & Revenue', tickets: 'Support Tickets', settings: 'Settings — Payments, Prices & Company Info', feedback: 'Client Feedback & Reviews', email: 'Email / SMTP Configuration',
     wafanyakazi: 'Wafanyakazi — Hire Staff per Service (CEO Only)', ajira: 'Ajira — Vacancies, Applications & Assessment', payroll: 'Payroll — Payslips, PAYE, NSSF & WCF', agents: 'Agent Company — 100 Agents & Their Manager', tools: 'Tools & Assignments — Every Tool Lives Here', ofisi: 'Online Office — Meetings, Calls & SMS', ukuaji: 'Growth — Countries & Tanzania Regions', usalama: 'Security, ECDSA & Company Account',
@@ -2858,6 +2924,12 @@ async function adminTab(t, quiet) {
         <div id="codStart" class="mt-3"></div>
       </div>
 
+      <div class="rounded-2xl border border-amber-400/25 bg-amber-500/[.04] p-5 mb-4">
+        <div class="font-bold text-[14px] mb-1"><i class="fa-solid fa-comments text-amber-300 mr-1.5"></i>OpenHands conversation</div>
+        <div class="text-[12.5px] text-white/55 mb-3">The agent's real transcript — every message it wrote and every tool it ran — read from the OpenHands event stream. Pick <strong>Conversation</strong> on a job below to read it here, or open the full OpenHands UI for the same conversation.</div>
+        <div id="codTranscript" class="hidden"></div>
+      </div>
+
       <div class="rounded-2xl border border-white/10 bg-white/[.02] p-4">
         <div class="flex items-center justify-between mb-3">
           <div class="font-bold text-[14px]"><i class="fa-solid fa-list-check text-violet-300 mr-1.5"></i>Coding jobs</div>
@@ -2868,9 +2940,9 @@ async function adminTab(t, quiet) {
             <div class="font-bold text-[13px]">${esc(j.title)}</div>
             <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${j.status === 'done' ? 'bg-emerald-500/20 text-emerald-300' : j.status === 'failed' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'}">${esc(j.status)}</span>
           </div>
-          <div class="text-[11.5px] text-white/45 mt-1 font-mono">${esc(j.model || '')} ${j.repository ? '· ' + esc(j.repository) : ''} ${j.conversation ? '· ' + esc(j.conversation) : ''}</div>
+          <div class="text-[11.5px] text-white/45 mt-1 font-mono break-all">${esc(j.model || '')} ${j.repository ? '· ' + esc(j.repository) : ''} ${j.conversation ? '· ' + esc(j.conversation) : ''}</div>
           ${j.result ? `<div class="text-[12.5px] text-white/70 mt-2 whitespace-pre-wrap max-h-40 overflow-auto">${esc(j.result)}</div>` : ''}
-          <div class="flex gap-2 mt-2"><button onclick="pollCoding('${esc(j.id)}')" class="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate-right mr-1"></i>Check</button></div>
+          <div class="flex flex-wrap gap-2 mt-2"><button onclick="openTranscript('${esc(j.id)}')" class="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border border-amber-400/40 text-amber-200 hover:bg-amber-500/10"><i class="fa-solid fa-comments mr-1"></i>Conversation</button><button onclick="pollCoding('${esc(j.id)}')" class="px-3 py-1.5 rounded-lg text-[11.5px] font-bold border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate-right mr-1"></i>Check</button></div>
         </div>`).join('') : '<div class="text-white/45 text-[13px]">No coding jobs yet.</div>'}</div>
       </div>`;
     }
@@ -4004,19 +4076,19 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTeam();
   paintPlatformCta();
   paintBrand();
+  paintNavActive();
   initFeedbackStars();
 
   if ($('view-client')) {
-    const hash = (location.hash || '').replace('#', '');
     paintClientHeader();
-    clientTab(hash || 'overview');
+    clientTab(hashTab() || 'overview');
   }
 
   if ($('view-admin')) {
     if (!u || u.role !== 'admin') {
       location.href = 'auth?returnTo=admin';
     } else {
-      adminTab('overview');
+      adminTab(hashTab() || 'overview');
     }
   }
 
@@ -4026,7 +4098,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!u) {
       location.href = 'auth?returnTo=mtaalamu';
     } else {
-      staffTab((location.hash || '').replace('#', '') || 'home');
+      staffTab(hashTab() || 'home');
     }
   }
 
@@ -4704,13 +4776,50 @@ async function startCoding() {
 }
 
 async function pollCoding(id) {
-  const box = $('codJobs');
   toast('Checking the job…', 'info');
   let r;
   try { r = await apiPost('api/coding.php', { action: 'poll', id }); } catch (e) { toast(e.message, 'err'); return; }
   const j = r.job || {};
   if (j.result) toast('Agent finished a step ✓', 'ok'); else toast('Agent is still working…', 'info');
   adminTab('coding', true);
+}
+
+/* The real OpenHands conversation, rendered as it happened. The events come
+ * from the agent's own event stream, so a tool call and its output sit next to
+ * the messages that produced them. */
+async function openTranscript(id) {
+  const box = $('codTranscript');
+  if (!box) return;
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="text-white/50 text-[13px] py-4"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Reading the OpenHands conversation…</div>';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  let r;
+  try { r = await apiGet('api/coding.php', { action: 'transcript', id }); }
+  catch (e) { box.innerHTML = `<div class="rounded-xl bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200">${esc(e.message)}</div>`; return; }
+  const ev = r.events || [];
+  const head = `<div class="flex flex-wrap items-center gap-3 mb-3">
+    <div class="font-bold text-[14px]"><i class="fa-solid fa-comments text-amber-300 mr-1.5"></i>OpenHands conversation <span class="font-mono text-white/45 text-[12px]">${esc(id)}</span></div>
+    ${r.uiUrl ? `<a href="${esc(r.uiUrl)}" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg text-[12px] font-bold border border-amber-400/40 text-amber-200 hover:bg-amber-500/10"><i class="fa-solid fa-up-right-from-square mr-1"></i>Open the full OpenHands UI</a>` : ''}
+    <button onclick="openTranscript('${esc(id)}')" class="px-3 py-1.5 rounded-lg text-[12px] font-bold border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+    <button onclick="$('codTranscript').classList.add('hidden')" class="px-3 py-1.5 rounded-lg text-[12px] font-bold border border-white/15 hover:bg-white/5">Close</button>
+  </div>`;
+  if (r.pending) {
+    box.innerHTML = head + '<div class="rounded-xl bg-white/[.03] border border-white/10 p-3 text-[12.5px] text-white/60">The sandbox is still starting. Refresh in a moment.</div>';
+    return;
+  }
+  const rows = ev.map(e => {
+    const role = e.role || 'other';
+    const text = e.text || '';
+    // Internal bookkeeping (state updates, unknown events) carries no text and
+    // would only be noise in a conversation view.
+    if (!text.trim() && (role === 'other' || role === 'state')) return '';
+    if (role === 'user') return `<div class="flex gap-2 mb-2"><div class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0"><i class="fa-solid fa-user text-[11px] text-white/70"></i></div><div class="flex-1 rounded-xl bg-white/[.04] border border-white/10 p-3 text-[12.5px] whitespace-pre-wrap break-words">${esc(text)}</div></div>`;
+    if (role === 'agent') return `<div class="flex gap-2 mb-2"><div class="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-robot text-[11px] text-white"></i></div><div class="flex-1 rounded-xl bg-amber-500/[.07] border border-amber-400/25 p-3 text-[12.5px] whitespace-pre-wrap break-words">${esc(text)}</div></div>`;
+    if (role === 'tool') return `<div class="mb-2 ml-9 rounded-lg bg-black/40 border border-white/10 p-2.5 font-mono text-[11.5px] text-cyan-200/90 whitespace-pre-wrap break-words max-h-52 overflow-auto"><i class="fa-solid fa-terminal text-[10px] text-cyan-400 mr-1.5"></i>${esc(text)}</div>`;
+    if (role === 'error') return `<div class="mb-2 ml-9 rounded-lg bg-red-500/10 border border-red-400/30 p-3 text-[12.5px] text-red-200 whitespace-pre-wrap break-words"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${esc(text)}</div>`;
+    return `<div class="mb-2 ml-9 text-[11.5px] text-white/40 font-mono">${esc(e.kind)}${text ? ' · ' + esc(text.slice(0, 200)) : ''}</div>`;
+  }).join('');
+  box.innerHTML = head + `<div class="rounded-2xl bg-black/25 border border-white/10 p-3 max-h-[60vh] overflow-auto">${rows || '<div class="text-white/45 text-[12.5px]">No events yet.</div>'}</div>`;
 }
 
 async function loadMigBundles() {
@@ -4834,6 +4943,7 @@ let sTab = 'home';
 
 function staffTab(t) {
   sTab = t;
+  setTabHash(t);
   document.querySelectorAll('#staffNav [data-stab]').forEach(b => {
     b.classList.toggle('active', b.dataset.stab === t);
     b.classList.toggle('text-white', b.dataset.stab === t);

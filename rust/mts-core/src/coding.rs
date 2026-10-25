@@ -472,68 +472,16 @@ pub async fn handle(c: &Ctx) -> Response {
             if key.is_empty() {
                 return bad("No OpenHands API key is set.");
             }
-            let mut conversation = util::s(job.get("conversation").unwrap_or(&J::Null));
-            let mut sandbox = util::s(job.get("sandbox").unwrap_or(&J::Null));
-
-            // If the create call did not know the conversation yet, resolve it
-            // from the start-task, which is the exact handle for this job.
-            if conversation.is_empty() {
-                let start_id = util::s(job.get("start_task").unwrap_or(&J::Null));
-                if !start_id.is_empty() {
-                    if let Ok(r) = client()
-                        .get(format!(
-                            "{}/api/v1/app-conversations/start-tasks?ids={}",
-                            base_url(),
-                            start_id
-                        ))
-                        .bearer_auth(&key)
-                        .send()
-                        .await
-                    {
-                        if let Ok(v) = r.json::<J>().await {
-                            let items = v
-                                .get("items")
-                                .and_then(|i| i.as_array())
-                                .cloned()
-                                .unwrap_or_else(|| {
-                                    if v.is_array() {
-                                        v.as_array().cloned().unwrap_or_default()
-                                    } else {
-                                        Vec::new()
-                                    }
-                                });
-                            if let Some(it) = items.first() {
-                                conversation =
-                                    util::s(it.get("app_conversation_id").unwrap_or(&J::Null));
-                                if sandbox.is_empty() {
-                                    sandbox = util::s(it.get("sandbox_id").unwrap_or(&J::Null));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            let (conversation, sandbox) = resolve_conversation(&job, &key).await;
 
             if conversation.is_empty() {
                 return ok(json!({ "job": job_json(&job), "pending": true }));
             }
 
-            let events = client()
-                .get(events_url(&base_url(), &conversation))
-                .bearer_auth(&key)
-                .send()
-                .await;
-            let (count, answer, status) = match events {
-                Ok(r) if r.status().is_success() => {
-                    let v: J = r.json().await.unwrap_or(json!({}));
-                    let items = v
-                        .get("items")
-                        .and_then(|i| i.as_array())
-                        .cloned()
-                        .unwrap_or_default();
-                    read_events(&items)
-                }
-                Ok(_) | Err(_) => (
+            let items = fetch_events(&key, &conversation).await;
+            let (count, answer, status) = match items {
+                Some(items) => read_events(&items),
+                None => (
                     util::i(job.get("events").unwrap_or(&J::Null)),
                     util::s(job.get("result").unwrap_or(&J::Null)),
                     util::s(job.get("status").unwrap_or(&J::Null)),
@@ -552,6 +500,45 @@ pub async fn handle(c: &Ctx) -> Response {
             ok(json!({ "job": job_json(&job), "uiUrl": ui_url(&conversation) }))
         }
 
+        // The real OpenHands transcript, event by event. This is the agent's own
+        // record — the messages it wrote, the tools it called and what they
+        // returned — not a summary the panel invented. The panel renders it as
+        // the conversation view, and the same id opens the full OpenHands UI.
+        "transcript" => {
+            if let Err(e) = c.require_admin() {
+                return e;
+            }
+            let id = c.p("id");
+            let Some(job) = db::row("SELECT * FROM coding_jobs WHERE id = ?", &[arg(json!(id))])
+            else {
+                return bad("No such job.");
+            };
+            let key = api_key();
+            if key.is_empty() {
+                return bad("No OpenHands API key is set.");
+            }
+            let (conversation, sandbox) = resolve_conversation(&job, &key).await;
+            if conversation.is_empty() {
+                return ok(json!({ "conversation": "", "pending": true, "events": [] }));
+            }
+            let items = fetch_events(&key, &conversation).await.unwrap_or_default();
+            let _ = db::run(
+                "UPDATE coding_jobs SET conversation=?, sandbox=?, updated_at=? WHERE id=?",
+                &[
+                    arg(json!(conversation)),
+                    arg(json!(sandbox)),
+                    arg(json!(util::now())),
+                    arg(json!(id)),
+                ],
+            );
+            ok(json!({
+                "conversation": conversation,
+                "sandbox": sandbox,
+                "uiUrl": ui_url(&conversation),
+                "events": items.iter().map(transcript_entry).collect::<Vec<_>>(),
+            }))
+        }
+
         "jobs" => {
             if let Err(e) = c.require_admin() {
                 return e;
@@ -563,8 +550,146 @@ pub async fn handle(c: &Ctx) -> Response {
             ok(json!({ "jobs": rows.iter().map(job_json).collect::<Vec<_>>() }))
         }
 
-        _ => bad("Choose a coding action: status, save, clear_key, test, start, poll or jobs."),
+        _ => bad(
+            "Choose a coding action: status, save, clear_key, test, start, poll, transcript or jobs.",
+        ),
     }
+}
+
+/// Resolve a job's conversation id and sandbox id.
+///
+/// The create call may return the conversation at once, or only a start-task.
+/// The start-task is the exact handle for this job, so it is the fallback that
+/// makes an older job still readable.
+async fn resolve_conversation(job: &db::Row, key: &str) -> (String, String) {
+    let conversation = util::s(job.get("conversation").unwrap_or(&J::Null));
+    let sandbox = util::s(job.get("sandbox").unwrap_or(&J::Null));
+    if !conversation.is_empty() {
+        return (conversation, sandbox);
+    }
+    let start_id = util::s(job.get("start_task").unwrap_or(&J::Null));
+    if start_id.is_empty() {
+        return (String::new(), sandbox);
+    }
+    let Ok(r) = client()
+        .get(format!(
+            "{}/api/v1/app-conversations/start-tasks?ids={}",
+            base_url(),
+            start_id
+        ))
+        .bearer_auth(key)
+        .send()
+        .await
+    else {
+        return (String::new(), sandbox);
+    };
+    let Ok(v) = r.json::<J>().await else {
+        return (String::new(), sandbox);
+    };
+    let items = v
+        .get("items")
+        .and_then(|i| i.as_array())
+        .cloned()
+        .unwrap_or_else(|| v.as_array().cloned().unwrap_or_default());
+    match items.first() {
+        Some(it) => {
+            let c = util::s(it.get("app_conversation_id").unwrap_or(&J::Null));
+            let s = if sandbox.is_empty() {
+                util::s(it.get("sandbox_id").unwrap_or(&J::Null))
+            } else {
+                sandbox
+            };
+            (c, s)
+        }
+        None => (String::new(), sandbox),
+    }
+}
+
+/// Read a conversation's raw events. `None` means the call failed, so the
+/// caller keeps the last known state rather than blanking the job.
+async fn fetch_events(key: &str, conversation: &str) -> Option<Vec<J>> {
+    let r = client()
+        .get(events_url(&base_url(), conversation))
+        .bearer_auth(key)
+        .send()
+        .await
+        .ok()?;
+    if !r.status().is_success() {
+        return None;
+    }
+    let v: J = r.json().await.ok()?;
+    Some(
+        v.get("items")
+            .and_then(|i| i.as_array())
+            .cloned()
+            .unwrap_or_default(),
+    )
+}
+
+/// One event, shaped for the panel's conversation view.
+///
+/// The panel needs to tell a message from a tool call and to show each one in
+/// the right voice, so the kind and the actor are carried through. An event we
+/// do not recognise still becomes a readable line rather than a blank row.
+fn transcript_entry(e: &J) -> J {
+    let kind = util::s(e.get("kind").unwrap_or(&J::Null));
+    let source = util::s(e.get("source").unwrap_or(&J::Null));
+    let tool = util::s(e.get("tool_name").unwrap_or(&J::Null));
+    let action = util::s(e.get("action").unwrap_or(&J::Null));
+    let (role, text) = if kind == "MessageEvent" {
+        let t = text_of(e.get("llm_message").unwrap_or(&J::Null));
+        let role = if source == "user" { "user" } else { "agent" };
+        (role, t)
+    } else if kind == "ActionEvent" {
+        let args = e
+            .get("tool_call")
+            .and_then(|t| t.get("arguments"))
+            .cloned()
+            .unwrap_or(J::Null);
+        let detail = util::s(&args);
+        let name = if tool.is_empty() {
+            action
+        } else {
+            tool.clone()
+        };
+        ("tool", format!("{name}({detail})"))
+    } else if kind == "ObservationEvent" {
+        let content = e
+            .get("observation")
+            .and_then(|o| o.get("content"))
+            .cloned()
+            .unwrap_or(J::Null);
+        let out = if content.is_array() {
+            text_of(&json!({ "content": content }))
+        } else {
+            util::s(&content)
+        };
+        ("tool", out)
+    } else if kind == "ConversationErrorEvent" {
+        let detail = util::s(e.get("detail").unwrap_or(&J::Null));
+        let code = util::s(e.get("code").unwrap_or(&J::Null));
+        (
+            "error",
+            if detail.trim().is_empty() {
+                format!("The agent stopped with an error ({code}).")
+            } else {
+                detail
+            },
+        )
+    } else if kind == "ConversationStateUpdateEvent" {
+        // Internal bookkeeping (the whole agent state as JSON). It is noise in
+        // a conversation view, so it is carried with no text and dropped.
+        ("state", String::new())
+    } else {
+        ("other", String::new())
+    };
+    json!({
+        "kind": kind,
+        "role": role,
+        "tool": tool,
+        "text": text,
+        "at": util::s(e.get("timestamp").unwrap_or(&J::Null)),
+    })
 }
 
 /// Read a conversation's events into (event count, result text, status).
@@ -730,5 +855,59 @@ mod tests {
         let items = vec![json!({"kind":"ActionEvent","tool_name":"finish"})];
         let (_, _, status) = read_events(&items);
         assert_eq!(status, "done");
+    }
+
+    #[test]
+    fn a_transcript_keeps_the_agent_and_user_voices_apart() {
+        let agent = transcript_entry(&json!({
+            "kind":"MessageEvent","source":"agent",
+            "llm_message":{"role":"assistant","content":[{"type":"text","text":"Done."}]}
+        }));
+        assert_eq!(agent["role"], "agent");
+        assert_eq!(agent["text"], "Done.");
+        let user = transcript_entry(&json!({
+            "kind":"MessageEvent","source":"user",
+            "llm_message":{"role":"user","content":[{"type":"text","text":"Fix it"}]}
+        }));
+        assert_eq!(user["role"], "user");
+        assert_eq!(user["text"], "Fix it");
+    }
+
+    #[test]
+    fn a_transcript_shows_a_tool_call_and_its_output() {
+        let call = transcript_entry(&json!({
+            "kind":"ActionEvent","tool_name":"terminal",
+            "tool_call":{"arguments":{"command":"ls -la"}}
+        }));
+        assert_eq!(call["role"], "tool");
+        assert!(call["text"].as_str().unwrap().starts_with("terminal("));
+        assert!(call["text"].as_str().unwrap().contains("ls -la"));
+
+        let out = transcript_entry(&json!({
+            "kind":"ObservationEvent","tool_name":"terminal",
+            "observation":{"content":[{"type":"text","text":"total 4"}]}
+        }));
+        assert_eq!(out["role"], "tool");
+        assert_eq!(out["text"], "total 4");
+    }
+
+    #[test]
+    fn a_transcript_surfaces_an_error_and_never_goes_blank() {
+        let err = transcript_entry(&json!({
+            "kind":"ConversationErrorEvent","code":"LLMAuthenticationError",
+            "detail":"Incorrect API key provided"
+        }));
+        assert_eq!(err["role"], "error");
+        assert_eq!(err["text"], "Incorrect API key provided");
+        // An event the panel does not know still yields a shaped row.
+        let unknown = transcript_entry(&json!({"kind":"SomethingNew"}));
+        assert_eq!(unknown["role"], "other");
+        // Internal state updates are noise and must carry no text, so the panel
+        // can drop them instead of printing the whole agent state as JSON.
+        let state = transcript_entry(&json!({
+            "kind":"ConversationStateUpdateEvent","value":{"agent":{"big":"json"}}
+        }));
+        assert_eq!(state["role"], "state");
+        assert_eq!(state["text"], "");
     }
 }

@@ -672,6 +672,34 @@ mod tests {
         );
     }
 
+    /// Every icon the page advertises must exist, or a browser (and Google,
+    /// when it picks the search-result icon) fetches a 404 and shows a globe.
+    /// A new <link rel="icon"> without its file is the exact drift this catches.
+    #[test]
+    fn every_advertised_icon_exists_on_disk() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let page = crate::pages::render_probe_head();
+        for rel in [
+            "favicon.ico",
+            "apple-touch-icon.png",
+            "assets/icons/favicon-48.png",
+            "assets/icons/icon-96.png",
+            "assets/icons/icon-192.png",
+            "assets/icons/icon-512.png",
+            "assets/icons/favicon-32.png",
+            "assets/icons/favicon-16.png",
+        ] {
+            assert!(
+                root.join(rel).is_file(),
+                "advertised icon is missing: {rel}"
+            );
+            assert!(
+                page.contains(rel),
+                "head does not advertise the icon: {rel}"
+            );
+        }
+    }
+
     /// The head must point at the root icon with an absolute path. A relative
     /// path breaks on any page that is not the site root.
     #[test]
