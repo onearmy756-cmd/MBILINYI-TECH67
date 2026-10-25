@@ -32,6 +32,7 @@
     </a>
     <nav class="hidden lg:flex items-center gap-6 text-[13.5px] font-medium text-white/70">
       <a href="/" class="hover:text-white" data-en="Home" data-sw="Mwanzo">Home</a>
+      <a href="company" class="hover:text-white" data-en="Company" data-sw="Kampuni">Company</a>
       <a href="services" class="hover:text-white" data-en="Services" data-sw="Huduma">Services</a>
       <a href="stack" class="hover:text-white" data-en="Tech Stack" data-sw="Teknolojia">Tech Stack</a>
       <a href="ai" class="hover:text-white" data-en="AI & Fine-Tuning" data-sw="AI na Urekebishaji">AI & Fine-Tuning</a>
@@ -53,6 +54,7 @@
   </div>
   <div id="mobileMenu" class="hidden lg:hidden border-t border-white/10 px-4 py-4 grid gap-2 text-sm bg-[#0A1226]">
     <a href="/" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Home" data-sw="Mwanzo">Home</a>
+    <a href="company" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Company" data-sw="Kampuni">Company</a>
     <a href="services" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Services" data-sw="Huduma">Services</a>
     <a href="stack" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Tech Stack" data-sw="Teknolojia">Tech Stack</a>
     <a href="ai" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="AI &amp; Fine-Tuning" data-sw="AI na Urekebishaji">AI &amp; Fine-Tuning</a>

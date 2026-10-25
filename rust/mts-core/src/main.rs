@@ -584,6 +584,25 @@ mod tests {
         assert!(crate::pages::KNOWN_PAGES.contains(&"download"));
     }
 
+    /// Every routable page must also exist as a `.php` file, because the PHP
+    /// engine (and the cPanel host) routes `/<page>` by looking for `<page>.php`.
+    /// A page added to the Rust core only would work on Fly and 404 on PHP —
+    /// the exact drift that already cost time with the admin nav.
+    #[test]
+    fn every_routable_page_has_a_php_shell() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        for page in crate::pages::KNOWN_PAGES {
+            // `index` is served by index.php, so its stem is the special case.
+            let stem = if page == "index" { "index" } else { page };
+            let f = root.join(format!("{stem}.php"));
+            assert!(
+                f.is_file(),
+                "missing {stem}.php for the {page} page: {}",
+                f.display()
+            );
+        }
+    }
+
     /// Every routable page must have a template on disk. Registering a page
     /// without its file is a 404 at runtime, and this catches it at test time.
     #[test]

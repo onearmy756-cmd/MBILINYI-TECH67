@@ -1,0 +1,60 @@
+<?php
+require_once __DIR__ . '/config/app.php';
+$pageTitle = 'Reports — Proof of Work | Mbilinyi Tech Solutions';
+$page = 'landing';
+require __DIR__ . '/partials/head.php';
+?>
+<body class="antialiased">
+<?php require __DIR__ . '/partials/header.php'; ?>
+
+<!-- ============ REPORTS PAGE ============ -->
+<div id="view-landing" class="view-section active">
+  <section id="reports" class="max-w-7xl mx-auto px-4 pt-8 pb-16">
+    <div class="text-center">
+      <div class="badge bg-emerald-500/10 text-emerald-300 border border-emerald-400/30 inline-block"><span data-en="REPORTS" data-sw="RIPOTI">REPORTS</span></div>
+      <h2 class="font-display font-bold text-3xl md:text-4xl mt-3"><span data-en="Proof of Work," data-sw="Uthibitisho wa Kazi,">Proof of Work,</span> <span class="grad-text" data-en="Written Down" data-sw="Uliyoandikwa">Written Down</span></h2>
+      <p class="text-white/55 mt-3 text-[14px] max-w-2xl mx-auto" data-en="Every project ends with a report you keep — what was built, how it was tested, what was deployed, and what to do next. Your own reports are in your portal." data-sw="Kila mradi huisha na ripoti unayoihifadhi — kile kilichojengwa, jinsi kilivyopimwa, kilichowasilishwa, na cha kufanya baadaye. Ripoti zako zipo kwenye portal yako.">Every project ends with a report you keep — what was built, how it was tested, what was deployed, and what to do next. Your own reports are in your portal.</p>
+      <div class="flex flex-wrap gap-2 justify-center mt-5">
+        <a href="/client" class="gold-btn px-6 py-3 rounded-xl font-bold text-[#2a1500] text-sm"><i class="fa-solid fa-file-lines mr-1.5"></i><span data-en="Open My Reports" data-sw="Fungua Ripoti Zangu">Open My Reports</span></a>
+        <a href="/track" class="px-6 py-3 rounded-xl border border-cyan-400/40 text-cyan-200 font-bold text-sm hover:bg-cyan-500/10"><i class="fa-solid fa-magnifying-glass mr-1.5"></i><span data-en="Track a Request" data-sw="Fuatilia Ombi">Track a Request</span></a>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mt-10">
+      <div class="card3d pop-emerald p-5">
+        <div class="text-[11px] font-bold tracking-wider text-emerald-300 uppercase" data-en="01 — What was built" data-sw="01 — Kilichojengwa">01 — What was built</div>
+        <p class="text-[13px] text-white/65 mt-2 leading-relaxed" data-en="The delivered system, its parts, and the decisions taken along the way — in language a non-engineer can follow." data-sw="Mfumo uliokabidhiwa, sehemu zake, na maamuzi yaliyofanyika — kwa lugha ambayo si mhandisi anaweza kufuatilia.">The delivered system, its parts, and the decisions taken along the way — in language a non-engineer can follow.</p>
+      </div>
+      <div class="card3d pop-cyan p-5">
+        <div class="text-[11px] font-bold tracking-wider text-cyan-300 uppercase" data-en="02 — How it was tested" data-sw="02 — Jinsi ilivyopimwa">02 — How it was tested</div>
+        <p class="text-[13px] text-white/65 mt-2 leading-relaxed" data-en="The tests that ran, what they covered, and the result of each. Work that fails its tests is not reported as complete." data-sw="Upimaji uliofanyika, ulichoshughulikia, na matokeo ya kila kimoja. Kazi inayoshindwa upimaji hairipotiwi kama imekamilika.">The tests that ran, what they covered, and the result of each. Work that fails its tests is not reported as complete.</p>
+      </div>
+      <div class="card3d pop-violet p-5">
+        <div class="text-[11px] font-bold tracking-wider text-violet-300 uppercase" data-en="03 — What was deployed" data-sw="03 — Kilichowasilishwa">03 — What was deployed</div>
+        <p class="text-[13px] text-white/65 mt-2 leading-relaxed" data-en="Where the system now runs, the security checks it passed, and the credentials you hold — never the secrets themselves." data-sw="Mfumo unaendeshwa wapi sasa, ukaguzi wa usalama uliopita, na taarifa unazomiliki — sio nywila zenyewe.">Where the system now runs, the security checks it passed, and the credentials you hold — never the secrets themselves.</p>
+      </div>
+      <div class="card3d pop-amber p-5">
+        <div class="text-[11px] font-bold tracking-wider text-amber-300 uppercase" data-en="04 — What comes next" data-sw="04 — Kinachofuata">04 — What comes next</div>
+        <p class="text-[13px] text-white/65 mt-2 leading-relaxed" data-en="Maintenance advice, known limits, and the next steps we recommend. You can keep the report as a record of the work." data-sw="Ushauri wa matengenezo, mipaka inayojulikana, na hatua zinazofuata tunazopendekeza. Unaweza kuhifadhi ripoti kama kumbukumbu ya kazi.">Maintenance advice, known limits, and the next steps we recommend. You can keep the report as a record of the work.</p>
+      </div>
+    </div>
+
+    <div class="mt-10 glass rounded-3xl p-6 md:p-8">
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <div class="w-11 h-11 rounded-2xl grad-btn flex items-center justify-center text-lg"><i class="fa-solid fa-shield-halved text-white"></i></div>
+        <div>
+          <div class="font-display font-bold text-lg" data-en="Security Reports" data-sw="Ripoti za Usalama">Security Reports</div>
+          <div class="text-[12.5px] text-white/50" data-en="For cyber security engagements, the report is the deliverable." data-sw="Kwa kazi za usalama wa mtandao, ripoti ndiyo mazao makuu.">For cyber security engagements, the report is the deliverable.</div>
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3 text-[13px] text-white/70">
+        <div class="flex gap-2"><i class="fa-solid fa-check text-emerald-300 mt-0.5"></i><span data-en="Findings ranked by severity, each with a plain-language explanation." data-sw="Matokeo yamepangwa kwa ukubwa, kila moja na maelezo ya lugha rahisi.">Findings ranked by severity, each with a plain-language explanation.</span></div>
+        <div class="flex gap-2"><i class="fa-solid fa-check text-emerald-300 mt-0.5"></i><span data-en="Steps to reproduce each issue, so your own team can verify it." data-sw="Hatua za kuonyesha kila tatizo, ili timu yako iweze kuthibitisha.">Steps to reproduce each issue, so your own team can verify it.</span></div>
+        <div class="flex gap-2"><i class="fa-solid fa-check text-emerald-300 mt-0.5"></i><span data-en="The fix applied, and the evidence it closed the gap." data-sw="Suluhisho lililotumika, na ushahidi kwamba tatizo limefungwa.">The fix applied, and the evidence it closed the gap.</span></div>
+        <div class="flex gap-2"><i class="fa-solid fa-check text-emerald-300 mt-0.5"></i><span data-en="A signed PDF you can hand to an auditor or a client." data-sw="PDF iliyosainiwa unayoweza kumpa mkaguzi au mteja.">A signed PDF you can hand to an auditor or a client.</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<?php require __DIR__ . '/partials/footer.php'; ?>

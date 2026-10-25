@@ -1,0 +1,114 @@
+<?php
+require_once __DIR__ . '/config/app.php';
+$pageTitle = 'Company — About Mbilinyi Tech Solutions | CEO Jackson Mbilinyi';
+$pageDescription = 'Mbilinyi Tech Solutions is a BRELA-registered software house (No. 706668, TIN 192-147-522) in Dodoma, Tanzania, led by CEO Jackson Mbilinyi. Learn how we work.';
+$page = 'landing';
+require __DIR__ . '/partials/head.php';
+?>
+<body class="antialiased">
+<?php require __DIR__ . '/partials/header.php'; ?>
+
+<!-- ============ COMPANY PAGE ============ -->
+<div id="view-landing" class="view-section active">
+  <section class="max-w-7xl mx-auto px-4 pt-8 pb-16">
+    <div class="text-center max-w-3xl mx-auto">
+      <div class="badge bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 inline-block"><span data-en="MBILINYITECH COMPANY" data-sw="KAMPUNI YA MBILINYITECH">MBILINYITECH COMPANY</span></div>
+      <h1 class="font-display font-bold text-3xl md:text-5xl mt-4"><span data-en="One Company." data-sw="Kampuni Moja.">One Company.</span> <span class="grad-text" data-en="Every Technology." data-sw="Kila Teknolojia.">Every Technology.</span></h1>
+      <p class="text-white/55 mt-3 text-[14.5px]" data-en="Mbilinyi Tech Solutions is a BRELA-registered software house in Dodoma, Tanzania, led by CEO Jackson Mbilinyi. We design, build, secure and maintain the systems that run your business — and we hand you the source code." data-sw="Mbilinyi Tech Solutions ni kampuni ya software iliyosajiliwa BRELA jijini Dodoma, Tanzania, inayoongozwa na CEO Jackson Mbilinyi. Tunabuni, tunajenga, tunalinda na tunatengeneza mifumo inayoendesha biashara yako — na tunakukabidhi source code.">Mbilinyi Tech Solutions is a BRELA-registered software house in Dodoma, Tanzania, led by CEO Jackson Mbilinyi. We design, build, secure and maintain the systems that run your business — and we hand you the source code.</p>
+      <div class="flex flex-wrap justify-center gap-3 mt-6">
+        <button onclick="openQuoteWizard()" class="grad-btn px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-rocket"></i> <span data-en="Start a Project" data-sw="Anza Mradi">Start a Project</span></button>
+        <a href="contact" class="px-6 py-3.5 rounded-2xl font-bold border border-white/15 hover:bg-white/5 flex items-center gap-2"><i class="fa-solid fa-comments text-cyan-300"></i> <span data-en="Talk to Us" data-sw="Wasiliana Nasi">Talk to Us</span></a>
+      </div>
+    </div>
+
+    <!-- FACTS -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10">
+      <div class="glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-3"><i class="fa-solid fa-certificate text-emerald-300"></i></div><div class="text-[11px] font-bold tracking-[.18em] text-white/45" data-en="BRELA REGISTRATION" data-sw="USAJILI WA BRELA">BRELA REGISTRATION</div><div class="font-display font-bold text-xl mt-1">706668</div></div>
+      <div class="glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-cyan-500/15 flex items-center justify-center mb-3"><i class="fa-solid fa-hashtag text-cyan-300"></i></div><div class="text-[11px] font-bold tracking-[.18em] text-white/45" data-en="TIN NUMBER" data-sw="NAMBA YA TIN">TIN NUMBER</div><div class="font-display font-bold text-xl mt-1 font-mono">192-147-522</div></div>
+      <div class="glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-violet-500/15 flex items-center justify-center mb-3"><i class="fa-solid fa-location-dot text-violet-300"></i></div><div class="text-[11px] font-bold tracking-[.18em] text-white/45" data-en="HEAD OFFICE" data-sw="MAKAO MAKUU">HEAD OFFICE</div><div class="font-display font-bold text-xl mt-1">Dodoma, Tanzania</div></div>
+      <div class="glass rounded-2xl p-5"><div class="w-11 h-11 rounded-xl bg-gold/15 flex items-center justify-center mb-3"><i class="fa-solid fa-globe text-gold"></i></div><div class="text-[11px] font-bold tracking-[.18em] text-white/45" data-en="SERVICE AREA" data-sw="ENEO LA HUDUMA">SERVICE AREA</div><div class="font-display font-bold text-xl mt-1" data-en="Worldwide Online" data-sw="Duniani Mtandaoni">Worldwide Online</div></div>
+    </div>
+  </section>
+
+  <!-- LEADERSHIP -->
+  <section class="max-w-7xl mx-auto px-4 pb-14">
+    <div class="glass rounded-3xl p-6 md:p-10 grid md:grid-cols-[auto_1fr_auto] gap-8 items-center relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500"></div>
+      <div class="relative mx-auto">
+        <div class="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-gradient-to-br from-cyan-500 via-blue-600 to-violet-600 p-[3px] rotate-3">
+          <div class="w-full h-full rounded-3xl bg-[#0A1226] flex flex-col items-center justify-center -rotate-3"><span class="font-display font-bold text-4xl md:text-5xl grad-text">JM</span><span class="text-[10px] tracking-[.2em] text-white/50 mt-1 font-bold" data-en="CEO &amp; FOUNDER" data-sw="MWANZILISHI">CEO &amp; FOUNDER</span></div>
+        </div>
+        <div class="absolute -bottom-3 -right-3 bg-emerald-500 text-[#050914] w-10 h-10 rounded-full flex items-center justify-center border-4 border-[#0E1933]"><i class="fa-solid fa-badge-check"></i></div>
+      </div>
+      <div>
+        <div class="text-[11px] font-bold tracking-[.25em] text-cyan-300 uppercase"><span data-en="Leadership" data-sw="Uongozi">Leadership</span></div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mt-1">Jackson Mbilinyi <span class="text-white/40 font-body font-normal text-base" data-en="— CEO, Software Developer, System Analyst & IT Consultant" data-sw="— CEO, Mtengenezaji wa Software, Mchambuzi wa Mifumo na Mshauri wa IT">— CEO, Software Developer, System Analyst & IT Consultant</span></h2>
+        <p class="text-white/60 text-[14px] mt-3 leading-relaxed max-w-2xl" data-en="Registered enterprise under BRELA • TIN 192-147-522. I design, build, secure and maintain mission-critical systems in Python • Rust • R • React • HTML/CSS/JS and modern cloud stacks. Every project ships with a formal contract, transparent quotation, and lifetime support options." data-sw="Kampuni iliyosajiliwa chini ya BRELA • TIN 192-147-522. Nabiuni, najaenga, nalinda na natengeneza mifumo muhimu kwa Python • Rust • R • React • HTML/CSS/JS na teknolojia za kisasa za cloud. Kila mradi huja na mkataba rasmi, nukuu iliyo wazi, na chaguzi za msaada wa maisha yote.">Registered enterprise under BRELA • TIN 192-147-522. I design, build, secure and maintain mission-critical systems in Python • Rust • R • React • HTML/CSS/JS and modern cloud stacks. Every project ships with a formal contract, transparent quotation, and lifetime support options.</p>
+        <div class="mt-4 flex flex-wrap gap-2 text-[12px]">
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-code text-cyan-300 mr-1"></i> <span data-en="Software Development" data-sw="Uundaji wa Software">Software Development</span></span>
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-diagram-project text-violet-300 mr-1"></i> <span data-en="System Analysis" data-sw="Uchambuzi wa Mifumo">System Analysis</span></span>
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-briefcase text-gold mr-1"></i> <span data-en="IT Consultancy" data-sw="Ushauri wa IT">IT Consultancy</span></span>
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-screwdriver-wrench text-emerald-300 mr-1"></i> <span data-en="Maintenance" data-sw="Matengenezo">Maintenance</span></span>
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10"><i class="fa-solid fa-shield-halved text-red-300 mr-1"></i> <span data-en="Security" data-sw="Usalama">Security</span></span>
+        </div>
+      </div>
+      <div class="grid gap-3 min-w-[220px]">
+        <a href="tel:+255796752645" class="glass rounded-2xl p-4 flex items-center gap-3 hover:border-cyan-400/40"><div class="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center"><i class="fa-solid fa-phone text-green-300"></i></div><div><div class="text-[11px] text-white/50 font-bold uppercase tracking-wider" data-en="Call / WhatsApp / SMS" data-sw="Simu / WhatsApp / SMS">Call / WhatsApp / SMS</div><div class="font-mono font-bold">0796 752 645</div></div></a>
+        <a href="mailto:mbilinyitech@gmail.com" class="glass rounded-2xl p-4 flex items-center gap-3 hover:border-cyan-400/40"><div class="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center"><i class="fa-solid fa-envelope text-blue-300"></i></div><div><div class="text-[11px] text-white/50 font-bold uppercase tracking-wider" data-en="Email" data-sw="Barua pepe">Email</div><div class="font-bold text-[13px]">mbilinyitech@gmail.com</div></div></a>
+        <a href="https://instagram.com/mbilinyitech" target="_blank" class="glass rounded-2xl p-4 flex items-center gap-3 hover:border-pink-400/40"><div class="w-10 h-10 rounded-xl bg-pink-500/15 flex items-center justify-center"><i class="fa-brands fa-instagram text-pink-300"></i></div><div><div class="text-[11px] text-white/50 font-bold uppercase tracking-wider" data-en="Instagram" data-sw="Instagram">Instagram</div><div class="font-bold">@mbilinyitech</div></div></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT WE STAND FOR -->
+  <section class="max-w-7xl mx-auto px-4 pb-14">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+      <div>
+        <div class="badge bg-violet-500/15 text-violet-300 border border-violet-400/30"><span data-en="WHAT WE STAND FOR" data-sw="TUNACHOSIMAMIA">WHAT WE STAND FOR</span></div>
+        <h2 class="font-display font-bold text-3xl md:text-4xl mt-3"><span data-en="How We" data-sw="Jinsi Tunavyofanya">How We</span> <span class="grad-text" data-en="Work" data-sw="Kazi">Work</span></h2>
+      </div>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="glass rounded-3xl p-6"><div class="w-12 h-12 rounded-2xl bg-cyan-500/15 flex items-center justify-center mb-4"><i class="fa-solid fa-file-signature text-cyan-300 text-lg"></i></div><div class="font-display font-bold text-lg" data-en="Contract First" data-sw="Mkataba Kwanza">Contract First</div><p class="text-white/55 text-[13.5px] mt-2" data-en="Every engagement begins with a formal quotation and a BRELA contract you e-sign. No verbal-only deals, no moving targets." data-sw="Kila kazi huanza na nukuu rasmi na mkataba wa BRELA unaosainiwa kidijitali. Hakuna makubaliano ya mdomo, hakuna bei inayobadilika.">Every engagement begins with a formal quotation and a BRELA contract you e-sign. No verbal-only deals, no moving targets.</p></div>
+      <div class="glass rounded-3xl p-6"><div class="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4"><i class="fa-solid fa-code text-violet-300 text-lg"></i></div><div class="font-display font-bold text-lg" data-en="You Own the Code" data-sw="Unamiliki Code">You Own the Code</div><p class="text-white/55 text-[13.5px] mt-2" data-en="100% of the source code and documentation is handed over. You are never locked in to us to keep your own system running." data-sw="100% ya source code na nyaraka unakabidhiwa. Haufungwi kwetu ili kuendelea kuendesha mfumo wako mwenyewe.">100% of the source code and documentation is handed over. You are never locked in to us to keep your own system running.</p></div>
+      <div class="glass rounded-3xl p-6"><div class="w-12 h-12 rounded-2xl bg-emerald-500/15 flex items-center justify-center mb-4"><i class="fa-solid fa-vial-circle-check text-emerald-300 text-lg"></i></div><div class="font-display font-bold text-lg" data-en="Tested Before Handover" data-sw="Hupimwa Kabla ya Kukabidhi">Tested Before Handover</div><p class="text-white/55 text-[13.5px] mt-2" data-en="Every build is typed, reviewed and run through an automated acceptance test before it reaches you — not after." data-sw="Kila mfumo huandikwa, hupitiwa na hupimwa kwa mtihani wa kiotomatiki kabla ya kufika kwako — sio baada.">Every build is typed, reviewed and run through an automated acceptance test before it reaches you — not after.</p></div>
+      <div class="glass rounded-3xl p-6"><div class="w-12 h-12 rounded-2xl bg-red-500/15 flex items-center justify-center mb-4"><i class="fa-solid fa-shield-halved text-red-300 text-lg"></i></div><div class="font-display font-bold text-lg" data-en="Security Is Not an Add-on" data-sw="Usalama Sio Nyongeza">Security Is Not an Add-on</div><p class="text-white/55 text-[13.5px] mt-2" data-en="Hardened headers, hashed credentials, scoped access and real security audits ship with the system, not as a later upgrade." data-sw="Headers zilizoimarishwa, nywila zilizohash, ufikiaji uliopunguzwa na ukaguzi halisi wa usalama huja na mfumo, sio kama nyongeza ya baadaye.">Hardened headers, hashed credentials, scoped access and real security audits ship with the system, not as a later upgrade.</p></div>
+      <div class="glass rounded-3xl p-6"><div class="w-12 h-12 rounded-2xl bg-gold/15 flex items-center justify-center mb-4"><i class="fa-solid fa-hand-holding-dollar text-gold text-lg"></i></div><div class="font-display font-bold text-lg" data-en="Transparent Pricing" data-sw="Bei Iliyo Wazi">Transparent Pricing</div><p class="text-white/55 text-[13.5px] mt-2" data-en="Published rates, itemised quotations and escrow-backed milestones, so you always know what you are paying for." data-sw="Bei zilizochapishwa, nukuu zenye vitu vilivyoorodheshwa na hatua zinazolindwa kwa escrow, ili ujue kila wakati unalipia nini.">Published rates, itemised quotations and escrow-backed milestones, so you always know what you are paying for.</p></div>
+      <div class="glass rounded-3xl p-6"><div class="w-12 h-12 rounded-2xl bg-blue-500/15 flex items-center justify-center mb-4"><i class="fa-solid fa-headset text-blue-300 text-lg"></i></div><div class="font-display font-bold text-lg" data-en="Support That Answers" data-sw="Msaada Unaotoa Majibu">Support That Answers</div><p class="text-white/55 text-[13.5px] mt-2" data-en="A 24-hour quotation reply target, tracked support tickets and an SLA you can hold us to — with the CEO reachable directly." data-sw="Lengo la kujibu nukuu ndani ya saa 24, tikiti za msaada zinazofuatiliwa na SLA unayoweza kutuhimiza — huku CEO akipatikana moja kwa moja.">A 24-hour quotation reply target, tracked support tickets and an SLA you can hold us to — with the CEO reachable directly.</p></div>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section class="max-w-7xl mx-auto px-4 pb-16">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <div class="badge bg-violet-500/15 text-violet-300 border border-violet-400/30" data-en="OUR TEAM" data-sw="TIMU YETU">OUR TEAM</div>
+        <h2 class="font-display font-bold text-3xl md:text-4xl mt-3"><span data-en="The People Behind" data-sw="Watu Nyuma ya">The People Behind</span> <span class="grad-text" data-en="Your Project" data-sw="Mradi Wako">Your Project</span></h2>
+        <p class="text-white/55 text-[14px] mt-3 max-w-2xl" data-en="A focused team of engineers, analysts and consultants led by CEO Jackson Mbilinyi." data-sw="Timu madhubuti ya wahandisi, wachambuzi na washauri inayoongozwa na CEO Jackson Mbilinyi.">A focused team of engineers, analysts and consultants led by CEO Jackson Mbilinyi.</p>
+      </div>
+      <a href="staff" class="px-5 py-3 rounded-xl border border-white/15 text-sm font-bold hover:bg-white/5" data-en="Our Experts →" data-sw="Wataalamu Wetu →">Our Experts →</a>
+    </div>
+    <div id="teamGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8"></div>
+  </section>
+
+  <!-- CLOSE -->
+  <section class="max-w-7xl mx-auto px-4 pb-16">
+    <div class="glass rounded-3xl p-6 md:p-10 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500"></div>
+      <div class="orb w-[360px] h-[360px] bg-cyan-500/20 -top-24 -right-24"></div>
+      <div class="relative grid md:grid-cols-[1fr_auto] gap-8 items-center">
+        <div>
+          <div class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-400/30" data-en="WORK WITH US" data-sw="FANYA KAZI NASI">WORK WITH US</div>
+          <h2 class="font-display font-bold text-3xl md:text-4xl mt-3"><span data-en="Your Problem," data-sw="Shida Yako,">Your Problem,</span> <span class="grad-text" data-en="Our Solution." data-sw="Tatuzo Letu.">Our Solution.</span></h2>
+          <p class="text-white/60 text-[14.5px] mt-3 leading-relaxed max-w-2xl" data-en="Tell us what you need to build, fix or secure. You get an official quotation within 24 hours, a contract to sign, and a working system you own." data-sw="Tuambie unachohitaji kujenga, kutengeneza au kulinda. Unapata nukuu rasmi ndani ya saa 24, mkataba wa kusaini, na mfumo unaofanya kazi unaomiliki.">Tell us what you need to build, fix or secure. You get an official quotation within 24 hours, a contract to sign, and a working system you own.</p>
+        </div>
+        <div class="grid gap-3 min-w-[240px]">
+          <button onclick="openQuoteWizard()" class="grad-btn px-7 py-4 rounded-2xl font-bold flex items-center justify-center gap-2"><i class="fa-solid fa-file-pen"></i> <span data-en="Request a Service" data-sw="Omba Huduma">Request a Service</span></button>
+          <a href="contact" class="px-7 py-4 rounded-2xl font-bold border border-white/15 hover:bg-white/5 flex items-center justify-center gap-2"><i class="fa-solid fa-location-dot text-cyan-300"></i> <span data-en="Contact Details" data-sw="Mawasiliano">Contact Details</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<?php require __DIR__ . '/partials/footer.php'; ?>

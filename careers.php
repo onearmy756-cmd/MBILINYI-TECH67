@@ -1,0 +1,135 @@
+<?php
+require_once __DIR__ . '/config/app.php';
+$pageTitle = 'Careers (Ajira) — Apply & Be Assessed | Mbilinyi Tech Solutions';
+$page = 'landing';
+require __DIR__ . '/partials/head.php';
+?>
+<body class="antialiased">
+<?php require __DIR__ . '/partials/header.php'; ?>
+
+<!-- ============ CAREERS / AJIRA ============ -->
+<section class="max-w-7xl mx-auto px-4 pt-10">
+  <div class="glass rounded-3xl p-6 md:p-9 relative overflow-hidden">
+    <div class="orb w-[380px] h-[380px] bg-amber-500/25 -top-24 -right-20"></div>
+    <div class="relative">
+      <div class="text-[11px] font-bold tracking-[.24em] text-amber-300">KAZI KWETU • AJIRA</div>
+      <h1 class="font-display font-bold text-3xl md:text-5xl mt-2">Build Your Career With Us</h1>
+      <p class="text-white/60 mt-3 max-w-3xl leading-relaxed">
+        We hire for every service we deliver — software engineering, cyber security, AI fine-tuning, design, finance and more.
+        Apply below: fill in your details, and you will be assessed <strong class="text-white/85">theoretically and practically</strong>.
+        The strongest applicants are hired into a real role.
+      </p>
+      <div class="flex flex-wrap gap-2 mt-5">
+        <span class="chip text-cyan-300"><i class="fa-solid fa-earth-africa"></i>International team</span>
+        <span class="chip text-emerald-300"><i class="fa-solid fa-laptop-code"></i>Every tool in-platform</span>
+        <span class="chip text-violet-300"><i class="fa-solid fa-graduation-cap"></i>Practical + theory assessment</span>
+        <span class="chip text-amber-300"><i class="fa-solid fa-arrow-trend-up"></i>Grow with the company</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 mt-8">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="font-display font-bold text-2xl"><i class="fa-solid fa-briefcase text-amber-300 mr-2"></i>Open Vacancies</h2>
+    <div class="text-[13px] text-white/50"><span id="jobCount">0</span> position(s) open</div>
+  </div>
+  <div id="careersList" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-5"></div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 mt-10">
+  <div class="glass rounded-3xl p-6 md:p-8">
+    <h2 class="font-display font-bold text-2xl"><i class="fa-solid fa-list-check text-cyan-300 mr-2"></i>How We Assess You</h2>
+    <div class="grid md:grid-cols-3 gap-4 mt-5">
+      <div class="card3d pop-cyan p-5"><div class="text-3xl mb-2">1</div><div class="font-bold text-[15px]">Apply</div><p class="text-[12.5px] text-white/60 mt-1.5">Send your details: photo, profession, level, skills and experience. Everything is recorded.</p></div>
+      <div class="card3d pop-violet p-5"><div class="text-3xl mb-2">2</div><div class="font-bold text-[15px]">Theory Paper</div><p class="text-[12.5px] text-white/60 mt-1.5">A written assessment of the knowledge the role needs. Scored out of 100.</p></div>
+      <div class="card3d pop-emerald p-5"><div class="text-3xl mb-2">3</div><div class="font-bold text-[15px]">Practical Task</div><p class="text-[12.5px] text-white/60 mt-1.5">A real task on real tools inside the platform. Scored out of 100, then weighted into one total.</p></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+
+  async function loadCareers() {
+    const box = document.getElementById('careersList');
+    const cnt = document.getElementById('jobCount');
+    let jobs = [];
+    try {
+      const res = await fetch('api/ajira.php?action=openings', { headers: { 'X-Requested-With': 'fetch' } });
+      const j = await res.json();
+      jobs = (j.data && j.data.openings) || [];
+    } catch (e) { jobs = []; }
+    cnt.textContent = jobs.length;
+    if (!jobs.length) {
+      box.innerHTML = '<div class="md:col-span-2 xl:col-span-3 glass rounded-3xl p-8 text-center text-white/50">No vacancies open right now. Send your details through <a href="contact" class="text-cyan-300 font-bold">Contact</a> and we will reach out when a role opens.</div>';
+      return;
+    }
+    box.innerHTML = jobs.map(j => `<div class="card3d pop-amber p-5">
+      <div class="flex justify-between items-start gap-2">
+        <div><div class="font-display font-bold text-[17px]">${esc(j.title)}</div>
+        <div class="text-[12px] text-amber-300 mt-0.5">${esc(j.department)} • ${esc(j.level)}</div></div>
+        <span class="chip text-emerald-300">${j.positions} slot(s)</span>
+      </div>
+      <p class="text-[12.5px] text-white/60 mt-3 line-clamp-3">${esc(j.description)}</p>
+      <div class="text-[12px] text-white/45 mt-3 space-y-1">
+        <div><i class="fa-solid fa-location-dot mr-1.5"></i>${esc(j.location)} • ${esc(j.kind)}</div>
+        <div><i class="fa-solid fa-money-bill-wave mr-1.5"></i>${esc(j.salary || 'Salary discussed at interview')}</div>
+        <div><i class="fa-solid fa-clipboard-check mr-1.5"></i>Assessed: ${j.theoreticalWeight}% theory + ${j.practicalWeight}% practical</div>
+      </div>
+      ${(j.requirements || []).length ? `<div class="mt-3"><div class="text-[10.5px] font-bold text-white/45 uppercase tracking-wider mb-1">Requirements</div><ul class="text-[12px] text-white/60 space-y-0.5">${j.requirements.map(r => `<li><i class="fa-solid fa-check text-emerald-300 mr-1.5 text-[10px]"></i>${esc(r)}</li>`).join('')}</ul></div>` : ''}
+      <button onclick="openApply('${j.id}')" class="grad-btn w-full mt-4 py-3 rounded-xl font-bold text-sm"><i class="fa-solid fa-paper-plane mr-1"></i>Apply for this Role</button>
+    </div>`).join('');
+  }
+
+  window.openApply = function (jobId) {
+    const btn = document.querySelector('#careersList button[onclick="openApply(\'' + jobId + '\')"]');
+    const card = btn ? btn.closest('.card3d') : null;
+    const jobTitle = card ? card.querySelector('.font-display').textContent : 'this role';
+    openGen('Apply — ' + jobTitle, `
+      <div class="text-[12.5px] text-white/60 mb-3"><i class="fa-solid fa-briefcase text-amber-300 mr-1.5"></i>Fill in your details — you will be assessed on theory and practice.</div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">FULL NAME *</label><input id="apName" class="input mt-1"></div>
+        <div><label class="text-[12px] font-bold text-white/60">EMAIL *</label><input id="apEmail" class="input mt-1" type="email"></div>
+        <div><label class="text-[12px] font-bold text-white/60">PHONE *</label><input id="apPhone" class="input mt-1" placeholder="+2557..."></div>
+        <div><label class="text-[12px] font-bold text-white/60">PROFESSION / TAALUMA</label><input id="apProf" class="input mt-1"></div>
+        <div><label class="text-[12px] font-bold text-white/60">LEVEL</label><select id="apLevel" class="input mt-1"><option>junior</option><option selected>mid</option><option>senior</option><option>lead</option><option>principal</option></select></div>
+        <div><label class="text-[12px] font-bold text-white/60">REGION</label><input id="apRegion" class="input mt-1"></div>
+        <div><label class="text-[12px] font-bold text-white/60">YEARS OF EXPERIENCE</label><input id="apExp" type="number" class="input mt-1" value="0"></div>
+        <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">SKILLS (comma separated)</label><input id="apSkills" class="input mt-1"></div>
+        <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">CV LINK (optional)</label><input id="apCv" class="input mt-1" placeholder="https://drive.google.com/..."></div>
+        <div class="sm:col-span-2"><label class="text-[12px] font-bold text-white/60">WHY YOU? (cover letter)</label><textarea id="apCover" rows="3" class="input mt-1"></textarea></div>
+      </div>
+      <div class="flex gap-2 mt-5"><button onclick="submitApplication('${jobId}')" class="grad-btn flex-1 py-3 rounded-xl font-bold text-sm">Submit Application</button><button onclick="closeGen()" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm">Cancel</button></div>`);
+  };
+
+  window.submitApplication = async function (jobId) {
+    const v = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const payload = {
+      action: 'apply', jobId,
+      fullName: v('apName'), email: v('apEmail'), phone: v('apPhone'),
+      profession: v('apProf'), level: v('apLevel'), region: v('apRegion'),
+      experienceYears: Number(v('apExp')) || 0,
+      skills: v('apSkills').split(',').map(s => s.trim()).filter(Boolean),
+      cvUrl: v('apCv'), coverLetter: v('apCover'),
+    };
+    if (!payload.fullName || !payload.email || !payload.phone) { toast('Name, email and phone are all required.', 'err'); return; }
+    try {
+      const res = await fetch('api/ajira.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.__CSRF__ || '', 'X-Requested-With': 'fetch' },
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Could not submit.');
+      closeGen();
+      toast('Application received ✓ We will contact you about the assessment.', 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+
+  loadCareers();
+})();
+</script>
+
+<?php require __DIR__ . '/partials/footer.php'; ?>

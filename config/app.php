@@ -160,6 +160,16 @@ function admin_page_user(): array {
     return $u;
 }
 
+/* The staff portal is for any signed-in worker. The API decides which desk a
+ * given account may actually read, so the page only has to require a session —
+ * the same rule the Rust core applies (client | admin | mtaalamu). */
+function staff_page_user(): array {
+    $u = current_user();
+    if (!$u) redirect('auth?returnTo=mtaalamu' . portal_query());
+    if ($u['status'] !== 'Active') { session_destroy(); redirect('auth'); }
+    return $u;
+}
+
 /**
  * The sections of each portal. A section is a page of its own — /admin/payroll —
  * so the same list drives the router, the nav and the sign-in round trip.

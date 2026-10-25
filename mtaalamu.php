@@ -1,0 +1,52 @@
+<?php
+require_once __DIR__ . '/config/app.php';
+staff_page_user();
+$pageTitle = 'Staff Portal — Your Tasks & Tools | Mbilinyi Tech Solutions';
+$page = 'mtaalamu';
+require __DIR__ . '/partials/head.php';
+?>
+<body class="antialiased">
+<?php require __DIR__ . '/partials/header.php'; ?>
+
+<!-- ============ STAFF / MTAALAMU PORTAL ============ -->
+<div id="view-staff" class="view-section active">
+  <div class="max-w-7xl mx-auto px-4 py-8 grid lg:grid-cols-[260px_1fr] gap-5">
+    <aside class="glass rounded-3xl p-4 h-fit lg:sticky lg:top-24">
+      <div class="flex items-center gap-3 p-3 rounded-2xl bg-white/[.03] border border-white/10">
+        <div id="staffAvatar" class="w-12 h-12 rounded-2xl grad-btn flex items-center justify-center font-bold text-lg">M</div>
+        <div class="min-w-0">
+          <div id="staffName" class="font-bold text-[14px] truncate">Mtaalamu</div>
+          <div id="staffProf" class="text-[12px] text-white/50 truncate">—</div>
+          <span class="badge bg-emerald-500/10 text-emerald-300 border border-emerald-400/30 mt-1 inline-block" data-en="STAFF" data-sw="MTAALAMU">STAFF</span>
+        </div>
+      </div>
+      <nav class="mt-4 grid gap-1 text-[13.5px] font-semibold" id="staffNav">
+        <a data-stab="home" href="/mtaalamu" class="sidebar-link active text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-gauge-high mr-2 text-emerald-300"></i><span data-en="My Desk" data-sw="Dawati Langu">My Desk</span></a>
+        <a data-stab="tasks" href="/mtaalamu/tasks" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-list-check mr-2 text-violet-300"></i><span data-en="My Tasks" data-sw="Kazi Zangu">My Tasks</span></a>
+        <a data-stab="tools" href="/mtaalamu/tools" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-toolbox mr-2 text-gold"></i><span data-en="My Tools" data-sw="Zana Zangu">My Tools</span></a>
+        <a data-stab="workspace" href="/mtaalamu/workspace" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-robot mr-2 text-cyan-300"></i><span data-en="AI Workspace" data-sw="Eneo la AI">AI Workspace</span></a>
+        <a data-stab="office" href="/mtaalamu/office" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-video mr-2 text-pink-300"></i><span data-en="Online Office" data-sw="Ofisi Mtandaoni">Online Office</span></a>
+        <a data-stab="pay" href="/mtaalamu/pay" class="sidebar-link text-left px-4 py-3 rounded-xl text-white/70 hover:bg-white/5"><i class="fa-solid fa-money-check-dollar mr-2 text-lime-300"></i><span data-en="Pay &amp; Contract" data-sw="Malipo na Mkataba">Pay &amp; Contract</span></a>
+      </nav>
+      <button onclick="showView('landing')" class="w-full mt-4 py-3 rounded-xl font-bold text-sm border border-white/15 hover:bg-white/5">← <span data-en="Website" data-sw="Wavuti">Website</span></button>
+      <button onclick="logout()" class="w-full mt-2 py-3 rounded-xl font-bold text-sm border border-red-400/30 text-red-300 hover:bg-red-500/10"><i class="fa-solid fa-right-from-bracket mr-1"></i> <span data-en="Logout" data-sw="Toka">Logout</span></button>
+    </aside>
+    <div class="min-w-0">
+      <div class="glass rounded-3xl p-5 md:p-7">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-bold tracking-[.2em] text-emerald-300" data-en="STAFF PORTAL" data-sw="PORTAL YA MTAALAMU">STAFF PORTAL</div>
+            <h2 id="staffTabTitle" class="font-display font-bold text-2xl">My Desk</h2>
+          </div>
+          <div class="flex gap-2">
+            <span class="badge bg-cyan-500/15 text-cyan-300 border border-cyan-400/30"><i class="fa-solid fa-shield-halved mr-1"></i> <span data-en="Scoped to your job" data-sw="Kwa kazi yako pekee">Scoped to your job</span></span>
+            <button onclick="staffLoad()" class="text-[12px] px-4 py-2 rounded-full border border-white/15 hover:bg-white/5"><i class="fa-solid fa-rotate mr-1"></i> <span data-en="Refresh" data-sw="Onyesha upya">Refresh</span></button>
+          </div>
+        </div>
+        <div id="staffContent" class="mt-6"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<?php require __DIR__ . '/partials/footer.php'; ?>

@@ -224,7 +224,7 @@ function isSameSite(url) {
 /* Kila sehemu ya landing ni ukurasa wake halisi — kubonyeza inakupeleka ukurasa mpya.
  * URLs are extensionless: the server rewrites /pricing -> pricing.php. */
 const PAGES = {
-  landing: '', services: 'services', stack: 'stack', ai: 'ai',
+  landing: '', company: 'company', services: 'services', stack: 'stack', ai: 'ai',
   pricing: 'pricing', process: 'process', work: 'work', track: 'track',
   contact: 'contact', auth: 'auth', client: 'client', admin: 'admin',
   mtaalamu: 'mtaalamu'

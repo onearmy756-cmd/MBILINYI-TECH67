@@ -33,7 +33,8 @@ fn title_for(name: &str) -> String {
             "Mbilinyi Tech Solutions — Custom Software, AI & Security | Jackson Mbilinyi, CEO"
                 .into()
         }
-        "services" => "Services — Custom Software, AI, Security | Mbilinyi Tech Solutions".into(),
+        "services" => "Services — Every Service We Offer | Mbilinyi Tech Solutions".into(),
+        "company" => "Company — About Mbilinyi Tech Solutions | CEO Jackson Mbilinyi".into(),
         "stack" => "Tech Stack — What We Build With | Mbilinyi Tech Solutions".into(),
         "ai" => "AI & Fine-Tuning — Build Your Own AI | Mbilinyi Tech Solutions".into(),
         "pricing" => {
@@ -454,7 +455,7 @@ fn footer(globals_html: &str, country: &str, modals_html: &str) -> String {
       {forensics}
       <span data-en="Build Your Own AI & Chatbot" data-sw="Jenga AI na Chatbot Yako">Build Your Own AI &amp; Chatbot</span>
     </div></div>
-    <div><div class="font-bold mb-3" data-en="Company" data-sw="Kampuni">Company</div><div class="grid gap-2 text-white/55"><span>CEO: Jackson Mbilinyi</span><span>BRELA Reg: 706668</span><span class="font-mono">TIN: 192-147-522</span><span data-en="Dodoma, Tanzania • Work delivered online" data-sw="Dodoma, Tanzania • Kazi zote mtandaoni">Dodoma, Tanzania • Work delivered online</span><a href="auth" class="text-left text-cyan-300 font-bold" data-en="Client Login →" data-sw="Kuingia kwa Mteja →">Client Login →</a></div></div>
+    <div><div class="font-bold mb-3" data-en="Company" data-sw="Kampuni">Company</div><div class="grid gap-2 text-white/55"><span>CEO: Jackson Mbilinyi</span><span>BRELA Reg: 706668</span><span class="font-mono">TIN: 192-147-522</span><span data-en="Dodoma, Tanzania • Work delivered online" data-sw="Dodoma, Tanzania • Kazi zote mtandaoni">Dodoma, Tanzania • Work delivered online</span><a href="company" class="text-left text-cyan-300 font-bold" data-en="About the Company →" data-sw="Kuhusu Kampuni →">About the Company →</a><a href="auth" class="text-left text-cyan-300 font-bold" data-en="Client Login →" data-sw="Kuingia kwa Mteja →">Client Login →</a></div></div>
     <div><div class="font-bold mb-3" data-en="Contact" data-sw="Mawasiliano">Contact</div><div class="grid gap-2 text-white/55"><a href="tel:+255796752645" class="hover:text-white"><i class="fa-solid fa-phone mr-2 text-green-300"></i>0796 752 645</a><a href="mailto:mbilinyitech@gmail.com" class="hover:text-white"><i class="fa-solid fa-envelope mr-2 text-blue-300"></i>mbilinyitech@gmail.com</a><span><i class="fa-brands fa-instagram mr-2 text-pink-300"></i>@mbilinyitech</span><span data-en="Mon–Sat • 8:00–20:00 EAT" data-sw="Jumatatu–Jumamosi • 8:00–20:00 EAT">Mon–Sat • 8:00–20:00 EAT</span></div></div>
   </div>
   <div class="border-t border-white/10 py-4 text-center">
@@ -559,8 +560,9 @@ fn template_dir() -> String {
 }
 
 /// Every page the router will serve. A template with no entry here 404s.
-pub const KNOWN_PAGES: [&str; 27] = [
+pub const KNOWN_PAGES: [&str; 28] = [
     "index",
+    "company",
     "services",
     "stack",
     "ai",
