@@ -67,84 +67,8 @@
   </div>
 </div>
 
-<!-- QUOTE WIZARD MODAL -->
-<div id="quoteModal" class="fixed inset-0 z-[400] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-  <div class="glass-strong rounded-3xl w-full max-w-3xl my-6 overflow-hidden">
-    <div class="p-5 md:p-6 bg-gradient-to-r from-cyan-600/20 to-violet-600/20 border-b border-white/10 flex items-center justify-between">
-      <div><div class="text-[11px] font-bold tracking-[.2em] text-cyan-300" data-en="CLIENT REQUIREMENTS FORM" data-sw="FOMU YA MAHITAJI">CLIENT REQUIREMENTS FORM</div><div class="font-display font-bold text-xl" data-en="Request a Service" data-sw="Omba Huduma">Request a Service</div></div>
-      <button onclick="closeQuoteWizard()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="px-5 md:px-6 pt-5"><div class="flex items-center gap-2" id="wizProgress"></div></div>
-    <div class="p-5 md:p-6">
-      <!-- STEP 1 -->
-      <div class="wizard-step active" data-step="1">
-        <h3 class="font-bold text-lg"><i class="fa-solid fa-user text-cyan-300 mr-2"></i><span data-en="Step 1: Your Details" data-sw="Hatua 1: Taarifa Zako">Step 1: Your Details</span></h3>
-        <div class="grid sm:grid-cols-2 gap-3 mt-4">
-          <div><label class="text-[12px] font-bold text-white/60" data-en="FULL NAME *" data-sw="JINA KAMILI *">FULL NAME *</label><input id="qName" class="input mt-1" data-ph-en="Your full name" data-ph-sw="Jina lako kamili" placeholder="Your full name"></div>
-          <div><label class="text-[12px] font-bold text-white/60" data-en="PHONE / WHATSAPP *" data-sw="SIMU / WHATSAPP *">PHONE / WHATSAPP *</label><input id="qPhone" class="input mt-1" placeholder="07XX XXX XXX"></div>
-        </div>
-        <div class="grid sm:grid-cols-2 gap-3 mt-3">
-          <div><label class="text-[12px] font-bold text-white/60" data-en="EMAIL *" data-sw="BARUA PEPE *">EMAIL *</label><input id="qEmail" class="input mt-1" placeholder="you@email.com"></div>
-          <div><label class="text-[12px] font-bold text-white/60" data-en="COMPANY / ORGANIZATION" data-sw="KAMPUNI / TAASISI">COMPANY / ORGANIZATION</label><input id="qCompany" class="input mt-1" data-ph-en="Optional" data-ph-sw="Si lazima" placeholder="Optional"></div>
-        </div>
-      </div>
-      <!-- STEP 2 -->
-      <div class="wizard-step" data-step="2">
-        <h3 class="font-bold text-lg"><i class="fa-solid fa-briefcase text-violet-300 mr-2"></i><span data-en="Step 2: Service & Project" data-sw="Hatua 2: Huduma na Mradi">Step 2: Service & Project</span></h3>
-        <label class="text-[12px] font-bold text-white/60 mt-4 block" data-en="SELECT SERVICE *" data-sw="CHAGUA HUDUMA *">SELECT SERVICE *</label>
-        <div class="grid sm:grid-cols-2 gap-2 mt-2" id="qServiceGrid"></div>
-        <!-- Service-specific fields (each service has its own form) -->
-        <div id="qServiceFields" class="mt-4"></div>
-        <label class="text-[12px] font-bold text-white/60 mt-4 block" id="qTitleLabel" data-en="PROJECT TITLE *" data-sw="KICHWA CHA MRADI *">PROJECT TITLE *</label><input id="qTitle" class="input mt-1" data-ph-en="e.g. Pharmacy stock + sales system with M-Pesa" data-ph-sw="mf. Mfumo wa pharmacy wa stock na mauzo na M-Pesa" placeholder="e.g. Pharmacy stock + sales system with M-Pesa">
-        <label class="text-[12px] font-bold text-white/60 mt-3 block" id="qDescLabel" data-en="DETAILED REQUIREMENTS *" data-sw="MAHITAJI KWA UNDANI *">DETAILED REQUIREMENTS *</label><textarea id="qDesc" rows="4" class="input mt-1" data-ph-en="Describe features, users, integrations (M-Pesa, SMS), reports you need..." data-ph-sw="Eleza vipengele, watumiaji, miunganisho (M-Pesa, SMS), ripoti unazohitaji..." placeholder="Describe features, users, integrations (M-Pesa, SMS), reports you need..."></textarea>
-      </div>
-      <!-- STEP 3 (rendered per service -- no two services show the same fields) -->
-      <div class="wizard-step" data-step="3">
-        <h3 class="font-bold text-lg" id="wizStep3Title"><i class="fa-solid fa-code text-emerald-300 mr-2"></i><span data-en="Step 3: Technology Preference" data-sw="Hatua 3: Mapendeleo ya Teknolojia">Step 3: Technology Preference</span></h3>
-        <p class="text-[13px] text-white/50" id="wizStep3Hint" data-en="Our System Analyst will advise the best stack if you are unsure." data-sw="Mtaalamu wetu wa Mifumo atashauri teknolojia bora ikiwa hujui.">Our System Analyst will advise the best stack if you are unsure.</p>
-        <div id="qTechWrap">
-          <label class="text-[12px] font-bold text-white/60 mt-4 block" id="qTechLabel" data-en="PREFERRED LANGUAGES (optional)" data-sw="LUGHA UNAZOPENDA (si lazima)">PREFERRED LANGUAGES (optional)</label>
-          <div class="flex flex-wrap gap-2 mt-2" id="qTechGrid"></div>
-        </div>
-        <div class="grid sm:grid-cols-2 gap-3 mt-4">
-          <div><label class="text-[12px] font-bold text-white/60" id="qPlatformLabel" data-en="PLATFORM" data-sw="JUKWAA">PLATFORM</label><select id="qPlatform" class="input mt-1"></select></div>
-          <div><label class="text-[12px] font-bold text-white/60" data-en="PRIORITY" data-sw="KIPAUMBELE">PRIORITY</label><select id="qPriority" class="input mt-1"><option value="Normal" data-en="Normal" data-sw="Kawaida">Normal</option><option value="Urgent" data-en="Urgent" data-sw="Haraka">Urgent</option><option value="Critical / ASAP" data-en="Critical / ASAP" data-sw="Muhimu Sana / Haraka iwezekanavyo">Critical / ASAP</option></select></div>
-        </div>
-      </div>
-      <!-- STEP 4 -->
-      <div class="wizard-step" data-step="4">
-        <h3 class="font-bold text-lg"><i class="fa-solid fa-coins text-gold mr-2"></i><span data-en="Step 4: Budget & Timeline" data-sw="Hatua 4: Bajeti na Muda">Step 4: Budget & Timeline</span></h3>
-        <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="BUDGET RANGE (TZS)" data-sw="KIWANGO CHA BAJETI (TZS)">BUDGET RANGE (TZS)</label>
-        <select id="qBudget" class="input mt-1"><option data-en="Under TZS 500,000 (< $200)" data-sw="Chini ya TZS 500,000 (< $200)">Under TZS 500,000 (< $200)</option><option data-en="TZS 500K – 1.5M ($200 – $600)" data-sw="TZS 500K – 1.5M">TZS 500K – 1.5M ($200 – $600)</option><option data-en="TZS 1.5M – 5M ($600 – $2,000)" data-sw="TZS 1.5M – 5M">TZS 1.5M – 5M ($600 – $2,000)</option><option data-en="TZS 5M – 15M ($2,000 – $6,000)" data-sw="TZS 5M – 15M">TZS 5M – 15M ($2,000 – $6,000)</option><option data-en="TZS 15M+ (> $6,000)" data-sw="Zaidi ya TZS 15M">TZS 15M+ (> $6,000)</option><option data-en="Need professional advice" data-sw="Nahitaji ushauri wa kitaalamu">Need professional advice</option></select>
-        <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="EXPECTED DEADLINE" data-sw="MUDA UNAOTARAJIWA">EXPECTED DEADLINE</label><input id="qDeadline" type="date" class="input mt-1">
-        <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="YOUR REGION (optional — Tanzania)" data-sw="MKOA WAKO (si lazima — Tanzania)">YOUR REGION (optional — Tanzania)</label>
-        <select id="qRegion" class="input mt-1"><option value="">—</option></select>
-        <label class="text-[12px] font-bold text-white/60 mt-3 block" data-en="HOW DID YOU HEAR ABOUT US?" data-sw="ULISIKIA KUHUSU SISI VIPI?">HOW DID YOU HEAR ABOUT US?</label><select id="qSource" class="input mt-1"><option data-en="Instagram @mbilinyitech" data-sw="Instagram @mbilinyitech">Instagram @mbilinyitech</option><option data-en="WhatsApp / Referral" data-sw="WhatsApp / Rafiki">WhatsApp / Referral</option><option data-en="Google Search" data-sw="Utafutaji wa Google">Google Search</option><option data-en="Previous Client" data-sw="Mteja wa Awali">Previous Client</option><option data-en="Other" data-sw="Nyingine">Other</option></select>
-        <div class="mt-4 rounded-2xl bg-cyan-500/[.06] border border-cyan-400/25 p-4 text-[13px] text-white/70"><i class="fa-solid fa-circle-info text-cyan-300 mr-1"></i> <span data-en="After submitting, CEO Jackson Mbilinyi reviews your request and sends an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval." data-sw="Baada ya kutuma, CEO Jackson Mbilinyi hupitia ombi lako na kutuma nukuu rasmi yenye bei kwenye portal yako, email na WhatsApp ndani ya saa 24. Mkataba rasmi wa BRELA unafuata baada ya kukubali.">After submitting, CEO Jackson Mbilinyi reviews your request and sends an official quotation with prices to your portal, email & WhatsApp within 24 hours. A formal BRELA contract follows approval.</span></div>
-      </div>
-      <!-- STEP 5 review -->
-      <div class="wizard-step" data-step="5">
-        <h3 class="font-bold text-lg"><i class="fa-solid fa-clipboard-check text-emerald-300 mr-2"></i><span data-en="Step 5: Review & Submit" data-sw="Hatua 5: Hakiki na Tuma">Step 5: Review & Submit</span></h3>
-        <div id="qReview" class="mt-4 rounded-2xl border border-white/10 bg-white/[.02] p-5 text-[13.5px] grid gap-2"></div>
-        <label class="flex items-start gap-2.5 mt-4 text-[13px] text-white/65 cursor-pointer"><input type="checkbox" id="qAgree" class="mt-1 w-4 h-4 accent-cyan-400"><span data-en="I agree to be contacted by Mbilinyi Tech Solutions (BRELA Reg, TIN 192-147-522) regarding this request via call, WhatsApp, SMS or email." data-sw="Nakubali kuwasiliana nami na Mbilinyi Tech Solutions (BRELA Reg, TIN 192-147-522) kuhusu ombi hili kwa simu, WhatsApp, SMS au email.">I agree to be contacted by Mbilinyi Tech Solutions (BRELA Reg, TIN 192-147-522) regarding this request via call, WhatsApp, SMS or email.</span></label>
-      </div>
-      <div class="flex items-center justify-between mt-6 gap-3">
-        <button id="wizBack" onclick="wizMove(-1)" class="px-5 py-3 rounded-xl border border-white/15 font-bold text-sm invisible"><span data-en="← Back" data-sw="← Rudi">← Back</span></button>
-        <div class="text-[12px] text-white/40 font-mono" id="wizLabel">Step 1 of 5</div>
-        <button id="wizNext" onclick="wizMove(1)" class="grad-btn px-6 py-3 rounded-xl font-bold text-sm"><span data-en="Continue →" data-sw="Endelea →">Continue →</span></button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- GENERIC MODAL -->
-<div id="genModal" class="fixed inset-0 z-[450] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-  <div class="glass-strong rounded-3xl w-full max-w-3xl my-6 overflow-hidden">
-    <div class="p-5 border-b border-white/10 flex items-center justify-between bg-white/[.02]"><div id="genTitle" class="font-display font-bold text-lg">Details</div><button onclick="closeGen()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button></div>
-    <div id="genBody" class="p-5 md:p-6 max-h-[75vh] overflow-y-auto"></div>
-  </div>
-</div>
-
+<!-- QUOTE WIZARD + GENERIC MODALS: one shared partial, also read by the Rust core. -->
+<?php require __DIR__ . '/../templates/_modals.html'; ?>
 <!-- PRINT AREA -->
 <div id="printArea"></div>
 

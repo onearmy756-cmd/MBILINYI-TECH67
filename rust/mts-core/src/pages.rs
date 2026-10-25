@@ -367,7 +367,7 @@ const STYLE: &str = r#"<style>
 
 /// The footer, matching `partials/footer.php`: the legal links, the WhatsApp
 /// button, the chat widget, the wizard modal and the script tag.
-fn footer(globals_html: &str, country: &str) -> String {
+fn footer(globals_html: &str, country: &str, modals_html: &str) -> String {
     format!(
         r##"</main>
 <footer class="border-t border-white/10 bg-[#04070F] mt-6">
@@ -429,13 +429,8 @@ fn footer(globals_html: &str, country: &str) -> String {
     <div class="flex gap-2"><input id="chatInput" onkeydown="if(event.key==='Enter')sendChat()" class="input !py-2.5 text-[13px]" data-ph-en="Ask about services, prices, tracking..." data-ph-sw="Uliza kuhusu huduma, bei, ufuatiliaji..." placeholder="Ask about services, prices, tracking..."><button id="micBtn" onclick="toggleMic()" class="w-11 h-11 rounded-xl shrink-0 bg-white/5 border border-white/15" title="Speak your question / Ongea swali lako"><i class="fa-solid fa-microphone text-sm"></i></button><button onclick="sendChat()" class="grad-btn w-11 h-11 rounded-xl shrink-0"><i class="fa-solid fa-paper-plane text-sm"></i></button></div>
   </div>
 </div>
-<div id="genModal" class="fixed inset-0 z-[450] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-  <div class="glass-strong rounded-3xl w-full max-w-3xl my-6 overflow-hidden">
-    <div class="p-5 border-b border-white/10 flex items-center justify-between bg-white/[.02]"><div id="genTitle" class="font-display font-bold text-lg">Details</div><button onclick="closeGen()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button></div>
-    <div id="genBody" class="p-5 md:p-6 max-h-[75vh] overflow-y-auto"></div>
-  </div>
-</div>
 <div id="printArea"></div>
+{modals}
 {globals}
 <script src="assets/app.js"></script>
 <script>
@@ -461,6 +456,7 @@ fn footer(globals_html: &str, country: &str) -> String {
             ""
         },
         globals = globals_html,
+        modals = modals_html,
         tzcls = if country == "TZ" {
             "font-bold text-cyan-300"
         } else {
@@ -560,6 +556,12 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
     let panel = tokio::fs::read_to_string(format!("{dir}/_auth-panel.html"))
         .await
         .unwrap_or_default();
+    // The quote wizard and the generic modal live in one shared partial so the
+    // PHP footer and this one cannot drift apart again. They were missing here,
+    // which left every "Request Service" button dead on the Rust core.
+    let modals = tokio::fs::read_to_string(format!("{dir}/_modals.html"))
+        .await
+        .unwrap_or_default();
 
     let path = format!("{dir}/{name}.html");
     let body = match tokio::fs::read_to_string(&path).await {
@@ -576,7 +578,8 @@ pub async fn render(name: &str, headers: &axum::http::HeaderMap) -> Response {
         body = body,
         footer = footer(
             &globals(&page, &session.csrf, &me, &visitor_country(headers)),
-            &visitor_country(headers)
+            &visitor_country(headers),
+            &modals
         ),
     );
 

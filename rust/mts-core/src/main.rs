@@ -86,6 +86,8 @@ async fn static_file(path: &str) -> Response {
         || clean.starts_with("config/")
         || clean.starts_with("scripts/")
         || clean.starts_with("rust/")
+        // Server-side templates are read by the app, never fetched by a browser.
+        || clean.starts_with("templates/")
         || clean.split('/').any(|seg| seg.starts_with('.'))
     {
         return (StatusCode::FORBIDDEN, "403 Forbidden").into_response();
@@ -292,6 +294,7 @@ async fn page_dispatch(req: Request<Body>) -> Response {
     if clean.starts_with("storage/")
         || clean.starts_with("config/")
         || clean.starts_with("scripts/")
+        || clean.starts_with("templates/")
         || clean.split('/').any(|seg| seg.starts_with('.'))
     {
         return (StatusCode::FORBIDDEN, "403 Forbidden").into_response();
@@ -590,9 +593,58 @@ mod tests {
     #[test]
     fn the_shared_partials_exist() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
-        for p in ["_header.html", "_auth-panel.html"] {
+        for p in ["_header.html", "_auth-panel.html", "_modals.html"] {
             assert!(dir.join(p).is_file(), "missing partial {p}");
         }
+    }
+
+    /// "Request Service" and every "Request this" button call openQuoteWizard(),
+    /// which needs #quoteModal in the DOM. The wizard used to live only in the
+    /// PHP footer, so on the Rust core those buttons did nothing at all.
+    #[test]
+    fn every_page_can_open_the_quote_wizard() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
+        let modals = std::fs::read_to_string(dir.join("_modals.html")).expect("read _modals.html");
+        for id in ["quoteModal", "qServiceGrid", "wizNext", "qRegion", "qAgree"] {
+            assert!(
+                modals.contains(&format!("id=\"{id}\"")),
+                "_modals.html lacks #{id}"
+            );
+        }
+        let pages = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/pages.rs"),
+        )
+        .expect("read pages.rs");
+        assert!(
+            pages.contains("{modals}"),
+            "the Rust footer does not interpolate the shared modals"
+        );
+        let php = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../partials/footer.php"),
+        )
+        .expect("read footer.php");
+        assert!(
+            php.contains("templates/_modals.html"),
+            "the PHP footer does not include the shared modals"
+        );
+    }
+
+    /// Templates are server-side. Serving them as static files leaks the markup
+    /// (and any future inline secrets) to anyone who guesses the path.
+    #[test]
+    fn templates_are_not_served_as_static_files() {
+        let src = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/main.rs"),
+        )
+        .expect("read main.rs");
+        // Only the production half counts; this assertion's own text would
+        // otherwise match itself.
+        let prod = src.split("#[cfg(test)]").next().unwrap_or("");
+        assert_eq!(
+            prod.matches(r#"clean.starts_with("templates/")"#).count(),
+            2,
+            "both the static handler and page_dispatch must refuse templates/"
+        );
     }
 
     /// Browsers and search engines ask for /favicon.ico first, without reading
