@@ -383,3 +383,21 @@ capabilities`; `llm.php` → `status save clear_key test`.
   value = everything visible. Never write it from anywhere but the settings
   screen; the drift class (frontend sends a full list, backend stores it) is
   the same one that produced the `visitor_stats` "undefined" bug.
+
+## Prod tool verification (2026-10-24, after the services fix)
+All checked against `https://mbilinyitech.co.tz` with a real admin session
+(login -> `verify-login-pin`). Endpoints that need auth return
+`{"error":"You need to sign in first."}` when hit anonymously — that is not a bug.
+- runtimes: `ready=[Python,Rust,Go,Elixir,R,Node.js,C]`, `missing=[]`.
+- agents: 101 (manager + 100 seats). tools: 109.
+- engine `capabilities`: ok=true, 8 departments.
+- coding `test`: `connected:true`, `onearmy756@gmail.com` (real OpenHands Cloud).
+- security `scan kind=tls|dns`: real handshake (HTTP 200) and real DoH lookups.
+- llm `status`: `keySet:false` until the CEO adds a provider key (fails honestly).
+- `security.php` needs the `X-CSRF-Token` header on GET too (unlike the
+  read-only endpoints) — a missing header is a 403, not a 200.
+- Cold-start race: the first outbound call after a Fly machine suspends can
+  fail, so `coding.php?action=test` returned "cannot be reached" once on a
+  healthy key. Retrying immediately worked. `coding.rs` now retries 3x with
+  backoff (600ms/1.5s/3s) before reporting a fault. Do not treat a single
+  "cannot be reached" as a bad key — retry first.
