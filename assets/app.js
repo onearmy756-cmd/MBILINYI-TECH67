@@ -369,6 +369,18 @@ applyLang(LANG);
 function renderServices() {
   if (!$('servicesGrid')) return;
   const cc = { cyan: 'text-cyan-300 bg-cyan-500/10 border-cyan-400/25', violet: 'text-violet-300 bg-violet-500/10 border-violet-400/25', gold: 'text-yellow-300 bg-yellow-500/10 border-yellow-400/25', emerald: 'text-emerald-300 bg-emerald-500/10 border-emerald-400/25', red: 'text-red-300 bg-red-500/10 border-red-400/25', fuchsia: 'text-fuchsia-300 bg-fuchsia-500/10 border-fuchsia-400/25', blue: 'text-blue-300 bg-blue-500/10 border-blue-400/25', teal: 'text-teal-300 bg-teal-500/10 border-teal-400/25' };
+  /* If every service is switched off the grid would be blank and the page
+     would look broken. Show a request card instead so a visitor can still
+     reach us, and the admin sees the catalogue is empty. */
+  if (!VISIBLE_SERVICES.length) {
+    $('servicesGrid').innerHTML = `<div class="md:col-span-2 lg:col-span-3 glass rounded-3xl p-8 text-center">
+      <div class="font-display font-bold text-xl"><span data-en="Tell us what you need" data-sw="Tuambie unachohitaji">Tell us what you need</span></div>
+      <p class="text-white/55 text-[13.5px] mt-2 max-w-xl mx-auto" data-en="Describe your project in your own words and our System Analyst will match it to the right service and send an official quotation within 24 hours." data-sw="Eleza mradi wako kwa maneno yako na Mchambuzi wetu wa Mifumo ataulinganisha na huduma sahihi na kukutumia nukuu rasmi ndani ya saa 24.">Describe your project in your own words and our System Analyst will match it to the right service and send an official quotation within 24 hours.</p>
+      <button onclick="openQuoteWizard()" class="grad-btn mt-5 px-6 py-3 rounded-xl font-bold text-sm"><span data-en="Request a Custom Quote" data-sw="Omba Nukuu Maalum">Request a Custom Quote</span></button>
+    </div>`;
+    applyLang(LANG);
+    return;
+  }
   $('servicesGrid').innerHTML = VISIBLE_SERVICES.map(s => {
     const sw = LANG === 'sw';
     const name = sw ? (s.tSw || s.t) : s.t;

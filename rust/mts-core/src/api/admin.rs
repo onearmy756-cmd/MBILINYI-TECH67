@@ -176,15 +176,28 @@ pub async fn settings_handler(c: &Ctx) -> Response {
             if let Err(e) = c.require_admin() {
                 return e;
             }
+            // Toggle the plan row's own flag, exactly as the PHP reference does.
+            // This used to append the plan code to `services_hidden`, so a
+            // handful of plan toggles silently hid the whole service catalogue.
+            let id = c.p("id");
             let code = c.p("code");
-            let mut hidden = settings::service_hidden();
-            if let Some(pos) = hidden.iter().position(|h| h == &code) {
-                hidden.remove(pos);
+            let (sql_where, key) = if !id.is_empty() {
+                ("id", id)
             } else {
-                hidden.push(code.clone());
-            }
-            settings::set("services_hidden", &hidden.join(","));
-            ok(json!({ "hidden": hidden }))
+                ("code", code)
+            };
+            let _ = db::run(
+                &format!(
+                    "UPDATE pricing_plans SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, \
+                     updated_at = ? WHERE {sql_where} = ?"
+                ),
+                &[arg(json!(util::now())), arg(json!(key.clone()))],
+            );
+            let active = db::scalar_i64(
+                &format!("SELECT is_active FROM pricing_plans WHERE {sql_where} = ?"),
+                &[arg(json!(key.clone()))],
+            );
+            ok(json!({ "id": key, "isActive": active != 0 }))
         }
         "feedback" => {
             if let Err(e) = c.require_csrf() {

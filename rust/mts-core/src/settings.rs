@@ -520,4 +520,43 @@ mod tests {
             );
         }
     }
+
+    /// `services_hidden` is the ONLY thing that hides a service from the public
+    /// grid. The admin `plan_toggle` action used to append its argument to this
+    /// key, so toggling a few pricing plans hid the entire catalogue on the live
+    /// site. Guard the source: nothing in `admin.rs` may write this key.
+    #[test]
+    fn plan_toggle_never_touches_service_visibility() {
+        let src = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/api/admin.rs"),
+        )
+        .expect("read admin.rs");
+        for write in [
+            "settings::set(\"services_hidden\"",
+            "set(\"services_hidden\"",
+            "service_hidden()",
+        ] {
+            assert!(
+                !src.contains(write),
+                "admin.rs writes {write} again — that hides the whole service \
+                 catalogue. Service visibility is owned by the settings screen only."
+            );
+        }
+    }
+
+    /// A service is visible unless it is explicitly listed in `services_hidden`.
+    /// An empty setting must therefore show every service, not none.
+    #[test]
+    fn an_empty_hidden_list_shows_every_service() {
+        crate::test_bootstrap();
+        set("services_hidden", "");
+        for k in CATALOGUE_KEYS {
+            assert!(service_visible(k), "{k} must be visible when nothing is hidden");
+        }
+        set("services_hidden", "cybersecurity,forensics");
+        assert!(!service_visible("cybersecurity"));
+        assert!(!service_visible("forensics"));
+        assert!(service_visible("custom_software"));
+        set("services_hidden", "");
+    }
 }
