@@ -391,10 +391,11 @@ pub async fn handle(c: &Ctx) -> Response {
             if key.is_empty() {
                 return ok(json!({ "connected": false, "detail": "No API key is set." }));
             }
-            // One retry on a transport error. The first outbound call from a
-            // cold container can lose a DNS or connect race, and a false
-            // "cannot be reached" on the Test button sends the CEO chasing a
-            // fault that is not there. A read-only GET is safe to repeat.
+            // A few retries with backoff on a transport error. The first
+            // outbound call from a suspended container can lose a DNS or
+            // connect race, and a false "cannot be reached" on the Test button
+            // sends the CEO chasing a fault that is not there. A read-only GET
+            // is safe to repeat.
             let probe = || {
                 client()
                     .get(format!("{}/api/v1/users/me", base_url()))
@@ -402,8 +403,11 @@ pub async fn handle(c: &Ctx) -> Response {
                     .send()
             };
             let mut res = probe().await;
-            if res.is_err() {
-                tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+            for backoff_ms in [600u64, 1500, 3000] {
+                if res.is_ok() {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
                 res = probe().await;
             }
             match res {
