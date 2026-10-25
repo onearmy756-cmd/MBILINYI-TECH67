@@ -391,11 +391,21 @@ pub async fn handle(c: &Ctx) -> Response {
             if key.is_empty() {
                 return ok(json!({ "connected": false, "detail": "No API key is set." }));
             }
-            let res = client()
-                .get(format!("{}/api/v1/users/me", base_url()))
-                .bearer_auth(&key)
-                .send()
-                .await;
+            // One retry on a transport error. The first outbound call from a
+            // cold container can lose a DNS or connect race, and a false
+            // "cannot be reached" on the Test button sends the CEO chasing a
+            // fault that is not there. A read-only GET is safe to repeat.
+            let probe = || {
+                client()
+                    .get(format!("{}/api/v1/users/me", base_url()))
+                    .bearer_auth(&key)
+                    .send()
+            };
+            let mut res = probe().await;
+            if res.is_err() {
+                tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+                res = probe().await;
+            }
             match res {
                 Ok(r) => {
                     let status = r.status();
@@ -521,29 +531,7 @@ pub async fn handle(c: &Ctx) -> Response {
                         .and_then(|i| i.as_array())
                         .cloned()
                         .unwrap_or_default();
-                    let mut answer = String::new();
-                    let mut finished = false;
-                    for e in items.iter() {
-                        let kind = util::s(e.get("kind").unwrap_or(&J::Null));
-                        if kind == "MessageEvent"
-                            && util::s(e.get("source").unwrap_or(&J::Null)) == "agent"
-                        {
-                            let text = text_of(e.get("llm_message").unwrap_or(&J::Null));
-                            if !text.trim().is_empty() {
-                                answer = text;
-                            }
-                        } else if kind == "ActionEvent"
-                            && util::s(e.get("tool_name").unwrap_or(&J::Null)) == "finish"
-                        {
-                            finished = true;
-                        }
-                    }
-                    let status = if finished || !answer.trim().is_empty() {
-                        "done".to_string()
-                    } else {
-                        "running".to_string()
-                    };
-                    (items.len() as i64, answer, status)
+                    read_events(&items)
                 }
                 Ok(_) | Err(_) => (
                     util::i(job.get("events").unwrap_or(&J::Null)),
@@ -577,6 +565,54 @@ pub async fn handle(c: &Ctx) -> Response {
 
         _ => bad("Choose a coding action: status, save, clear_key, test, start, poll or jobs."),
     }
+}
+
+/// Read a conversation's events into (event count, result text, status).
+///
+/// A ConversationErrorEvent that is not retryable is a terminal failure. It
+/// must be surfaced: no agent message ever follows it, so a poll that only
+/// looks for an answer would report "running" forever.
+fn read_events(items: &[J]) -> (i64, String, String) {
+    let mut answer = String::new();
+    let mut finished = false;
+    let mut failure = String::new();
+    for e in items.iter() {
+        let kind = util::s(e.get("kind").unwrap_or(&J::Null));
+        if kind == "MessageEvent" && util::s(e.get("source").unwrap_or(&J::Null)) == "agent" {
+            let text = text_of(e.get("llm_message").unwrap_or(&J::Null));
+            if !text.trim().is_empty() {
+                answer = text;
+            }
+        } else if kind == "ActionEvent"
+            && util::s(e.get("tool_name").unwrap_or(&J::Null)) == "finish"
+        {
+            finished = true;
+        } else if kind == "ConversationErrorEvent" {
+            let retryable = e
+                .get("classification")
+                .and_then(|c| c.get("retryable"))
+                .and_then(|r| r.as_bool())
+                .unwrap_or(false);
+            if !retryable {
+                let detail = util::s(e.get("detail").unwrap_or(&J::Null));
+                let code = util::s(e.get("code").unwrap_or(&J::Null));
+                failure = if detail.trim().is_empty() {
+                    format!("The agent stopped with an error ({code}).")
+                } else {
+                    detail
+                };
+            }
+        }
+    }
+    let status = if !failure.is_empty() {
+        "failed"
+    } else if finished || !answer.trim().is_empty() {
+        "done"
+    } else {
+        "running"
+    };
+    let result = if failure.is_empty() { answer } else { failure };
+    (items.len() as i64, result, status.to_string())
 }
 
 /// The text of a MessageEvent, which arrives as a list of content parts.
@@ -650,5 +686,49 @@ mod tests {
             u,
             "https://app.all-hands.dev/api/v1/conversation/conv123/events/search?limit=100"
         );
+    }
+
+    fn msg(text: &str) -> J {
+        json!({"kind":"MessageEvent","source":"agent","llm_message":{"content":[{"type":"text","text":text}]}})
+    }
+
+    #[test]
+    fn an_agent_message_is_the_result_and_finishes_the_job() {
+        let (n, result, status) = read_events(&[msg("MTS-OK")]);
+        assert_eq!(n, 1);
+        assert_eq!(result, "MTS-OK");
+        assert_eq!(status, "done");
+    }
+
+    #[test]
+    fn a_non_retryable_error_ends_the_job_instead_of_hanging() {
+        // The shape OpenHands returns when the LLM key is rejected: the run
+        // never produces an agent message, so this event is the only terminal
+        // signal. Ignoring it leaves the job "running" forever.
+        let items = vec![
+            msg("working"),
+            json!({"kind":"ConversationErrorEvent","code":"LLMAuthenticationError",
+                   "detail":"Incorrect API key provided",
+                   "classification":{"kind":"auth","retryable":false}}),
+        ];
+        let (n, result, status) = read_events(&items);
+        assert_eq!(n, 2);
+        assert_eq!(status, "failed");
+        assert!(result.contains("Incorrect API key"));
+    }
+
+    #[test]
+    fn a_retryable_error_does_not_end_the_job() {
+        let items = vec![json!({"kind":"ConversationErrorEvent","code":"Transient",
+                                "classification":{"kind":"network","retryable":true}})];
+        let (_, _, status) = read_events(&items);
+        assert_eq!(status, "running");
+    }
+
+    #[test]
+    fn a_finish_action_alone_finishes_the_job() {
+        let items = vec![json!({"kind":"ActionEvent","tool_name":"finish"})];
+        let (_, _, status) = read_events(&items);
+        assert_eq!(status, "done");
     }
 }
