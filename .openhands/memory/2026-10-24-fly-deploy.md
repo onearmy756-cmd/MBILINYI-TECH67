@@ -401,3 +401,26 @@ All checked against `https://mbilinyitech.co.tz` with a real admin session
   healthy key. Retrying immediately worked. `coding.rs` now retries 3x with
   backoff (600ms/1.5s/3s) before reporting a fault. Do not treat a single
   "cannot be reached" as a bad key — retry first.
+
+## The .trae/specs spec — 11 tasks, audited 2026-10-25
+The user's "Add C..." / "Vyote ADD" referred to `.trae/specs/spec.md` +
+`.trae/specs/tasks.md` (11 tasks, FR-1..FR-9). Read those files first when the
+request is truncated — they are the real backlog.
+Audit result: FR-1 (tagline), FR-2 (OTP/forgot), FR-3 (PWA), FR-4 (portfolio/
+testimonials CRUD), FR-5 (7 services + PHP/Laravel stack), FR-6 (Ollama),
+FR-8 (50/50 terms) were already complete in PHP + frontend + Rust.
+**Only two were missing, and only on the Rust core** (the PHP shell had them):
+- FR-7: nothing INSERTed into `visitor_logs` on the Rust path, so the admin's
+  Visitor Analytics card read zero on production. `visitor_stats` also omitted
+  `last_7_days` and `top_pages` that the dashboard chart/list read.
+- FR-9: signing a contract sent no mail. `notify.rs` had `contract_ready` but
+  not the client-signed / fully-signed notices.
+Both fixed (commit ca76522), deployed as Fly v25, verified live:
+`visitor_stats` now returns today/week/month + 7-day series + top pages, and
+the recorder writes a row per page render (salted sha256(ip+session) hash).
+- Trap: `util::now()` is "YYYY-MM-DD HH:MM:SS"; `visit_date` queries use
+  `substr(visit_date,1,10)` so a DATETIME text works, not only a DATE.
+- Trap: `mail::spawn` / `sms::spawn_send` call `tokio::spawn`, so a behavioural
+  test of the notify functions needs a runtime. The repo guards this class with
+  **source-level tests** (`read_to_string(...).contains("notify::contract_...")`)
+  like `plan_toggle_never_touches_service_visibility` — follow that pattern.
