@@ -2886,6 +2886,17 @@ async function adminTab(t, quiet) {
         <br><span class="text-white/55">Every agent uses the platform's configured LLM: <strong>${esc(st.model || 'not set')}</strong>${st.llmConfigured ? ` (${esc(st.llmProvider)})` : ' — set a provider key in AI Engine first'}.</span>
       </div>
 
+      <div class="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/[.07] to-cyan-500/[.04] p-5 mb-4">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center shrink-0"><i class="fa-solid fa-hand-sparkles text-violet-300 text-xl"></i></div>
+          <div class="flex-1 min-w-[220px]">
+            <div class="font-display font-bold text-[15px]">OpenHands</div>
+            <div class="text-[12.5px] text-white/60">The agent platform behind Mbilinyi Coding. Each job is a real OpenHands conversation with its own sandbox — open the full OpenHands interface to watch it work, or read the conversation right here below.</div>
+          </div>
+          <a href="${esc(st.uiUrl || st.baseUrl || 'https://app.all-hands.dev')}" target="_blank" rel="noopener" class="grad-btn px-5 py-2.5 rounded-xl font-bold text-[13px]"><i class="fa-solid fa-up-right-from-square mr-1.5"></i>Open the real OpenHands UI</a>
+        </div>
+      </div>
+
       <div class="grid sm:grid-cols-3 gap-3 mb-4">
         ${[['API key', st.configured ? 'Set' : 'Missing', 'fa-key', st.configured ? 'emerald' : 'amber'], ['Model', st.model || '—', 'fa-microchip', 'fuchsia'], ['Agent seats', agents.length, 'fa-robot', 'violet']].map(([l, v, i, c]) => `<div class="card3d pop-${c} p-4"><div class="flex justify-between items-start"><div><div class="font-display font-bold text-lg truncate max-w-[160px]">${esc(v)}</div><div class="text-[10.5px] text-white/50 font-bold uppercase tracking-wider mt-0.5">${l}</div></div><i class="fa-solid ${i} text-${c}-300"></i></div></div>`).join('')}
       </div>

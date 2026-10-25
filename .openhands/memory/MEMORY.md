@@ -5,6 +5,25 @@ Mbilinyi Tech Solutions: a PHP site (pages + `/api/*.php`) that is being
 replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 (`assets/app.js`, `templates/`) is shared by both and must not need changes.
 
+## Implemented (2026-10-24; details in `2026-10-24-sections-openhands-icons.md`)
+- **Every portal section is its own page.** Admin/client/staff tabs are real
+  anchors (`<a data-atab="tools" href="#tools" onclick="adminTab('tools');return false">`),
+  and app.js syncs the URL fragment (`setTabHash`, `applyHashTab` on
+  `popstate`+`hashchange`). Linkable, bookmarkable, refreshable, Back works.
+- **The real OpenHands conversation is shown** in the coding panel: new
+  `coding.php?action=transcript&id=...` returns the agent's own event stream
+  (user/agent/tool/error rows). **An iframe of OpenHands Cloud is impossible** —
+  `app.all-hands.dev` sends `frame-ancestors 'self'` + `x-frame-options:
+  SAMEORIGIN`. The same conversation id deep-links to
+  `{base}/canvas/conversations/{id}` instead.
+- **Search-result icon**: head advertises 96px + 144px icons (Google ignores
+  <48px and draws a globe). Test `every_advertised_icon_exists_on_disk` guards
+  the head/file drift.
+- **Responsive nav**: `#mobileMenu` slides on `.open`, closes on Escape/outside
+  tap/link, `aria-expanded` kept in step; current page marked via
+  `paintNavActive` + `aria-current` + CSS underline; 44px touch rows,
+  safe-area padding, `overflow-wrap:anywhere`, `prefers-reduced-motion`.
+
 ## Implemented (2026-10-23; details in `2026-10-23-payroll-hiring-call.md`)
 - **Payroll** (`payroll.rs`): payslip per escrow release, banded PAYE/NSSF/WCF,
   TRA return. Admin Payroll tab, worker "Pay & Contract" tab.
