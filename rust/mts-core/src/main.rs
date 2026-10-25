@@ -839,6 +839,30 @@ mod tests {
         assert_eq!(m.get("id").and_then(|v| v.as_str()), Some("/"));
     }
 
+    /// The homepage must offer a way into the Company and Services pages by
+    /// name, not only through the header nav. Both engines render the landing
+    /// view from their own file (templates/index.html, index.php), so the two
+    /// must carry the same cards or the cPanel host drifts from Fly.
+    #[test]
+    fn the_homepage_links_to_company_and_services() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        for file in ["templates/index.html", "index.php"] {
+            let html = std::fs::read_to_string(root.join(file)).expect(file);
+            for needle in [
+                "MBILINYITECH COMPANY",
+                "MBILINYITECH SERVICES",
+                "href=\"company\"",
+                "href=\"services\"",
+            ] {
+                assert!(
+                    html.contains(needle),
+                    "{file} no longer advertises {needle} — the Company and Services \
+                     cards were removed from the homepage."
+                );
+            }
+        }
+    }
+
     /// The header offers Sign Up / Sign In to visitors. A signed-in user must
     /// not still be sold an account, so the markup has to carry the ids the
     /// frontend swaps and a Logout control.
