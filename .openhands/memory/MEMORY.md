@@ -93,6 +93,15 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   **array** (singular `service` is ignored → the worker never matches a request).
 - `rust/mts-core/target/` (~1.3 GB) and the runtime DB are git-ignored.
 
+## The backlog lives in `.trae/specs/` (2026-10-25)
+When the user's request is truncated or says "Add C..." / "Vyote ADD", read
+`.trae/specs/spec.md` + `tasks.md` — 11 tasks, FR-1..FR-9. As of commit
+13a3041 all are implemented; FR-7 (visitor logging + analytics fields) and FR-9
+(contract signing emails) were the last two, and they were missing ONLY on the
+Rust core (the PHP shell already had them). Pattern: a spec feature can exist in
+PHP + the frontend + the DB yet be absent from the Rust handler that serves
+production — always check the Rust core, not just `api/*.php`.
+
 ## Traps that already cost time
 - **A template with mode 0600 404s while looking perfect.** The server runs as
   uid 1000 (`mts`), so a file copied into the image as root-only is unreadable →
