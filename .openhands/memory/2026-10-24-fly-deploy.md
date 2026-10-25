@@ -305,3 +305,62 @@ fine-grained/app token without the git credential. The `origin` remote also
 carries a stale `ghu_…` token (also refused). Push with the CEO's classic PAT
 in a one-off URL and never write it into `.git/config`:
 `git push "https://<PAT>@github.com/onearmy756-cmd/MBILINYI-TECH67.git" master`.
+
+---
+
+## Portal sections became real addresses, then shipped to prod (2026-10-24)
+
+Every admin/client/staff section is now its own URL: `/admin/payroll`,
+`/client/invoices`, `/mtaalamu/tools`. Before, the nav was `href="#"` +
+`onclick="...;return false"`, so all 29 admin sections were one document and
+nothing could be linked, bookmarked or refreshed into. Done in both engines:
+
+- Rust router splits `/<portal>/<section>` into (page, tab), renders the shell
+  with `window.__TAB__` and `<base href="/">` (so relative URLs still resolve
+  from the root on a deep path), and 404s an unknown section.
+- `config/app.php` holds the same list (`portal_sections`/`portal_tab`);
+  `router.php` + `.htaccess` map `/<portal>/<section>` to `<portal>.php`.
+- Sign-in carries the wanted section back: `/auth?returnTo=admin&section=payroll`.
+
+**Trap: the param is `section`, NOT `tab`.** `auth` already uses `?tab=register`
+to open the sign-up form; reusing `tab` for the portal section made the two
+meanings collide. Renamed everywhere (Rust `pages.rs`, `config/app.php`,
+`app.js`).
+
+**Trap: the PHP pages had silently drifted from the shared templates.**
+`admin.php` had 14 nav rows while `templates/admin.html` had 29, so the cPanel
+engine would have lost 15 sections. The Rust tests (`the_rust_and_php_section_
+lists_agree`) only compared Rust vs a PHP *list*, not the PHP markup. Copy the
+`<nav id="adminNav">…</nav>` block from the template into the `.php` page
+whenever a section is added. `client.php` had already drifted too.
+
+169 Rust tests pass; `scripts/smoke.sh` covers every section plus the 404.
+
+### Deployed and verified live on https://mbilinyitech.co.tz
+`flyctl deploy --remote-only --yes -a mbilinyitech-tz`. Production confirms the
+deep links: `/admin/payroll` → 302 `/auth?returnTo=admin&section=payroll`,
+`/admin/nonsense` → 404, `/pricing` → 200, `/pricing/anything` → 404 — identical
+on `mbilinyitech.co.tz` and `mbilinyitech-tz.fly.dev`. `server: Fly/…` +
+`via: fly.io` on the apex, so the domain is served by Fly, not the cPanel host.
+
+### Every tool re-verified live in production (2026-10-24)
+- **Cyber-security**: `api/security.php` action is **`scan`** with a **`kind`**
+  field (`tls dns cert exposure headers …`) — there is no `action=headers`.
+  Ran `tls`/`dns`/`cert` against our own domain: real TLS handshake (HTTP 200),
+  real DoH lookups (A 66.241.125.44, NS ns1/ns2.rodlinehost.com), real cert
+  (Let's Encrypt, CN=mbilinyitech.co.tz).
+- **Fine-tuning / AI engine**: `engine.php action=capabilities` → 101 agents
+  across 8 departments; `llm.php action=status` shows `keySet:false` until the
+  CEO adds a provider key (the path is wired, it fails honestly without one).
+- **OpenHands coding tool**: `coding.php action=test` → `connected:true`,
+  account `onearmy756@gmail.com`. The `OPENHANDS_API_KEY` Fly secret is set.
+- **Runtimes**: `runtime.php action=status` → `ready:[Python,Rust,Go,Elixir,R,
+  Node.js,C]`, `missing:[]`. `action=run` returns the program output in
+  **`output`**, not `stdout` — python/rust/c/go all printed `42`.
+- **Agents**: `agents.php?action=list` → 101. **Tools**: `tools.php?action=list`
+  → 109.
+
+**API field names that cost time:** `runtime.php action=run` → `output`;
+`security.php` → `scan`/`kind`; `migrate.php` → `status plan export verify
+import list download` (no `info`); `engine.php` → `runs run stats cancel queue
+capabilities`; `llm.php` → `status save clear_key test`.

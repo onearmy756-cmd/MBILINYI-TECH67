@@ -5,85 +5,67 @@ Mbilinyi Tech Solutions: a PHP site (pages + `/api/*.php`) that is being
 replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 (`assets/app.js`, `templates/`) is shared by both and must not need changes.
 
-## Implemented (2026-10-24; details in `2026-10-24-sections-openhands-icons.md`)
-- **Every portal section is its own page.** Admin/client/staff tabs are real
-  anchors (`<a data-atab="tools" href="#tools" onclick="adminTab('tools');return false">`),
-  and app.js syncs the URL fragment (`setTabHash`, `applyHashTab` on
-  `popstate`+`hashchange`). Linkable, bookmarkable, refreshable, Back works.
-- **The real OpenHands conversation is shown** in the coding panel: new
-  `coding.php?action=transcript&id=...` returns the agent's own event stream
-  (user/agent/tool/error rows). **An iframe of OpenHands Cloud is impossible** —
-  `app.all-hands.dev` sends `frame-ancestors 'self'` + `x-frame-options:
-  SAMEORIGIN`. The same conversation id deep-links to
+## Implemented (details in the dated daily logs)
+- **Payroll** (`payroll.rs`): payslip per escrow release, banded PAYE/NSSF/WCF,
+  TRA return. **Stripe** (`payments/gateways.rs`): `gw_stripe_api_base` is
+  overridable for a mock; webhooks HMAC-verified. **101 agents** (`agents.rs`).
+  **Video call** (`call.rs` + `assets/call.js`): real RTCPeerConnection.
+- **The coding panel shows the real OpenHands transcript**
+  (`coding.php?action=transcript&id=…`). An iframe of OpenHands Cloud is
+  impossible (`frame-ancestors 'self'`); the conversation id deep-links to
   `{base}/canvas/conversations/{id}` instead.
 - **Search-result icon**: head advertises 96px + 144px icons (Google ignores
   <48px and draws a globe). Test `every_advertised_icon_exists_on_disk` guards
   the head/file drift.
-- **Responsive nav**: `#mobileMenu` slides on `.open`, closes on Escape/outside
-  tap/link, `aria-expanded` kept in step; current page marked via
-  `paintNavActive` + `aria-current` + CSS underline; 44px touch rows,
-  safe-area padding, `overflow-wrap:anywhere`, `prefers-reduced-motion`.
 
-## Implemented (2026-10-23; details in `2026-10-23-payroll-hiring-call.md`)
-- **Payroll** (`payroll.rs`): payslip per escrow release, banded PAYE/NSSF/WCF,
-  TRA return. Admin Payroll tab, worker "Pay & Contract" tab.
-- **Stripe (USD)** (`payments/gateways.rs`): `gw_stripe_api_base` overridable for
-  a mock; webhooks HMAC-verified. Needs `gw_stripe_publishable` + secret.
-- **101 agents**: `agents.rs` seeds "Magma Commander" then 100 role seats.
-- **Real video call**: `call.rs` relays SDP/ICE on `/ws/call/:room`; browser
-  `assets/call.js` uses a real RTCPeerConnection (2 peers verified).
-
-## Deploy (Fly.io) — see `2026-10-24-fly-deploy.md`
-- **LIVE: https://mbilinyitech-tz.fly.dev/** (app `mbilinyitech-tz` — the plain
-  name is taken globally on Fly). Region jnb, volume `mts_data` at `/data`,
-  shared IPv4 `66.241.125.44`, IPv6 `2a09:8280:1::1cb:226c:0`.
-  `scripts/smoke.sh` against the live app = 25 ok:true / 4 ok:false, the same
-  as a clean local run.
-- An app-scoped Fly token CANNOT create apps (`UNAUTHORIZED`); an app needs an
-  ORG token. **Do not deploy over `mtechos`** — a different product (Agent-Canvas
-  IDE at mtech.mbilinyitech.co.tz).
-- DNS for `mbilinyitech.co.tz` is at `ns1/ns2.rodlinehost.com` (cPanel) and is
-  now CUT OVER to Fly: apex A → 66.241.125.44 (AAAA 2a09:8280:1::1cb:226c:0),
-  all GET/HEAD reach Fly. The old cPanel host (91.204.209.30, LiteSpeed) served
-  stale cached 404s during the transition — confirm with `dig @ns1.rodlinehost.com`
-  before believing a 404. Exact records are in DEPLOY.md.
-- `MTS_OTP_PEPPER` is now a real Fly secret. Never set `OTP_SHOW_IN_RESPONSE`
-  on the live site — it returns the sign-in code in the API response.
-- **Mbilinyi Coding** (`coding.rs`, admin tab) is a REAL OpenHands agent, not a
-  simulation: it creates an app-conversation, resolves it from the start-task,
-  and reads the answer from the events. Proven end to end on prod
-  (`result:"PROD-CODING-OK"`). Needs the `OPENHANDS_API_KEY` Fly secret (set).
-  Trap: the events search must use `limit<=100` — 200 gets HTTP 422 and every
-  job then looks stuck at "running" with zero events. Details in
-  `2026-10-24-fly-deploy.md`.
-- **A coding job that errors must be marked failed, not left "running"**
-  (`read_events()` in `coding.rs`, commit 9c3ee08). A conversation that dies
-  emits `ConversationErrorEvent` and NO agent message, so a poll that only
-  looks for an answer reports "running" forever. As of 2026-10-25 the account's
-  OpenHands credits are `0.00`, so every hosted conversation fails with
-  `LLMAuthenticationError` (401 on the managed `sk-_qdwV…` proxy key). The
-  panel now shows the red "failed" badge with that detail. Hosted coding needs
-  credits on the account, or the CEO's own LLM key.
-- **LLM / fine-tuning** (`api/llm.php`) is wired but needs a provider key in
-  Admin → Settings (`ready=false, keySet=false` until then). With no key
-  `engine.php action=run_job` records the run as `blocked` with a clear message
-  instead of hanging — honest failure, not a fake success. AI/`ai` channel in
-  `/api/health` stays false until a key is set.
-- **git push**: `$GITHUB_TOKEN` shows push=true via the API yet git-over-HTTPS
-  is refused (403). Only the CEO's classic PAT pushes, via a one-off URL.
+## Deploy (Fly.io) — details in `2026-10-24-fly-deploy.md`
+- **LIVE at https://mbilinyitech.co.tz** (app `mbilinyitech-tz` — the plain name
+  is taken on Fly; `mbilinyitech-tz.fly.dev`). Region jnb, volume `mts_data` at
+  `/data`. Deploy: `FLY_API_TOKEN=$(cat /workspace/.secrets/fly.token) flyctl
+  deploy --remote-only --yes -a mbilinyitech-tz` (remote builder, no local Docker).
+- DNS is CUT OVER to Fly: apex A `66.241.125.44`, AAAA `2a09:8280:1::1cb:226c:0`
+  (`server: Fly/…`, `via: fly.io`). The old cPanel host (91.204.209.30,
+  LiteSpeed) served stale cached 404s during the switch — confirm with
+  `dig @ns1.rodlinehost.com` before believing a 404.
+- An app-scoped Fly token CANNOT create apps (`UNAUTHORIZED`); that needs an ORG
+  token. **Never deploy over `mtechos`** — a different product (Agent-Canvas IDE
+  at mtech.mbilinyitech.co.tz).
+- `MTS_OTP_PEPPER` and `OPENHANDS_API_KEY` are real Fly secrets. Never set
+  `OTP_SHOW_IN_RESPONSE` live — it returns the sign-in code in the response.
+- **Mbilinyi Coding** (`coding.rs`, admin tab) is a REAL OpenHands agent:
+  creates an app-conversation, resolves it from the start-task, reads the answer
+  from the events. Proven end to end on prod. Traps: the events search must use
+  `limit<=100` (200 → HTTP 422 → every job looks stuck "running"); a dead
+  conversation emits `ConversationErrorEvent` and NO agent message, so
+  `read_events()` must mark it failed or the poll hangs. Hosted coding needs
+  credits on the OpenHands account (or the CEO's own LLM key).
+- **LLM / fine-tuning** (`api/llm.php`) is wired, needs a provider key in
+  Admin → Settings; with none, `engine.php action=run_job` records `blocked`
+  honestly instead of faking success.
+- **Portal sections are real URLs** (`/admin/payroll`, `/client/invoices`,
+  `/mtaalamu/tools`); an unknown section 404s. Deep link → sign-in →
+  `/auth?returnTo=admin&section=payroll`. The param is `section`, NOT `tab`
+  (`tab` already opens the sign-up form). **Keep `templates/*.html` and the
+  `.php` pages in step** — `admin.php` had 14 nav rows vs the template's 29;
+  `the_rust_and_php_section_lists_agree` does NOT catch markup drift.
+- **API action names that cost time**: `security` = `scan` + `kind`
+  (`tls dns cert exposure headers …`, no `action=headers`); `migrate` = `status
+  plan export verify import list download`; `engine` = `runs run stats cancel
+  queue capabilities`; `llm` = `status save clear_key test`; `runtime action=run`
+  returns the program text in **`output`**, not `stdout`.
+- **All tools verified live on prod**: 101 agents, runtimes 7/7 ready, tools
+  109, security `tls`/`dns`/`cert` real, `coding.php action=test` →
+  `connected:true` (account onearmy756@gmail.com).
+- **git push**: `$GITHUB_TOKEN` shows push=true via the API yet git-over-HTTPS is
+  refused (403). Only the CEO's classic PAT pushes, via a one-off URL.
 - **Deposit bug (only on Fly)**: two queries disagreed (DESC `%deposit%` vs ASC
-  `%50%Deposit%`), now one `deposit_invoice_row()` helper. A fast local loop hides
-  it — when a Rust port differs from PHP *only in production*, diff the query
-  (ORDER BY/LIKE/LIMIT), not just the route list.
-- **Security tools all work** (verified live). Scope rule: `exposure` refuses via
-  `data.ok:false` (envelope stays `ok:true`) unless the domain is authorised AND
-  the caller names who approved it.
+  `%50%Deposit%`), now one `deposit_invoice_row()`. When a Rust port differs from
+  PHP *only in production*, diff the query (ORDER BY/LIKE/LIMIT), not the routes.
 
 ## Facts worth keeping
 - **MTECHOS is a DIFFERENT product, broad in labels not capability** — its
-  1040 "skills" are `action:"plan"` checklists with no runtime. This platform has
-  fewer labels, each backed by real code; compare counts only after checking the
-  other side actually runs something. Details: `2026-10-24-fly-deploy.md`.
+  1040 "skills" are `action:"plan"` checklists with no runtime. Compare tool
+  counts only after checking the other side actually runs something.
 - Repo `onearmy756-cmd/MBILINYI-TECH67`, default branch **master** (a stale
   `main` ref also exists). **It is public, not private.** The CEO's PAT has
   push+admin; use it in a one-off URL, never in `.git/config`.
@@ -95,9 +77,8 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   sandbox (installs Rust/R/Go/Elixir, rebuilds when sources are newer).
 - `scripts/smoke.sh` is the acceptance test; all 26 steps pass, repeatably (the
   four `ok:false` lines are intentional refusal tests).
-- **Security tools: 26 in the family, all real**, in `sandbox.rs`; reachable via
-  `security.php?action=scan&kind=<k>` and as agent tool codes in `runtime.rs`.
-  Catalogue total 100 tools (66+ agentic). A bare credential *prefix* is not a
+- **Security tools: 26 in the family, all real**, in `sandbox.rs`, via
+  `security.php?action=scan&kind=<k>`. A bare credential *prefix* is not a
   secret — rules need a minimum token length or the scanner flags its own table.
 - **Runtimes**: `langrun.rs` advertises a language only when it can run it;
   compiled ones (Rust, C) are built then run. Children get only toolchain-location
@@ -108,9 +89,6 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   `app.js`. `static_file` adds installer MIME types and `Content-Disposition:
   attachment` under `downloads/`. The Dockerfile copies the dir, so the binaries
   must be committed.
-- **Custom domain not cut over**: `mbilinyitech.co.tz` still points at the cPanel
-  host (91.204.209.30); Fly ingress is 66.241.125.44. Change the registrar A/AAAA
-  records, then the Fly cert verifies itself.
 - **Hire a worker** with `wafanyakazi.php` action **`add`** and `services` as an
   **array** (singular `service` is ignored → the worker never matches a request).
 - `rust/mts-core/target/` (~1.3 GB) and the runtime DB are git-ignored.
