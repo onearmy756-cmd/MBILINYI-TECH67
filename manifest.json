@@ -4,10 +4,13 @@
   "description": "Custom software, AI, maintenance and security — delivered online from Dodoma, Tanzania. BRELA Reg. No. 706668.",
   "start_url": "/",
   "scope": "/",
+  "id": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#050914",
   "theme_color": "#050914",
+  "handle_links": "not-preferred",
+  "capture_links": "none",
   "categories": [
     "business",
     "productivity",

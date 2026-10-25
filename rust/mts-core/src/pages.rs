@@ -169,7 +169,7 @@ fn globals(page: &str, csrf: &str, me: &Option<db::Row>, country: &str) -> Strin
 }
 
 /// The `<head>`, matching `partials/head.php` link for link.
-fn head(name: &str, title: &str) -> String {
+pub(crate) fn head(name: &str, title: &str) -> String {
     let base = site_base();
     let desc = page_description();
     let canonical = format!("{base}/{}", if name == "index" { "" } else { name });
@@ -202,11 +202,14 @@ fn head(name: &str, title: &str) -> String {
 <meta name="description" content="{desc}">
 <link rel="canonical" href="{canonical}">
 <meta name="theme-color" content="#050914">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
-<link rel="shortcut icon" href="assets/icons/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/favicon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Mbilinyi Tech Solutions">
 <meta property="og:title" content="{title}">

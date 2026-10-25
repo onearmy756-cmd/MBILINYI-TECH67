@@ -177,8 +177,14 @@ function paintPlatformCta() {
   if (!a) return;
   const p = window.__PLATFORM__ || {};
   const url = String(p.url || '').trim();
-  if (!url) { a.classList.add('hidden'); return; }
+  // `platform_url` is seeded from the deployment's own SITE_URL so the TLS
+  // posture check has a value. That means on this deployment it equals the site
+  // root, and the button used to send visitors back to the page they were
+  // already on — a self-link dressed up as an external platform. Only treat it
+  // as a real platform link when it actually leaves this site.
+  if (!url || isSameSite(url)) { a.classList.add('hidden'); return; }
   a.href = url;
+  a.classList.remove('hidden');
   const label = a.querySelector('[data-en]');
   if (label) {
     const name = String(p.name || '').trim() || 'MbilinyiTech Platform';
@@ -186,6 +192,15 @@ function paintPlatformCta() {
     label.dataset.sw = `Tembelea ${name}`;
     label.textContent = LANG === 'sw' ? label.dataset.sw : label.dataset.en;
   }
+}
+
+/** True when `url` points at this very site's home page (not an external app). */
+function isSameSite(url) {
+  try {
+    const u = new URL(url, location.href);
+    if (u.origin !== location.origin) return false;
+    return u.pathname === '/' || u.pathname === '';
+  } catch (e) { return false; }
 }
 
 /* ---------- NAV / PAGES ---------- */
@@ -3683,15 +3698,22 @@ function stripForSpeech(html) {
 
 function speechLang() { return LANG === 'sw' ? 'sw-TZ' : 'en-GB'; }
 
+/* Speech synthesis has no Swahili voice on almost any browser, so asking for
+ * sw-TZ used to fall through to voices[0] — whatever that happened to be — and
+ * Swahili was read aloud in, say, a German or Chinese accent. Kiswahili is
+ * written phonetically with five pure vowels, so an Italian, Spanish or
+ * Portuguese voice reads it far more faithfully than an arbitrary one. Prefer a
+ * real Swahili voice, then those neighbours, and only then English. */
+const SW_FALLBACK_LANGS = ['it', 'es', 'pt', 'id'];
 function pickVoice() {
   if (!('speechSynthesis' in window)) return null;
   const voices = window.speechSynthesis.getVoices() || [];
-  const want = LANG === 'sw' ? ['sw'] : ['en-GB', 'en-US', 'en'];
-  for (const tag of want) {
-    const v = voices.find(x => (x.lang || '').toLowerCase().startsWith(tag.toLowerCase()));
-    if (v) return v;
+  if (!voices.length) return null;
+  const find = tag => voices.find(x => (x.lang || '').toLowerCase().startsWith(tag));
+  if (LANG === 'sw') {
+    return find('sw') || SW_FALLBACK_LANGS.map(find).find(Boolean) || find('en') || null;
   }
-  return voices[0] || null;
+  return find('en-gb') || find('en-us') || find('en') || null;
 }
 
 function speak(html) {
@@ -3701,9 +3723,13 @@ function speak(html) {
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   const v = pickVoice();
-  if (v) u.voice = v;
+  // The utterance language must match the chosen voice or the browser ignores
+  // the voice and uses its own default. When no voice matches, leave u.voice
+  // unset and let the engine pick, rather than forcing a mismatched pair.
   u.lang = v?.lang || speechLang();
-  u.rate = 0.98;
+  if (v) u.voice = v;
+  // A non-native voice mangles a language it does not know when it runs fast.
+  u.rate = v && !v.lang.toLowerCase().startsWith(LANG === 'sw' ? 'sw' : 'en') ? 0.85 : 0.98;
   u.pitch = 1;
   window.speechSynthesis.speak(u);
 }
@@ -3735,7 +3761,7 @@ function toggleVoice() {
 }
 
 /* Speech-to-text: hold the mic, speak, and the transcript lands in the input. */
-let recognizer = null, listening = false;
+let recognizer = null, listening = false, micRetryEnglish = false;
 
 function paintMicBtn() {
   const b = $('micBtn');
@@ -3768,10 +3794,27 @@ function toggleMic() {
   };
   recognizer.onerror = (ev) => {
     listening = false; paintMicBtn();
+    // Not every browser ships a Swahili recogniser. Retrying once in English is
+    // better than refusing to listen at all: the words still come through.
+    if (ev.error === 'language-not-supported' && !micRetryEnglish) {
+      micRetryEnglish = true;
+      toast(LANG === 'sw' ? 'Kiswahili hakipatikani kwenye kivinjari hiki — nakusikiliza kwa Kiingereza.' : 'Swahili is not available here — listening in English instead.', 'info');
+      return; // onend restarts us with the new language
+    }
     if (ev.error === 'not-allowed') toast(LANG === 'sw' ? 'Ruhusa ya maikrofoni imekataliwa.' : 'Microphone permission was denied.', 'err');
     else if (ev.error !== 'aborted') toast(LANG === 'sw' ? 'Sikukusikia. Jaribu tena.' : 'I did not catch that. Try again.', 'err');
   };
-  recognizer.onend = () => { listening = false; paintMicBtn(); };
+  recognizer.onend = () => {
+    // A start() inside onerror races the browser tearing the old session down,
+    // so the fallback restart happens here, once the session has really ended.
+    if (micRetryEnglish && recognizer.lang !== 'en-US') {
+      recognizer.lang = 'en-US';
+      try { recognizer.start(); return; } catch (e) { micRetryEnglish = false; }
+    }
+    listening = false;
+    paintMicBtn();
+  };
+  micRetryEnglish = false;
   try { recognizer.start(); } catch (e) { toast('Microphone busy. Try again.', 'err'); }
 }
 
@@ -3918,12 +3961,36 @@ async function brain(raw) {
 }
 
 /* ---------- INIT ---------- */
+/* Signed in: the header must stop offering "Sign In"/"Sign Up" — an account
+ * holder is not a visitor. Swap both for a portal link and a Logout button so
+ * the header reflects who is actually looking at it. */
+function paintHeaderAuth() {
+  const u = currentUser();
+  // Desktop buttons carry `hidden sm:flex`, so visibility is swapped through
+  // those two classes; dropping only `hidden` would leak them onto mobile.
+  const showDesk = (el, on) => {
+    if (!el) return;
+    el.classList.toggle('hidden', !on);
+    el.classList.toggle('sm:flex', on);
+  };
+  const show = (el, on) => { if (el) el.classList.toggle('hidden', !on); };
+  const auth = $('navAuthBtn'), signup = $('navSignupBtn'), out = $('navLogoutBtn');
+  const mAuth = $('mNavAuth'), mSignup = $('mNavSignup'), mOut = $('mNavLogout');
+  if (!u) {
+    showDesk(auth, true); showDesk(signup, true); showDesk(out, false);
+    show(mAuth, true); show(mSignup, true); show(mOut, false);
+    return;
+  }
+  const label = u.role === 'admin' ? T('Admin Panel', 'Panel ya Admin') : T('My Portal', 'Portal Yangu');
+  if (auth) auth.innerHTML = `<i class="fa-solid fa-gauge text-cyan-300"></i> <span>${label}</span>`;
+  if (mAuth) mAuth.innerHTML = `<i class="fa-solid fa-gauge mr-2 text-cyan-300"></i> ${label}`;
+  showDesk(auth, true); showDesk(signup, false); showDesk(out, true);
+  show(mAuth, true); show(mSignup, false); show(mOut, true);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const u = currentUser();
-  const btn = $('navAuthBtn');
-  if (btn && u) {
-    btn.innerHTML = `<i class="fa-solid fa-gauge text-cyan-300"></i> ${u.role === 'admin' ? T('Panel', 'Panel') : T('My Portal', 'Portal Yangu')}`;
-  }
+  paintHeaderAuth();
 
   if (typeof paintVoiceBtn === 'function') paintVoiceBtn();
   if (typeof paintMicBtn === 'function') paintMicBtn();

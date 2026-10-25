@@ -71,7 +71,7 @@ COPY templates /app/templates
 COPY rust/mts-core/r /app/r
 COPY assets /app/assets
 COPY downloads /app/downloads
-COPY manifest.json sw.js robots.txt sitemap.xml /app/
+COPY manifest.json sw.js robots.txt sitemap.xml favicon.ico apple-touch-icon.png /app/
 # Outside /app on purpose: `static_file` serves any dotted path under the
 # working directory, and this script has no business being downloadable.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -80,7 +80,8 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 # disk. Normalise the modes here rather than trusting the checkout.
 RUN chmod +x /usr/local/bin/entrypoint.sh /app/mts-core \
  && chmod -R a+rX /app/templates /app/assets /app/downloads /app/r \
- && chmod a+r /app/manifest.json /app/sw.js /app/robots.txt /app/sitemap.xml
+ && chmod a+r /app/manifest.json /app/sw.js /app/robots.txt /app/sitemap.xml \
+               /app/favicon.ico /app/apple-touch-icon.png
 
 ENV MTS_PORT=8080 \
     MTS_DB=/data/mts.sqlite \

@@ -44,8 +44,9 @@
     </nav>
     <div class="flex items-center gap-2">
       <a href="download" class="hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10 text-sm font-semibold" title="Download the app"><i class="fa-solid fa-mobile-screen-button"></i> <span data-en="Get App" data-sw="Pata App">Get App</span></a>
-      <a href="auth?tab=register" class="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white/75 hover:text-white"><i class="fa-solid fa-user-plus text-gold"></i> <span data-en="Sign Up" data-sw="Jisajili">Sign Up</span></a>
+      <a id="navSignupBtn" href="auth?tab=register" class="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white/75 hover:text-white"><i class="fa-solid fa-user-plus text-gold"></i> <span data-en="Sign Up" data-sw="Jisajili">Sign Up</span></a>
       <button id="navAuthBtn" onclick="location.href='auth'" class="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/15 hover:border-cyan-400/50 hover:bg-white/5 text-sm font-semibold"><i class="fa-solid fa-right-to-bracket text-cyan-300"></i> <span data-en="Sign In" data-sw="Ingia">Sign In</span></button>
+      <button id="navLogoutBtn" onclick="logout()" class="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-400/30 text-red-300 hover:bg-red-500/10 text-sm font-semibold"><i class="fa-solid fa-right-from-bracket"></i> <span data-en="Logout" data-sw="Toka">Logout</span></button>
       <button onclick="openQuoteWizard()" class="grad-btn px-4 sm:px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-file-pen"></i> <span data-en="Request Service" data-sw="Omba Huduma">Request Service</span></button>
       <button onclick="toggleMobileMenu()" class="lg:hidden w-10 h-10 rounded-xl border border-white/15 flex items-center justify-center"><i class="fa-solid fa-bars"></i></button>
     </div>
@@ -63,8 +64,9 @@
     <a href="track" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Track Order" data-sw="Fuatilia Oda">Track Order</a>
     <a href="contact" onclick="toggleMobileMenu()" class="p-3 rounded-xl hover:bg-white/5" data-en="Contact" data-sw="Mawasiliano">Contact</a>
     <a href="download" onclick="toggleMobileMenu()" class="p-3 rounded-xl bg-emerald-500/10 text-emerald-300" data-en="📱 Get the App (Windows • Android • Linux)" data-sw="📱 Pata App (Windows • Android • Linux)">📱 Get the App (Windows • Android • Linux)</a>
-    <a href="auth?tab=register" onclick="toggleMobileMenu()" class="p-3 rounded-xl bg-white/5"><i class="fa-solid fa-user-plus mr-2 text-gold"></i> <span data-en="Sign Up / Create Account" data-sw="Jisajili / Fungua Akaunti">Sign Up / Create Account</span></a>
-    <button onclick="location.href='auth'" class="p-3 rounded-xl bg-white/5 text-left"><i class="fa-solid fa-right-to-bracket mr-2 text-cyan-300"></i> <span data-en="Sign In / Client Portal" data-sw="Ingia / Portal ya Mteja">Sign In / Client Portal</span></button>
+    <a id="mNavSignup" href="auth?tab=register" onclick="toggleMobileMenu()" class="p-3 rounded-xl bg-white/5"><i class="fa-solid fa-user-plus mr-2 text-gold"></i> <span data-en="Sign Up / Create Account" data-sw="Jisajili / Fungua Akaunti">Sign Up / Create Account</span></a>
+    <button id="mNavAuth" onclick="location.href='auth'" class="p-3 rounded-xl bg-white/5 text-left"><i class="fa-solid fa-right-to-bracket mr-2 text-cyan-300"></i> <span data-en="Sign In / Client Portal" data-sw="Ingia / Portal ya Mteja">Sign In / Client Portal</span></button>
+    <button id="mNavLogout" onclick="logout()" class="hidden p-3 rounded-xl bg-red-500/10 text-red-300 text-left"><i class="fa-solid fa-right-from-bracket mr-2"></i> <span data-en="Logout" data-sw="Toka">Logout</span></button>
   </div>
 </header>
 

@@ -594,4 +594,119 @@ mod tests {
             assert!(dir.join(p).is_file(), "missing partial {p}");
         }
     }
+
+    /// Browsers and search engines ask for /favicon.ico first, without reading
+    /// the HTML. When it is missing Google shows a generic globe beside the
+    /// result instead of the brand mark, so the file must exist at the root.
+    #[test]
+    fn the_root_favicon_exists() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        assert!(root.join("favicon.ico").is_file(), "missing /favicon.ico");
+        assert!(
+            root.join("apple-touch-icon.png").is_file(),
+            "missing /apple-touch-icon.png"
+        );
+    }
+
+    /// The Docker image only contains what the Dockerfile copies, so a root
+    /// file that exists on disk but is not copied is still a 404 in production.
+    #[test]
+    fn the_root_favicon_is_copied_into_the_image() {
+        let dockerfile = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../Dockerfile");
+        let text = std::fs::read_to_string(&dockerfile).expect("read Dockerfile");
+        assert!(
+            text.contains("favicon.ico") && text.contains("apple-touch-icon.png"),
+            "Dockerfile does not copy the root favicon files"
+        );
+    }
+
+    /// The head must point at the root icon with an absolute path. A relative
+    /// path breaks on any page that is not the site root.
+    #[test]
+    fn the_head_points_at_the_root_icon() {
+        let html = crate::pages::head("index", "Mbilinyi Tech Solutions");
+        assert!(
+            html.contains(r#"href="/favicon.ico""#),
+            "no root favicon link"
+        );
+        assert!(
+            html.contains(r#"href="/apple-touch-icon.png""#),
+            "no root apple-touch-icon link"
+        );
+    }
+
+    /// An installed PWA must not swallow navigations that start outside it.
+    /// With `scope: "/"` and no opt-out, tapping a Google result could reopen
+    /// the installed app instead of the browser — the report was that search
+    /// started launching the app rather than the web page. `handle_links:
+    /// not-preferred` plus `capture_links: none` is the explicit opt-out.
+    #[test]
+    fn the_manifest_does_not_hijack_outside_links() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../manifest.json");
+        let text = std::fs::read_to_string(&path).expect("read manifest.json");
+        let m: serde_json::Value = serde_json::from_str(&text).expect("manifest is valid JSON");
+        assert_eq!(
+            m.get("handle_links").and_then(|v| v.as_str()),
+            Some("not-preferred"),
+            "handle_links must opt out of link handling"
+        );
+        assert_eq!(
+            m.get("capture_links").and_then(|v| v.as_str()),
+            Some("none"),
+            "capture_links must be none"
+        );
+        assert_eq!(
+            m.get("scope").and_then(|v| v.as_str()),
+            Some("/"),
+            "scope is the site root"
+        );
+    }
+
+    /// A stable `id` keeps the installed app's identity fixed across manifest
+    /// edits; without it a changed start_url can install a second copy.
+    #[test]
+    fn the_manifest_has_a_stable_id() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../manifest.json");
+        let text = std::fs::read_to_string(&path).expect("read manifest.json");
+        let m: serde_json::Value = serde_json::from_str(&text).expect("manifest is valid JSON");
+        assert_eq!(m.get("id").and_then(|v| v.as_str()), Some("/"));
+    }
+
+    /// The header offers Sign Up / Sign In to visitors. A signed-in user must
+    /// not still be sold an account, so the markup has to carry the ids the
+    /// frontend swaps and a Logout control.
+    #[test]
+    fn the_header_can_swap_auth_for_logout() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        for file in ["templates/_header.html", "partials/header.php"] {
+            let html = std::fs::read_to_string(root.join(file)).expect(file);
+            for id in ["navSignupBtn", "navAuthBtn", "navLogoutBtn", "mNavLogout"] {
+                assert!(html.contains(id), "{file} is missing id={id}");
+            }
+        }
+        let js = std::fs::read_to_string(root.join("assets/app.js")).expect("app.js");
+        assert!(
+            js.contains("function paintHeaderAuth"),
+            "app.js has no paintHeaderAuth()"
+        );
+    }
+
+    /// `platform_url` is seeded from the deployment's own SITE_URL, so it equals
+    /// the site root here. The "Visit platform" button must not link back to the
+    /// page the visitor is already on.
+    #[test]
+    fn the_platform_cta_refuses_a_self_link() {
+        let js = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/app.js"),
+        )
+        .expect("app.js");
+        assert!(
+            js.contains("function isSameSite"),
+            "app.js has no isSameSite()"
+        );
+        assert!(
+            js.contains("isSameSite(url)"),
+            "paintPlatformCta does not screen the platform url"
+        );
+    }
 }

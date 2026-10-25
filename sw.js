@@ -1,10 +1,10 @@
-/* Mbilinyi Tech Solutions — Service Worker v1-mts
+/* Mbilinyi Tech Solutions — Service Worker v2-mts
  * Simple safe strategy:
  *  - Pre-cache core static pages on install (clean URLs, no .php).
  *  - Cache-first for GETs with known file extensions (images, fonts, css, js) — fall back to network.
  *  - Network-first for HTML pages and API requests (always get fresh content, save to cache).
  */
-const CACHE_NAME = 'mts-cache-v1';
+const CACHE_NAME = 'mts-cache-v2';
 /* Clean URLs — no .php anywhere. The server rewrites /pricing -> pricing.php. */
 const PRECACHE_URLS = [
   '/',

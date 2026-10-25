@@ -16,12 +16,18 @@ $ogImage = $siteBase . '/assets/icons/og-image.png';
 <meta name="description" content="<?= htmlspecialchars($pageDescription) ?>">
 <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl) ?>">
 <meta name="theme-color" content="#050914">
-<!-- Brand mark as real files so search engines and social cards can fetch it. -->
-<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
-<link rel="shortcut icon" href="assets/icons/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
+<!-- Brand mark as real files so search engines and social cards can fetch it.
+     Google reads the home page and the icon together and shows a plain globe
+     when it cannot fetch one, so the icon is served from the site root as well
+     as a stable absolute URL, and one size is larger than the 48px floor. -->
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/favicon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/favicon-16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
 
 <!-- Open Graph / social sharing -->
 <meta property="og:type" content="website">
