@@ -23,9 +23,11 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 - An app-scoped Fly token CANNOT create apps (`UNAUTHORIZED`); an app needs an
   ORG token. **Do not deploy over `mtechos`** — a different product (Agent-Canvas
   IDE at mtech.mbilinyitech.co.tz).
-- DNS for `mbilinyitech.co.tz` is at `ns1/ns2.rodlinehost.com` (cPanel); apex A →
-  91.204.209.30, `www` CNAME → apex. Fly cannot take the apex until the registrar
-  A record changes; exact records are in DEPLOY.md.
+- DNS for `mbilinyitech.co.tz` is at `ns1/ns2.rodlinehost.com` (cPanel) and is
+  now CUT OVER to Fly: apex A → 66.241.125.44 (AAAA 2a09:8280:1::1cb:226c:0),
+  all GET/HEAD reach Fly. The old cPanel host (91.204.209.30, LiteSpeed) served
+  stale cached 404s during the transition — confirm with `dig @ns1.rodlinehost.com`
+  before believing a 404. Exact records are in DEPLOY.md.
 - `MTS_OTP_PEPPER` is now a real Fly secret. Never set `OTP_SHOW_IN_RESPONSE`
   on the live site — it returns the sign-in code in the API response.
 - **Mbilinyi Coding** (`coding.rs`, admin tab) is a REAL OpenHands agent, not a
@@ -35,6 +37,19 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
   Trap: the events search must use `limit<=100` — 200 gets HTTP 422 and every
   job then looks stuck at "running" with zero events. Details in
   `2026-10-24-fly-deploy.md`.
+- **A coding job that errors must be marked failed, not left "running"**
+  (`read_events()` in `coding.rs`, commit 9c3ee08). A conversation that dies
+  emits `ConversationErrorEvent` and NO agent message, so a poll that only
+  looks for an answer reports "running" forever. As of 2026-10-25 the account's
+  OpenHands credits are `0.00`, so every hosted conversation fails with
+  `LLMAuthenticationError` (401 on the managed `sk-_qdwV…` proxy key). The
+  panel now shows the red "failed" badge with that detail. Hosted coding needs
+  credits on the account, or the CEO's own LLM key.
+- **LLM / fine-tuning** (`api/llm.php`) is wired but needs a provider key in
+  Admin → Settings (`ready=false, keySet=false` until then). With no key
+  `engine.php action=run_job` records the run as `blocked` with a clear message
+  instead of hanging — honest failure, not a fake success. AI/`ai` channel in
+  `/api/health` stays false until a key is set.
 - **git push**: `$GITHUB_TOKEN` shows push=true via the API yet git-over-HTTPS
   is refused (403). Only the CEO's classic PAT pushes, via a one-off URL.
 - **Deposit bug (only on Fly)**: two queries disagreed (DESC `%deposit%` vs ASC
