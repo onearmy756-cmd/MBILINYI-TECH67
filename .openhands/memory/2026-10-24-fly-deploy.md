@@ -364,3 +364,22 @@ on `mbilinyitech.co.tz` and `mbilinyitech-tz.fly.dev`. `server: Fly/…` +
 `security.php` → `scan`/`kind`; `migrate.php` → `status plan export verify
 import list download` (no `info`); `engine.php` → `runs run stats cancel queue
 capabilities`; `llm.php` → `status save clear_key test`.
+
+## Service visibility: the `plan_toggle` footgun (found on production)
+- The live SERVICES page rendered **empty**. Cause: `settings.services_hidden`
+  on the Fly volume held **all 21** catalogue keys.
+- Root cause: the Rust admin `plan_toggle` (in `src/api/admin.rs`) appended its
+  argument to `services_hidden` and rewrote that setting, instead of toggling
+  `pricing_plans.is_active` the way `api/settings.php` does. Enough toggles hid
+  everything.
+- Fixed: Rust now flips the plan row's own `is_active`, matching PHP.
+- Repaired live data through the admin API (`settings.php action=save
+  key=services_hidden value=cybersecurity,forensics`) — log in with the
+  `mbilinyitech@gmail.com` / `Admin@2026` then `verify-login-pin` `2645` flow.
+- Guards added: `settings::tests::plan_toggle_never_touches_service_visibility`
+  (source grep on admin.rs) and `an_empty_hidden_list_shows_every_service`.
+  The services grid also shows a request card instead of a blank panel.
+- **Trap**: `services_hidden` is the ONLY key that hides a service. An empty
+  value = everything visible. Never write it from anywhere but the settings
+  screen; the drift class (frontend sends a full list, backend stores it) is
+  the same one that produced the `visitor_stats` "undefined" bug.

@@ -127,4 +127,14 @@ replaced by a **Rust core** at `rust/mts-core` (axum). The frontend
 - `elixir --version` boots an Erlang VM that never exits → HANGS a startup script.
   Wrap it: `timeout 15 elixir --version | grep -m1 Elixir`.
 
+- **`services_hidden` is the ONLY key that hides a service** from the public
+  grid (empty value = everything visible). The Rust admin `plan_toggle` used to
+  append its argument to that key instead of flipping `pricing_plans.is_active`
+  (as PHP does), so enough plan toggles hid the **whole catalogue** on live —
+  the SERVICES page rendered blank. Fixed + guarded by two tests. Never write
+  `services_hidden` from anywhere but the settings screen.
+- Live prod admin: `mbilinyitech@gmail.com` / `Admin@2026`, then
+  `verify-login-pin` `2645`. `GITHUB_TOKEN` gets 403 pushing this repo — use the
+  CEO PAT from the user's message in a one-off URL.
+
 Details: `2026-10-21-mbilinyi-rust-core.md`.
